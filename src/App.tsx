@@ -181,9 +181,9 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-[120rem] mx-auto px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-wrap gap-6">
           {/* Input Panel */}
-          <div className="lg:w-80 lg:min-w-80 lg:shrink-0">
+          <div className="w-full lg:w-[28rem] lg:shrink-0 lg:grow-0">
             <InputPanel
               input={input}
               onChange={handleInputChange}
