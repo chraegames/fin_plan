@@ -181,9 +181,9 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-[120rem] mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Input Panel */}
-          <div className="lg:col-span-3 lg:pr-2">
+          <div className="lg:w-80 lg:min-w-80 lg:shrink-0">
             <InputPanel
               input={input}
               onChange={handleInputChange}
@@ -198,7 +198,7 @@ export default function App() {
           </div>
 
           {/* Results Panel */}
-          <div className="lg:col-span-9">
+          <div className="flex-1 min-w-0">
             <ResultsPanel
               results={results}
               onCashFlowClick={setModalYear}
