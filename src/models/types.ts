@@ -76,3 +76,15 @@ export interface YearResult {
 }
 
 export type SimulationResult = YearResult[];
+
+export interface Profile {
+  id: string;
+  name: string;
+  plans: ScenarioPlan[];
+  activePlanId: string;
+}
+
+export interface ProfilesState {
+  profiles: Profile[];
+  activeProfileId: string;
+}
