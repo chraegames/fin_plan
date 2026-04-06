@@ -130,6 +130,10 @@ export default function App() {
   const [modalYear, setModalYear] = useState<YearResult | null>(null);
   const [renamingProfile, setRenamingProfile] = useState(false);
   const [profileRenameValue, setProfileRenameValue] = useState('');
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importValue, setImportValue] = useState('');
+  const [importError, setImportError] = useState('');
 
   // Persist
   useEffect(() => {
@@ -339,6 +343,19 @@ export default function App() {
                 Delete
               </button>
             )}
+            <div className="border-l border-gray-700 h-4 mx-1" />
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            >
+              Export
+            </button>
+            <button
+              onClick={() => { setImportValue(''); setImportError(''); setImportModalOpen(true); }}
+              className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            >
+              Import
+            </button>
           </div>
         </div>
       </header>
@@ -379,6 +396,83 @@ export default function App() {
           onClose={() => setModalYear(null)}
           onUpdateWithdrawals={handleUpdateWithdrawals}
         />
+      )}
+
+      {/* Export Modal */}
+      {exportModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setExportModalOpen(false)}>
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-100 mb-3">Export Data</h2>
+            <p className="text-sm text-gray-400 mb-3">Copy this string and paste it into the Import dialog on another machine.</p>
+            <textarea
+              className="w-full h-40 bg-gray-900 text-gray-300 text-xs font-mono rounded border border-gray-600 p-3 focus:outline-none focus:border-blue-500 resize-none"
+              readOnly
+              value={btoa(encodeURIComponent(JSON.stringify(profilesState)))}
+              onFocus={e => e.target.select()}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(btoa(encodeURIComponent(JSON.stringify(profilesState))));
+                }}
+                className="text-sm px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+              >
+                Copy
+              </button>
+              <button
+                onClick={() => setExportModalOpen(false)}
+                className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {importModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setImportModalOpen(false)}>
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-100 mb-3">Import Data</h2>
+            <p className="text-sm text-gray-400 mb-3">Paste an exported string below. This will replace all your current data.</p>
+            <textarea
+              className="w-full h-40 bg-gray-900 text-gray-300 text-xs font-mono rounded border border-gray-600 p-3 focus:outline-none focus:border-blue-500 resize-none"
+              placeholder="Paste exported string here..."
+              value={importValue}
+              onChange={e => { setImportValue(e.target.value); setImportError(''); }}
+            />
+            {importError && (
+              <p className="text-sm text-red-400 mt-2">{importError}</p>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => {
+                  try {
+                    const decoded = JSON.parse(decodeURIComponent(atob(importValue.trim()))) as ProfilesState;
+                    if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
+                      setImportError('Invalid data format.');
+                      return;
+                    }
+                    setProfilesState(decoded);
+                    setImportModalOpen(false);
+                  } catch {
+                    setImportError('Failed to decode. Make sure you pasted the full exported string.');
+                  }
+                }}
+                className="text-sm px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+              >
+                Import
+              </button>
+              <button
+                onClick={() => setImportModalOpen(false)}
+                className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
