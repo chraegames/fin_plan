@@ -10,6 +10,7 @@ export interface ExpenseItem {
   id: string;
   name: string;
   frequency: ExpenseFrequency;
+  applyInflation: boolean;
   periods: TimePeriodValue[];
 }
 

@@ -31,6 +31,9 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
       delete old.retirementReturnRate;
     }
     if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: {} };
+    for (const exp of plan.input.expenses) {
+      if (exp.applyInflation == null) exp.applyInflation = true;
+    }
   }
   return plans;
 }

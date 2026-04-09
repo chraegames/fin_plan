@@ -31,6 +31,7 @@ export default function ExpenseSection({ items, onChange }: Props) {
       id,
       name: 'New Expense',
       frequency: 'monthly',
+      applyInflation: true,
       periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 0 }],
     }]);
   };
@@ -81,6 +82,15 @@ export default function ExpenseSection({ items, onChange }: Props) {
                       &times;
                     </button>
                   </div>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={item.applyInflation !== false}
+                      onChange={e => updateItem(i, { applyInflation: e.target.checked })}
+                      className="rounded border-gray-600 bg-gray-600 text-rose-500 focus:ring-rose-400 focus:ring-offset-0"
+                    />
+                    Apply inflation
+                  </label>
                   <div className="text-xs text-gray-500 mb-1">
                     {item.frequency === 'monthly' ? 'Monthly' : 'Annual'} amount per period:
                   </div>

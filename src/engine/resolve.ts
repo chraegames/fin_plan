@@ -58,7 +58,7 @@ export function resolveIncomeAndExpenses(input: PlanInput, year: number, actuals
     } else {
       const amount = resolveAmount(exp.periods, year);
       const base = exp.frequency === 'monthly' ? amount * 12 : amount;
-      annual = Math.round(base * inflationMultiplier);
+      annual = exp.applyInflation !== false ? Math.round(base * inflationMultiplier) : base;
     }
     if (annual > 0) expenseBreakdown.push({ name: exp.name, amount: annual });
     totalExpenses += annual;
