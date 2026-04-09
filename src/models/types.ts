@@ -30,10 +30,17 @@ export interface WithdrawalSchedule {
   periods: TimePeriodValue[];
 }
 
+export interface ActualsData {
+  incomes: Record<string, Record<number, number>>;
+  expenses: Record<string, Record<number, number>>;
+  withdrawals: Record<string, Record<number, number>>;
+}
+
 export interface ScenarioPlan {
   id: string;
   name: string;
   input: PlanInput;
+  actuals: ActualsData;
 }
 
 export interface PlanInput {

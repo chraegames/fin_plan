@@ -1,4 +1,4 @@
-import type { PlanInput } from '../models/types';
+import type { PlanInput, ActualsData } from '../models/types';
 import { START_YEAR, END_YEAR } from './constants';
 
 export const defaultInput: PlanInput = {
@@ -44,6 +44,8 @@ export const defaultInput: PlanInput = {
   ],
   withdrawals: [],
 };
+
+export const defaultActuals: ActualsData = { incomes: {}, expenses: {}, withdrawals: {} };
 
 let nextId = 100;
 export function generateId(): string {

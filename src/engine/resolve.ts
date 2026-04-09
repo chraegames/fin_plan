@@ -1,4 +1,4 @@
-import type { PlanInput, TimePeriodValue, NamedAmount } from '../models/types';
+import type { PlanInput, TimePeriodValue, NamedAmount, ActualsData } from '../models/types';
 import { START_YEAR } from './constants';
 
 export function resolveAmount(periods: TimePeriodValue[], year: number): number {
@@ -19,13 +19,14 @@ export interface ResolvedYear {
   expenseBreakdown: NamedAmount[];
 }
 
-export function resolveIncomeAndExpenses(input: PlanInput, year: number): ResolvedYear {
+export function resolveIncomeAndExpenses(input: PlanInput, year: number, actuals?: ActualsData): ResolvedYear {
   let totalIncome = 0;
   let taxableIncome = 0;
   const incomeBreakdown: NamedAmount[] = [];
 
   for (const inc of input.incomes) {
-    const annual = resolveAmount(inc.periods, year);
+    const actual = actuals?.incomes[inc.id]?.[year];
+    const annual = actual != null ? actual : resolveAmount(inc.periods, year);
     if (annual > 0) incomeBreakdown.push({ name: inc.name, amount: annual });
     totalIncome += annual;
     if (inc.type === 'taxable') {
@@ -37,9 +38,28 @@ export function resolveIncomeAndExpenses(input: PlanInput, year: number): Resolv
   let totalExpenses = 0;
   const expenseBreakdown: NamedAmount[] = [];
   for (const exp of input.expenses) {
-    const amount = resolveAmount(exp.periods, year);
-    const base = exp.frequency === 'monthly' ? amount * 12 : amount;
-    const annual = Math.round(base * inflationMultiplier);
+    // For monthly expenses, actuals are stored as year*100+month keys
+    let actual: number | undefined;
+    if (exp.frequency === 'monthly' && actuals?.expenses[exp.id]) {
+      let monthTotal = 0;
+      let hasAny = false;
+      for (let m = 0; m < 12; m++) {
+        const v = actuals.expenses[exp.id][year * 100 + m];
+        if (v != null) { hasAny = true; monthTotal += v; }
+      }
+      if (hasAny) actual = monthTotal;
+    } else {
+      actual = actuals?.expenses[exp.id]?.[year];
+    }
+    let annual: number;
+    if (actual != null) {
+      // For monthly: monthTotal is already the annual sum; for annual: use as-is
+      annual = actual;
+    } else {
+      const amount = resolveAmount(exp.periods, year);
+      const base = exp.frequency === 'monthly' ? amount * 12 : amount;
+      annual = Math.round(base * inflationMultiplier);
+    }
     if (annual > 0) expenseBreakdown.push({ name: exp.name, amount: annual });
     totalExpenses += annual;
   }

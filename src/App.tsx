@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { defaultInput, generateId } from './engine/defaults';
+import { defaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
 import { START_YEAR, END_YEAR } from './engine/constants';
-import type { PlanInput, YearResult, WithdrawalSchedule, ScenarioPlan, Profile, ProfilesState } from './models/types';
+import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, ScenarioPlan, Profile, ProfilesState } from './models/types';
 import InputPanel from './components/InputPanel';
 import ResultsPanel from './components/ResultsPanel';
 import CashFlowModal from './components/CashFlowModal';
+import ActualsPanel from './components/ActualsPanel';
 
 const PROFILES_KEY = 'financial-planner-profiles';
 const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
@@ -29,8 +30,39 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
       delete old.brokerageReturnRate;
       delete old.retirementReturnRate;
     }
+    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: {} };
   }
   return plans;
+}
+
+function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
+  const clean = (
+    items: { id: string; periods: { startYear: number; endYear: number }[] }[],
+    data: Record<string, Record<number, number>>,
+  ): Record<string, Record<number, number>> => {
+    const result: Record<string, Record<number, number>> = {};
+    const itemIds = new Set(items.map(i => i.id));
+    for (const [id, yearMap] of Object.entries(data)) {
+      if (!itemIds.has(id)) continue;
+      const item = items.find(i => i.id === id)!;
+      const cleaned: Record<number, number> = {};
+      for (const [keyStr, val] of Object.entries(yearMap)) {
+        const key = Number(keyStr);
+        // Monthly expense keys are year*100+month, so derive the year
+        const year = key > 9999 ? Math.floor(key / 100) : key;
+        if (item.periods.some(p => year >= p.startYear && year <= p.endYear)) {
+          cleaned[key] = val;
+        }
+      }
+      if (Object.keys(cleaned).length > 0) result[id] = cleaned;
+    }
+    return result;
+  };
+  return {
+    incomes: clean(input.incomes, actuals.incomes),
+    expenses: clean(input.expenses, actuals.expenses),
+    withdrawals: clean(input.withdrawals, actuals.withdrawals),
+  };
 }
 
 function loadProfiles(): ProfilesState {
@@ -118,7 +150,7 @@ function loadProfiles(): ProfilesState {
     profiles: [{
       id: profileId,
       name: 'Default',
-      plans: [{ id: planId, name: 'Default', input: defaultInput }],
+      plans: [{ id: planId, name: 'Default', input: defaultInput, actuals: { ...defaultActuals } }],
       activePlanId: planId,
     }],
     activeProfileId: profileId,
@@ -130,6 +162,7 @@ export default function App() {
   const [modalYear, setModalYear] = useState<YearResult | null>(null);
   const [renamingProfile, setRenamingProfile] = useState(false);
   const [profileRenameValue, setProfileRenameValue] = useState('');
+  const [activeTab, setActiveTab] = useState<'projections' | 'actuals'>('projections');
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importValue, setImportValue] = useState('');
@@ -143,7 +176,8 @@ export default function App() {
   const activeProfile = profilesState.profiles.find(p => p.id === profilesState.activeProfileId) ?? profilesState.profiles[0];
   const activePlan = activeProfile.plans.find(p => p.id === activeProfile.activePlanId) ?? activeProfile.plans[0];
   const input = activePlan.input;
-  const results = useMemo(() => runSimulation(input), [input]);
+  const actuals = activePlan.actuals ?? defaultActuals;
+  const results = useMemo(() => runSimulation(input, actuals), [input, actuals]);
 
   // Helper to update the active profile
   const updateActiveProfile = useCallback((updater: (profile: Profile) => Profile) => {
@@ -168,7 +202,7 @@ export default function App() {
       profiles: [...prev.profiles, {
         id: profileId,
         name: `Profile ${prev.profiles.length + 1}`,
-        plans: [{ id: planId, name: 'Default', input: JSON.parse(JSON.stringify(defaultInput)) }],
+        plans: [{ id: planId, name: 'Default', input: JSON.parse(JSON.stringify(defaultInput)), actuals: { ...defaultActuals } }],
         activePlanId: planId,
       }],
       activeProfileId: profileId,
@@ -192,7 +226,7 @@ export default function App() {
           profiles: [{
             id: newProfileId,
             name: 'Default',
-            plans: [{ id: newPlanId, name: 'Default', input: defaultInput }],
+            plans: [{ id: newPlanId, name: 'Default', input: defaultInput, actuals: { ...defaultActuals } }],
             activePlanId: newPlanId,
           }],
           activeProfileId: newProfileId,
@@ -208,9 +242,11 @@ export default function App() {
   const handleInputChange = useCallback((newInput: PlanInput) => {
     updateActiveProfile(profile => ({
       ...profile,
-      plans: profile.plans.map(p =>
-        p.id === profile.activePlanId ? { ...p, input: newInput } : p
-      ),
+      plans: profile.plans.map(p => {
+        if (p.id !== profile.activePlanId) return p;
+        const cleaned = cleanActuals(newInput, p.actuals ?? defaultActuals);
+        return { ...p, input: newInput, actuals: cleaned };
+      }),
     }));
   }, [updateActiveProfile]);
 
@@ -225,7 +261,7 @@ export default function App() {
       const clonedInput = JSON.parse(JSON.stringify(active.input)) as PlanInput;
       return {
         ...profile,
-        plans: [...profile.plans, { id: newId, name, input: clonedInput }],
+        plans: [...profile.plans, { id: newId, name, input: clonedInput, actuals: JSON.parse(JSON.stringify(active.actuals ?? defaultActuals)) }],
         activePlanId: newId,
       };
     });
@@ -243,7 +279,7 @@ export default function App() {
       const remaining = profile.plans.filter(p => p.id !== planId);
       if (remaining.length === 0) {
         const id = generateId();
-        return { ...profile, plans: [{ id, name: 'Default', input: defaultInput }], activePlanId: id };
+        return { ...profile, plans: [{ id, name: 'Default', input: defaultInput, actuals: { ...defaultActuals } }], activePlanId: id };
       }
       const newActive = profile.activePlanId === planId ? remaining[0].id : profile.activePlanId;
       return { ...profile, plans: remaining, activePlanId: newActive };
@@ -271,6 +307,15 @@ export default function App() {
         ),
       };
     });
+  }, [updateActiveProfile]);
+
+  const handleActualsChange = useCallback((newActuals: ActualsData) => {
+    updateActiveProfile(profile => ({
+      ...profile,
+      plans: profile.plans.map(p =>
+        p.id === profile.activePlanId ? { ...p, actuals: newActuals } : p
+      ),
+    }));
   }, [updateActiveProfile]);
 
   return (
@@ -360,33 +405,67 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-[120rem] mx-auto px-4 py-6">
-        <div className="flex flex-wrap gap-6">
-          {/* Input Panel */}
-          <div className="w-full lg:w-[28rem] lg:shrink-0 lg:grow-0">
-            <InputPanel
-              input={input}
-              onChange={handleInputChange}
-              plans={activeProfile.plans}
-              activePlanId={activeProfile.activePlanId}
-              onSwitchPlan={switchPlan}
-              onCreatePlan={createPlan}
-              onRenamePlan={renamePlan}
-              onDeletePlan={deletePlan}
-              onAutoBalance={handleAutoBalance}
-            />
-          </div>
-
-          {/* Results Panel */}
-          <div className="flex-1 min-w-0">
-            <ResultsPanel
-              results={results}
-              onCashFlowClick={setModalYear}
-            />
-          </div>
+      {/* Tab Bar */}
+      <div className="bg-gray-900 border-b border-gray-700">
+        <div className="max-w-[120rem] mx-auto px-4 flex gap-0">
+          <button
+            onClick={() => setActiveTab('projections')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === 'projections'
+                ? 'text-blue-400 border-blue-400'
+                : 'text-gray-400 border-transparent hover:text-gray-200'
+            }`}
+          >
+            Projections
+          </button>
+          <button
+            onClick={() => setActiveTab('actuals')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === 'actuals'
+                ? 'text-blue-400 border-blue-400'
+                : 'text-gray-400 border-transparent hover:text-gray-200'
+            }`}
+          >
+            Actuals
+          </button>
         </div>
-      </main>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'projections' ? (
+        <main className="max-w-[120rem] mx-auto px-4 py-6">
+          <div className="flex flex-wrap gap-6">
+            {/* Input Panel */}
+            <div className="w-full lg:w-[28rem] lg:shrink-0 lg:grow-0">
+              <InputPanel
+                input={input}
+                onChange={handleInputChange}
+                plans={activeProfile.plans}
+                activePlanId={activeProfile.activePlanId}
+                onSwitchPlan={switchPlan}
+                onCreatePlan={createPlan}
+                onRenamePlan={renamePlan}
+                onDeletePlan={deletePlan}
+                onAutoBalance={handleAutoBalance}
+              />
+            </div>
+
+            {/* Results Panel */}
+            <div className="flex-1 min-w-0">
+              <ResultsPanel
+                results={results}
+                onCashFlowClick={setModalYear}
+              />
+            </div>
+          </div>
+        </main>
+      ) : (
+        <ActualsPanel
+          input={input}
+          actuals={actuals}
+          onActualsChange={handleActualsChange}
+        />
+      )}
 
       {/* Cash Flow Modal */}
       {modalYear && (

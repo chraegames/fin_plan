@@ -1,9 +1,9 @@
-import type { PlanInput, NamedAmount, SimulationResult } from '../models/types';
+import type { PlanInput, ActualsData, NamedAmount, SimulationResult } from '../models/types';
 import { resolveAmount, resolveIncomeAndExpenses } from './resolve';
 import { calculateIncomeTax, calculateCapitalGainsTax } from './tax';
 import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE } from './constants';
 
-export function runSimulation(input: PlanInput): SimulationResult {
+export function runSimulation(input: PlanInput, actuals?: ActualsData): SimulationResult {
   const results: SimulationResult = [];
 
   let currentCash = input.startingCash;
@@ -12,7 +12,7 @@ export function runSimulation(input: PlanInput): SimulationResult {
 
   for (let year = START_YEAR; year <= END_YEAR; year++) {
     const { totalIncome, taxableIncome, incomeBreakdown, totalExpenses, expenseBreakdown } =
-      resolveIncomeAndExpenses(input, year);
+      resolveIncomeAndExpenses(input, year, actuals);
 
     // Resolve withdrawals
     let withdrawalsBrokerage = 0;
@@ -20,7 +20,8 @@ export function runSimulation(input: PlanInput): SimulationResult {
     const withdrawalBreakdown: NamedAmount[] = [];
 
     for (const wd of input.withdrawals) {
-      const amount = resolveAmount(wd.periods, year);
+      const actual = actuals?.withdrawals[wd.id]?.[year];
+      const amount = actual != null ? actual : resolveAmount(wd.periods, year);
       if (amount <= 0) continue;
       if (wd.accountType === 'brokerage') {
         withdrawalsBrokerage += amount;
