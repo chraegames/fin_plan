@@ -23,7 +23,7 @@ export interface IncomeItem {
   periods: TimePeriodValue[];
 }
 
-export type AccountType = 'brokerage' | 'retirement';
+export type AccountType = 'brokerage' | 'roth' | 'ira';
 
 export interface WithdrawalSchedule {
   id: string;
@@ -47,7 +47,8 @@ export interface ScenarioPlan {
 export interface PlanInput {
   startingCash: number;
   brokerageBalance: number;
-  retirementBalance: number;
+  rothBalance: number;
+  iraBalance: number;
   returnRate: number;
   incomes: IncomeItem[];
   expenses: ExpenseItem[];
@@ -69,7 +70,8 @@ export interface YearResult {
   totalExpenses: number;
   expenseBreakdown: NamedAmount[];
   withdrawalsBrokerage: number;
-  withdrawalsRetirement: number;
+  withdrawalsRoth: number;
+  withdrawalsIra: number;
   withdrawalBreakdown: NamedAmount[];
   incomeTax: number;
   capitalGainsTax: number;
@@ -78,7 +80,8 @@ export interface YearResult {
   netCashFlow: number;
   endingCash: number;
   brokerageBalance: number;
-  retirementBalance: number;
+  rothBalance: number;
+  iraBalance: number;
   totalInvestments: number;
   totalNetWorth: number;
 }

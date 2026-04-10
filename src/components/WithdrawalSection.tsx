@@ -15,26 +15,29 @@ interface Props {
 
 export default function WithdrawalSection({ items, onChange, targetCash, onTargetCashChange, onAutoBalance }: Props) {
   const [brokerageOpen, setBrokerageOpen] = useState(false);
-  const [retirementOpen, setRetirementOpen] = useState(false);
+  const [rothOpen, setRothOpen] = useState(false);
+  const [iraOpen, setIraOpen] = useState(false);
 
   const brokerage = items.find(w => w.accountType === 'brokerage');
-  const retirement = items.find(w => w.accountType === 'retirement');
+  const roth = items.find(w => w.accountType === 'roth');
+  const ira = items.find(w => w.accountType === 'ira');
 
-  // Ensure both schedules exist — backfill missing ones on mount
+  // Ensure all three schedules exist — backfill missing ones on mount
   useEffect(() => {
-    if (brokerage && retirement) return;
+    if (brokerage && roth && ira) return;
     const next = [...items];
     if (!brokerage) next.push({ id: generateId(), accountType: 'brokerage', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
-    if (!retirement) next.push({ id: generateId(), accountType: 'retirement', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
+    if (!roth) next.push({ id: generateId(), accountType: 'roth', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
+    if (!ira) next.push({ id: generateId(), accountType: 'ira', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
     onChange(next);
-  }, [brokerage, retirement]);
+  }, [brokerage, roth, ira]);
 
   const updateSchedule = (id: string, updates: Partial<WithdrawalSchedule>) => {
     onChange(items.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
-  // Don't render until both schedules exist
-  if (!brokerage || !retirement) return null;
+  // Don't render until all three schedules exist
+  if (!brokerage || !roth || !ira) return null;
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
@@ -84,28 +87,54 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
           )}
         </div>
 
-        {/* Retirement */}
+        {/* Roth */}
         <div className="bg-gray-700 rounded-lg p-3 space-y-2">
-          {retirementOpen ? (
+          {rothOpen ? (
             <>
               <div className="flex items-center gap-2">
-                <button onClick={() => setRetirementOpen(false)} className="text-gray-500 hover:text-gray-300 text-xs shrink-0">&#9660;</button>
-                <span className="text-sm font-medium text-gray-300">Retirement</span>
+                <button onClick={() => setRothOpen(false)} className="text-gray-500 hover:text-gray-300 text-xs shrink-0">&#9660;</button>
+                <span className="text-sm font-medium text-gray-300">Roth</span>
+              </div>
+              <div className="text-xs text-emerald-400 bg-emerald-900/30 rounded px-2 py-1">
+                Tax-free withdrawals. {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early withdrawal penalty before {EARLY_WITHDRAWAL_PENALTY_CUTOFF}
+              </div>
+              <div className="text-xs text-gray-500 mb-1">Annual withdrawal per period:</div>
+              <TimePeriodEditor
+                periods={roth.periods}
+                onChange={periods => updateSchedule(roth.id, { periods })}
+                amountLabel="/yr"
+              />
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button onClick={() => setRothOpen(true)} className="text-gray-500 hover:text-gray-300 text-xs shrink-0">&#9654;</button>
+              <span className="text-sm text-gray-300 cursor-pointer" onClick={() => setRothOpen(true)}>Roth</span>
+            </div>
+          )}
+        </div>
+
+        {/* IRA */}
+        <div className="bg-gray-700 rounded-lg p-3 space-y-2">
+          {iraOpen ? (
+            <>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIraOpen(false)} className="text-gray-500 hover:text-gray-300 text-xs shrink-0">&#9660;</button>
+                <span className="text-sm font-medium text-gray-300">IRA</span>
               </div>
               <div className="text-xs text-amber-400 bg-amber-900/30 rounded px-2 py-1">
                 {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early withdrawal penalty applies before {EARLY_WITHDRAWAL_PENALTY_CUTOFF}
               </div>
               <div className="text-xs text-gray-500 mb-1">Annual withdrawal per period:</div>
               <TimePeriodEditor
-                periods={retirement.periods}
-                onChange={periods => updateSchedule(retirement.id, { periods })}
+                periods={ira.periods}
+                onChange={periods => updateSchedule(ira.id, { periods })}
                 amountLabel="/yr"
               />
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <button onClick={() => setRetirementOpen(true)} className="text-gray-500 hover:text-gray-300 text-xs shrink-0">&#9654;</button>
-              <span className="text-sm text-gray-300 cursor-pointer" onClick={() => setRetirementOpen(true)}>Retirement</span>
+              <button onClick={() => setIraOpen(true)} className="text-gray-500 hover:text-gray-300 text-xs shrink-0">&#9654;</button>
+              <span className="text-sm text-gray-300 cursor-pointer" onClick={() => setIraOpen(true)}>IRA</span>
             </div>
           )}
         </div>

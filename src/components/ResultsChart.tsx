@@ -14,9 +14,11 @@ export default function ResultsChart({ results }: Props) {
     year: r.year,
     Cash: Math.round(r.endingCash),
     Brokerage: Math.round(r.brokerageBalance),
-    Retirement: Math.round(r.retirementBalance),
+    Roth: Math.round(r.rothBalance),
+    IRA: Math.round(r.iraBalance),
     'Brokerage Wd': Math.round(r.withdrawalsBrokerage),
-    'Retirement Wd': Math.round(r.withdrawalsRetirement),
+    'Roth Wd': Math.round(r.withdrawalsRoth),
+    'IRA Wd': Math.round(r.withdrawalsIra),
   }));
 
   return (
@@ -30,7 +32,8 @@ export default function ResultsChart({ results }: Props) {
           <YAxis tickFormatter={formatDollarsCompact} tick={{ fontSize: 11, fill: '#9ca3af' }} width={60} />
           <Tooltip formatter={((value: unknown) => typeof value === 'number' ? formatDollars(value) : String(value ?? '')) as never} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem', color: '#e5e7eb' }} />
           <Legend wrapperStyle={{ color: '#d1d5db' }} />
-          <Area type="monotone" dataKey="Retirement" stackId="1" stroke="#22d3ee" fill="#0e7490" fillOpacity={0.7} />
+          <Area type="monotone" dataKey="IRA" stackId="1" stroke="#f59e0b" fill="#d97706" fillOpacity={0.7} />
+          <Area type="monotone" dataKey="Roth" stackId="1" stroke="#22d3ee" fill="#0e7490" fillOpacity={0.7} />
           <Area type="monotone" dataKey="Brokerage" stackId="1" stroke="#4ade80" fill="#16a34a" fillOpacity={0.7} />
           <Area type="monotone" dataKey="Cash" stackId="1" stroke="#c084fc" fill="#a855f7" fillOpacity={0.6} />
         </AreaChart>
@@ -45,8 +48,9 @@ export default function ResultsChart({ results }: Props) {
           <YAxis tickFormatter={formatDollarsCompact} tick={{ fontSize: 11, fill: '#9ca3af' }} width={60} />
           <Tooltip formatter={((value: unknown) => typeof value === 'number' ? formatDollars(value) : String(value ?? '')) as never} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem', color: '#e5e7eb' }} />
           <Legend wrapperStyle={{ color: '#d1d5db' }} />
-          <Bar dataKey="Brokerage Wd" stackId="wd" fill="#f59e0b" />
-          <Bar dataKey="Retirement Wd" stackId="wd" fill="#ef4444" fillOpacity={0.7} />
+          <Bar dataKey="Brokerage Wd" stackId="wd" fill="#4ade80" />
+          <Bar dataKey="Roth Wd" stackId="wd" fill="#22d3ee" />
+          <Bar dataKey="IRA Wd" stackId="wd" fill="#f59e0b" fillOpacity={0.7} />
         </BarChart>
       </ResponsiveContainer>
     </div>

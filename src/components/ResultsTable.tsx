@@ -57,7 +57,7 @@ export default function ResultsTable({ results, onCashFlowClick }: Props) {
               <th rowSpan={2} className="text-right px-3 py-1.5 font-medium text-gray-400 border-b border-gray-700 border-l border-gray-700">
                 Cash Flow
               </th>
-              <th colSpan={4} className="text-center px-3 pt-2 pb-0.5 font-semibold text-blue-400 border-b-0 border-l border-gray-700">
+              <th colSpan={5} className="text-center px-3 pt-2 pb-0.5 font-semibold text-blue-400 border-b-0 border-l border-gray-700">
                 Balances
               </th>
             </tr>
@@ -69,7 +69,8 @@ export default function ResultsTable({ results, onCashFlowClick }: Props) {
               <th className="text-right px-3 py-1.5 font-medium text-gray-400">Tax</th>
               <th className="text-right px-3 py-1.5 font-medium text-gray-400 border-l border-gray-700">Cash</th>
               <th className="text-right px-3 py-1.5 font-medium text-gray-400">Brokerage</th>
-              <th className="text-right px-3 py-1.5 font-medium text-gray-400">Retirement</th>
+              <th className="text-right px-3 py-1.5 font-medium text-gray-400">Roth</th>
+              <th className="text-right px-3 py-1.5 font-medium text-gray-400">IRA</th>
               <th className="text-right px-3 py-1.5 font-medium text-gray-400">Net Worth</th>
             </tr>
           </thead>
@@ -92,7 +93,7 @@ export default function ResultsTable({ results, onCashFlowClick }: Props) {
                   onMouseEnter={e => show(e, r.withdrawalBreakdown)}
                   onMouseLeave={hide}
                 >
-                  {$(r.withdrawalsBrokerage + r.withdrawalsRetirement)}
+                  {$(r.withdrawalsBrokerage + r.withdrawalsRoth + r.withdrawalsIra)}
                 </td>
 
                 {/* Money Out */}
@@ -121,8 +122,11 @@ export default function ResultsTable({ results, onCashFlowClick }: Props) {
                 <td className={`text-right px-3 py-1.5 bg-blue-900/20 group-hover/row:bg-gray-700 ${r.brokerageBalance > 0 ? 'text-blue-400' : 'text-red-400 font-semibold'}`}>
                   {$(r.brokerageBalance)}
                 </td>
-                <td className={`text-right px-3 py-1.5 bg-blue-900/20 group-hover/row:bg-gray-700 ${r.retirementBalance > 0 ? 'text-blue-400' : 'text-red-400 font-semibold'}`}>
-                  {$(r.retirementBalance)}
+                <td className={`text-right px-3 py-1.5 bg-blue-900/20 group-hover/row:bg-gray-700 ${r.rothBalance > 0 ? 'text-blue-400' : 'text-red-400 font-semibold'}`}>
+                  {$(r.rothBalance)}
+                </td>
+                <td className={`text-right px-3 py-1.5 bg-blue-900/20 group-hover/row:bg-gray-700 ${r.iraBalance > 0 ? 'text-blue-400' : 'text-red-400 font-semibold'}`}>
+                  {$(r.iraBalance)}
                 </td>
                 <td className="text-right px-3 py-1.5 font-semibold text-blue-300 bg-blue-900/20 group-hover/row:bg-gray-700">{$(r.totalNetWorth)}</td>
               </tr>

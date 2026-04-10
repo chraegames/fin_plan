@@ -34,6 +34,18 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
     for (const exp of plan.input.expenses) {
       if (exp.applyInflation == null) exp.applyInflation = true;
     }
+    // Migrate retirement -> roth + ira
+    const inp = plan.input as any;
+    if (inp.retirementBalance != null && inp.rothBalance == null) {
+      inp.rothBalance = Math.round(inp.retirementBalance / 2);
+      inp.iraBalance = inp.retirementBalance - inp.rothBalance;
+      delete inp.retirementBalance;
+    }
+    for (const wd of plan.input.withdrawals) {
+      if ((wd.accountType as string) === 'retirement') {
+        (wd as any).accountType = 'ira';
+      }
+    }
   }
   return plans;
 }

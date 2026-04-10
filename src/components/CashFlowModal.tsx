@@ -57,7 +57,8 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
   };
 
   const hasBrokerage = localWithdrawals.some(wd => wd.accountType === 'brokerage');
-  const hasRetirement = localWithdrawals.some(wd => wd.accountType === 'retirement');
+  const hasRoth = localWithdrawals.some(wd => wd.accountType === 'roth');
+  const hasIra = localWithdrawals.some(wd => wd.accountType === 'ira');
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
@@ -89,7 +90,7 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">Withdrawals</span>
-            <span className="text-gray-300">{$(r.withdrawalsBrokerage + r.withdrawalsRetirement)}</span>
+            <span className="text-gray-300">{$(r.withdrawalsBrokerage + r.withdrawalsRoth + r.withdrawalsIra)}</span>
           </div>
           <div className="flex justify-between pt-1 border-t border-gray-600 font-semibold">
             <span className="text-gray-300">Net Cash Flow</span>
@@ -162,7 +163,7 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
             </div>
           ))}
 
-          {(!hasBrokerage || !hasRetirement) && (
+          {(!hasBrokerage || !hasRoth || !hasIra) && (
             <div className="pt-2 border-t border-gray-700">
               <div className="text-xs text-gray-500 mb-2">Add withdrawal from:</div>
               <div className="flex flex-wrap gap-2">
@@ -174,12 +175,20 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
                     + Brokerage
                   </button>
                 )}
-                {!hasRetirement && (
+                {!hasRoth && (
                   <button
-                    onClick={() => addWithdrawal('retirement')}
+                    onClick={() => addWithdrawal('roth')}
                     className="text-xs bg-blue-900/30 text-blue-400 hover:bg-blue-800/40 px-2 py-1 rounded"
                   >
-                    + Retirement
+                    + Roth
+                  </button>
+                )}
+                {!hasIra && (
+                  <button
+                    onClick={() => addWithdrawal('ira')}
+                    className="text-xs bg-blue-900/30 text-blue-400 hover:bg-blue-800/40 px-2 py-1 rounded"
+                  >
+                    + IRA
                   </button>
                 )}
               </div>

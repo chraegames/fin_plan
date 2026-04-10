@@ -9,14 +9,20 @@ const ROUND_GRANULARITY = 10000;
 interface YearWithdrawal {
   year: number;
   brokerage: number;
-  retirement: number;
+  roth: number;
+  ira: number;
 }
 
 function computeTaxOnBrokerage(amount: number, taxableIncome: number): number {
   return calculateCapitalGainsTax(amount, taxableIncome);
 }
 
-function computeTaxOnRetirement(amount: number, taxableIncome: number, year: number): number {
+function computeTaxOnRoth(amount: number, year: number): number {
+  // Roth withdrawals are tax-free, but early withdrawal penalty applies
+  return year < EARLY_WITHDRAWAL_PENALTY_CUTOFF ? amount * EARLY_WITHDRAWAL_PENALTY_RATE : 0;
+}
+
+function computeTaxOnIra(amount: number, taxableIncome: number, year: number): number {
   const marginalIncomeTax = calculateIncomeTax(taxableIncome + amount) - calculateIncomeTax(taxableIncome);
   const penalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF ? amount * EARLY_WITHDRAWAL_PENALTY_RATE : 0;
   return marginalIncomeTax + penalty;
@@ -43,12 +49,7 @@ function solveGross(
 
 /**
  * Compute the maximum sustainable annual withdrawal from an account.
- * This is the amount you can withdraw each year such that the account
- * never depletes over the remaining years, given its return rate.
- *
- * Uses the annuity formula: payment = balance * r / (1 - (1+r)^-n)
- * where r = return rate, n = remaining years.
- * We apply a safety factor to keep a buffer.
+ * Uses the annuity formula with an 80% safety factor.
  */
 function sustainableWithdrawal(balance: number, returnRate: number, remainingYears: number): number {
   if (balance <= 0 || remainingYears <= 0) return 0;
@@ -56,9 +57,7 @@ function sustainableWithdrawal(balance: number, returnRate: number, remainingYea
 
   const r = returnRate;
   const n = remainingYears;
-  // Annuity payment that would exactly deplete the account over n years
   const maxAnnuity = balance * r / (1 - Math.pow(1 + r, -n));
-  // Use 80% of that to maintain a healthy balance throughout
   return maxAnnuity * 0.8;
 }
 
@@ -67,7 +66,8 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
 
   let currentCash = input.startingCash;
   let brokerageBalance = input.brokerageBalance;
-  let retirementBalance = input.retirementBalance;
+  let rothBalance = input.rothBalance;
+  let iraBalance = input.iraBalance;
 
   for (let year = START_YEAR; year <= END_YEAR; year++) {
     const remainingYears = END_YEAR - year + 1;
@@ -83,54 +83,79 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     const deficit = targetCash - projectedCash;
 
     let brokerageWd = 0;
-    let retirementWd = 0;
+    let rothWd = 0;
+    let iraWd = 0;
 
     if (deficit > 0) {
-      // Compute sustainable limits for each account
-      const brokerageSustainable = sustainableWithdrawal(
-        brokerageBalance, input.returnRate, remainingYears,
-      );
-      const retirementSustainable = sustainableWithdrawal(
-        retirementBalance, input.returnRate, remainingYears,
-      );
+      // Sustainable limits
+      const brokerageSustainable = sustainableWithdrawal(brokerageBalance, input.returnRate, remainingYears);
+      const rothSustainable = sustainableWithdrawal(rothBalance, input.returnRate, remainingYears);
+      const iraSustainable = sustainableWithdrawal(iraBalance, input.returnRate, remainingYears);
 
-      // Split deficit proportionally based on account balances so both
-      // accounts drain at a similar rate relative to their size.
       const brokerageMaxGross = Math.min(brokerageSustainable, brokerageBalance * 0.95);
-      const retirementMaxGross = Math.min(retirementSustainable, retirementBalance * 0.95);
+      const rothMaxGross = Math.min(rothSustainable, rothBalance * 0.95);
+      const iraMaxGross = Math.min(iraSustainable, iraBalance * 0.95);
 
-      const totalBalance = brokerageBalance + retirementBalance;
-      const brokerageShare = totalBalance > 0 ? brokerageBalance / totalBalance : 0.5;
-      const retirementShare = 1 - brokerageShare;
+      // Proportional split by account balance
+      const totalBalance = brokerageBalance + rothBalance + iraBalance;
+      const brokerageShare = totalBalance > 0 ? brokerageBalance / totalBalance : 1 / 3;
+      const rothShare = totalBalance > 0 ? rothBalance / totalBalance : 1 / 3;
+      const iraShare = totalBalance > 0 ? iraBalance / totalBalance : 1 / 3;
 
-      // Allocate deficit proportionally by account balance
       const brokerageDeficit = deficit * brokerageShare;
-      const retirementDeficit = deficit * retirementShare;
+      const rothDeficit = deficit * rothShare;
+      const iraDeficit = deficit * iraShare;
 
+      // Phase 1: Allocate proportionally
+      // Roth first (tax-free, best deal)
+      rothWd = solveGross(
+        rothDeficit,
+        gross => computeTaxOnRoth(gross, year),
+        rothMaxGross,
+      );
+      const rothTax = computeTaxOnRoth(rothWd, year);
+      const netFromRoth = rothWd - rothTax;
+
+      // Brokerage (capital gains tax)
       brokerageWd = solveGross(
         brokerageDeficit,
         gross => computeTaxOnBrokerage(gross, taxableIncome),
         brokerageMaxGross,
       );
-
       const brokerageTax = computeTaxOnBrokerage(brokerageWd, taxableIncome);
       const netFromBrokerage = brokerageWd - brokerageTax;
 
-      // Retirement gets its share plus any shortfall brokerage couldn't cover
+      // IRA gets its share plus any shortfalls from roth/brokerage
+      const rothShortfall = rothDeficit - netFromRoth;
       const brokerageShortfall = brokerageDeficit - netFromBrokerage;
-      const retirementNeeded = retirementDeficit + brokerageShortfall;
+      const iraNeeded = iraDeficit + rothShortfall + brokerageShortfall;
 
-      retirementWd = solveGross(
-        retirementNeeded,
-        gross => computeTaxOnRetirement(gross, taxableIncome, year)
+      iraWd = solveGross(
+        iraNeeded,
+        gross => computeTaxOnIra(gross, taxableIncome, year)
           + (calculateCapitalGainsTax(brokerageWd, taxableIncome + gross) - calculateCapitalGainsTax(brokerageWd, taxableIncome)),
-        retirementMaxGross,
+        iraMaxGross,
       );
 
-      // If retirement also couldn't fully cover, try giving remainder back to brokerage
-      const retirementTax = computeTaxOnRetirement(retirementWd, taxableIncome, year);
-      const netFromRetirement = retirementWd - retirementTax;
-      let remainingDeficit = deficit - netFromBrokerage - netFromRetirement;
+      // Phase 2: If IRA also couldn't cover, give remainder to roth (tax-free)
+      const iraTax = computeTaxOnIra(iraWd, taxableIncome, year);
+      const netFromIra = iraWd - iraTax;
+      let remainingDeficit = deficit - netFromRoth - netFromBrokerage - netFromIra;
+
+      if (remainingDeficit > 0) {
+        const extraRoth = solveGross(
+          remainingDeficit,
+          gross => computeTaxOnRoth(rothWd + gross, year) - computeTaxOnRoth(rothWd, year),
+          rothMaxGross - rothWd,
+        );
+        rothWd += extraRoth;
+      }
+
+      // Phase 3: Then try extra brokerage
+      const netAfterPhase2 = (rothWd - computeTaxOnRoth(rothWd, year))
+        + (brokerageWd - computeTaxOnBrokerage(brokerageWd, taxableIncome))
+        + (iraWd - computeTaxOnIra(iraWd, taxableIncome, year));
+      remainingDeficit = deficit - netAfterPhase2;
 
       if (remainingDeficit > 0) {
         const extraBrokerage = solveGross(
@@ -141,79 +166,105 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
         brokerageWd += extraBrokerage;
       }
 
-      // If sustainable limits were too conservative, relax to hard balance limits
-      // and try again to prevent cash from dropping below target.
-      const netAfterFirst = (brokerageWd - computeTaxOnBrokerage(brokerageWd, taxableIncome))
-        + (retirementWd - computeTaxOnRetirement(retirementWd, taxableIncome, year));
-      remainingDeficit = deficit - netAfterFirst;
+      // Phase 4: Relax to hard balance limits if still short
+      const netAfterPhase3 = (rothWd - computeTaxOnRoth(rothWd, year))
+        + (brokerageWd - computeTaxOnBrokerage(brokerageWd, taxableIncome + iraWd))
+        + (iraWd - computeTaxOnIra(iraWd, taxableIncome, year));
+      remainingDeficit = deficit - netAfterPhase3;
 
       if (remainingDeficit > 0) {
+        const rothHardMax = rothBalance * 0.95;
         const brokerageHardMax = brokerageBalance * 0.95;
-        const retirementHardMax = retirementBalance * 0.95;
+        const iraHardMax = iraBalance * 0.95;
 
-        if (brokerageWd < brokerageHardMax) {
+        // Extra roth first (tax-free)
+        if (rothWd < rothHardMax) {
+          const extraRoth = solveGross(
+            remainingDeficit,
+            gross => computeTaxOnRoth(rothWd + gross, year) - computeTaxOnRoth(rothWd, year),
+            rothHardMax - rothWd,
+          );
+          rothWd += extraRoth;
+
+          const netNow = (rothWd - computeTaxOnRoth(rothWd, year))
+            + (brokerageWd - computeTaxOnBrokerage(brokerageWd, taxableIncome + iraWd))
+            + (iraWd - computeTaxOnIra(iraWd, taxableIncome, year));
+          remainingDeficit = deficit - netNow;
+        }
+
+        if (remainingDeficit > 0 && brokerageWd < brokerageHardMax) {
           const extraBrokerage = solveGross(
             remainingDeficit,
-            gross => computeTaxOnBrokerage(brokerageWd + gross, taxableIncome + retirementWd) - computeTaxOnBrokerage(brokerageWd, taxableIncome + retirementWd),
+            gross => computeTaxOnBrokerage(brokerageWd + gross, taxableIncome + iraWd) - computeTaxOnBrokerage(brokerageWd, taxableIncome + iraWd),
             brokerageHardMax - brokerageWd,
           );
           brokerageWd += extraBrokerage;
 
-          const netNow = (brokerageWd - computeTaxOnBrokerage(brokerageWd, taxableIncome))
-            + (retirementWd - computeTaxOnRetirement(retirementWd, taxableIncome, year));
+          const netNow = (rothWd - computeTaxOnRoth(rothWd, year))
+            + (brokerageWd - computeTaxOnBrokerage(brokerageWd, taxableIncome + iraWd))
+            + (iraWd - computeTaxOnIra(iraWd, taxableIncome, year));
           remainingDeficit = deficit - netNow;
         }
 
-        if (remainingDeficit > 0 && retirementWd < retirementHardMax) {
-          const extraRetirement = solveGross(
+        if (remainingDeficit > 0 && iraWd < iraHardMax) {
+          const extraIra = solveGross(
             remainingDeficit,
-            gross => computeTaxOnRetirement(retirementWd + gross, taxableIncome, year) - computeTaxOnRetirement(retirementWd, taxableIncome, year)
-              + (calculateCapitalGainsTax(brokerageWd, taxableIncome + retirementWd + gross) - calculateCapitalGainsTax(brokerageWd, taxableIncome + retirementWd)),
-            retirementHardMax - retirementWd,
+            gross => computeTaxOnIra(iraWd + gross, taxableIncome, year) - computeTaxOnIra(iraWd, taxableIncome, year)
+              + (calculateCapitalGainsTax(brokerageWd, taxableIncome + iraWd + gross) - calculateCapitalGainsTax(brokerageWd, taxableIncome + iraWd)),
+            iraHardMax - iraWd,
           );
-          retirementWd += extraRetirement;
+          iraWd += extraIra;
         }
       }
     }
 
-    // Round withdrawals to the same granularity consolidate will use,
-    // so our internal simulation matches the actual simulation output.
+    // Round withdrawals
     brokerageWd = Math.round(brokerageWd / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-    retirementWd = Math.round(retirementWd / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+    rothWd = Math.round(rothWd / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+    iraWd = Math.round(iraWd / ROUND_GRANULARITY) * ROUND_GRANULARITY;
 
-    yearlyWithdrawals.push({ year, brokerage: brokerageWd, retirement: retirementWd });
+    yearlyWithdrawals.push({ year, brokerage: brokerageWd, roth: rothWd, ira: iraWd });
 
     // Apply the year with rounded withdrawals
     brokerageBalance = Math.max(0, brokerageBalance - brokerageWd);
     brokerageBalance *= (1 + input.returnRate);
 
-    retirementBalance = Math.max(0, retirementBalance - retirementWd);
-    retirementBalance *= (1 + input.returnRate);
+    rothBalance = Math.max(0, rothBalance - rothWd);
+    rothBalance *= (1 + input.returnRate);
+
+    iraBalance = Math.max(0, iraBalance - iraWd);
+    iraBalance *= (1 + input.returnRate);
 
     // Full tax with withdrawals
-    const totalTaxableOrdinary = taxableIncome + retirementWd;
+    const totalTaxableOrdinary = taxableIncome + iraWd;
     const incomeTax = calculateIncomeTax(totalTaxableOrdinary);
     const capitalGainsTax = calculateCapitalGainsTax(brokerageWd, totalTaxableOrdinary);
-    const penalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF ? retirementWd * EARLY_WITHDRAWAL_PENALTY_RATE : 0;
+    const penalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF ? (rothWd + iraWd) * EARLY_WITHDRAWAL_PENALTY_RATE : 0;
     const totalTax = incomeTax + capitalGainsTax + penalty;
 
-    currentCash += totalIncome - totalExpenses - totalTax + brokerageWd + retirementWd;
+    currentCash += totalIncome - totalExpenses - totalTax + brokerageWd + rothWd + iraWd;
   }
 
   // Consolidate into WithdrawalSchedule objects
   const brokerageSchedule = consolidate(
     yearlyWithdrawals.map(y => ({ year: y.year, amount: y.brokerage })),
   );
-  const retirementSchedule = consolidate(
-    yearlyWithdrawals.map(y => ({ year: y.year, amount: y.retirement })),
+  const rothSchedule = consolidate(
+    yearlyWithdrawals.map(y => ({ year: y.year, amount: y.roth })),
+  );
+  const iraSchedule = consolidate(
+    yearlyWithdrawals.map(y => ({ year: y.year, amount: y.ira })),
   );
 
   const result: WithdrawalSchedule[] = [];
   if (brokerageSchedule.length > 0) {
     result.push({ id: generateId(), accountType: 'brokerage', periods: brokerageSchedule });
   }
-  if (retirementSchedule.length > 0) {
-    result.push({ id: generateId(), accountType: 'retirement', periods: retirementSchedule });
+  if (rothSchedule.length > 0) {
+    result.push({ id: generateId(), accountType: 'roth', periods: rothSchedule });
+  }
+  if (iraSchedule.length > 0) {
+    result.push({ id: generateId(), accountType: 'ira', periods: iraSchedule });
   }
   return result;
 }

@@ -8,7 +8,8 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
 
   let currentCash = input.startingCash;
   let brokerageBalance = input.brokerageBalance;
-  let retirementBalance = input.retirementBalance;
+  let rothBalance = input.rothBalance;
+  let iraBalance = input.iraBalance;
 
   for (let year = START_YEAR; year <= END_YEAR; year++) {
     const { totalIncome, taxableIncome, incomeBreakdown, totalExpenses, expenseBreakdown } =
@@ -16,7 +17,8 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
 
     // Resolve withdrawals
     let withdrawalsBrokerage = 0;
-    let withdrawalsRetirement = 0;
+    let withdrawalsRoth = 0;
+    let withdrawalsIra = 0;
     const withdrawalBreakdown: NamedAmount[] = [];
 
     for (const wd of input.withdrawals) {
@@ -25,27 +27,35 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
       if (amount <= 0) continue;
       if (wd.accountType === 'brokerage') {
         withdrawalsBrokerage += amount;
+      } else if (wd.accountType === 'roth') {
+        withdrawalsRoth += amount;
       } else {
-        withdrawalsRetirement += amount;
+        withdrawalsIra += amount;
       }
     }
     if (withdrawalsBrokerage > 0) withdrawalBreakdown.push({ name: 'Brokerage', amount: withdrawalsBrokerage });
-    if (withdrawalsRetirement > 0) withdrawalBreakdown.push({ name: 'Retirement', amount: withdrawalsRetirement });
+    if (withdrawalsRoth > 0) withdrawalBreakdown.push({ name: 'Roth', amount: withdrawalsRoth });
+    if (withdrawalsIra > 0) withdrawalBreakdown.push({ name: 'IRA', amount: withdrawalsIra });
 
     // Calculate investment growth
     brokerageBalance = Math.max(0, brokerageBalance - withdrawalsBrokerage);
     brokerageBalance *= (1 + input.returnRate);
 
-    retirementBalance = Math.max(0, retirementBalance - withdrawalsRetirement);
-    retirementBalance *= (1 + input.returnRate);
+    rothBalance = Math.max(0, rothBalance - withdrawalsRoth);
+    rothBalance *= (1 + input.returnRate);
+
+    iraBalance = Math.max(0, iraBalance - withdrawalsIra);
+    iraBalance *= (1 + input.returnRate);
 
     // Calculate taxes
-    const totalTaxableOrdinary = taxableIncome + withdrawalsRetirement;
+    // IRA withdrawals are taxed as ordinary income; Roth withdrawals are tax-free
+    const totalTaxableOrdinary = taxableIncome + withdrawalsIra;
     const incomeTax = calculateIncomeTax(totalTaxableOrdinary);
     const capitalGainsTax = calculateCapitalGainsTax(withdrawalsBrokerage, totalTaxableOrdinary);
 
+    // Early withdrawal penalty applies to both Roth and IRA before cutoff
     const earlyWithdrawalPenalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF
-      ? withdrawalsRetirement * EARLY_WITHDRAWAL_PENALTY_RATE
+      ? (withdrawalsRoth + withdrawalsIra) * EARLY_WITHDRAWAL_PENALTY_RATE
       : 0;
 
     const totalTax = incomeTax + capitalGainsTax + earlyWithdrawalPenalty;
@@ -55,11 +65,12 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
       - totalExpenses
       - totalTax
       + withdrawalsBrokerage
-      + withdrawalsRetirement;
+      + withdrawalsRoth
+      + withdrawalsIra;
 
     currentCash += netCashFlow;
 
-    const totalInvestments = brokerageBalance + retirementBalance;
+    const totalInvestments = brokerageBalance + rothBalance + iraBalance;
     const totalNetWorth = currentCash + totalInvestments;
 
     results.push({
@@ -70,7 +81,8 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
       totalExpenses,
       expenseBreakdown,
       withdrawalsBrokerage,
-      withdrawalsRetirement,
+      withdrawalsRoth,
+      withdrawalsIra,
       withdrawalBreakdown,
       incomeTax,
       capitalGainsTax,
@@ -79,7 +91,8 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
       netCashFlow,
       endingCash: currentCash,
       brokerageBalance,
-      retirementBalance,
+      rothBalance,
+      iraBalance,
       totalInvestments,
       totalNetWorth,
     });

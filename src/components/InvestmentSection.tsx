@@ -35,13 +35,24 @@ export default function InvestmentSection({ input, onChange }: Props) {
           />
         </div>
 
-        {/* Retirement */}
+        {/* Roth */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-300 w-24 shrink-0">Retirement</span>
+          <span className="text-sm text-gray-300 w-24 shrink-0">Roth</span>
           <span className="text-gray-500 text-sm">$</span>
           <NumericInput
-            value={input.retirementBalance}
-            onChange={v => onChange({ retirementBalance: v })}
+            value={input.rothBalance}
+            onChange={v => onChange({ rothBalance: v })}
+            className="flex-1 border border-gray-600 rounded px-2 py-1.5 text-sm bg-gray-700 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+        </div>
+
+        {/* IRA */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-300 w-24 shrink-0">IRA</span>
+          <span className="text-gray-500 text-sm">$</span>
+          <NumericInput
+            value={input.iraBalance}
+            onChange={v => onChange({ iraBalance: v })}
             className="flex-1 border border-gray-600 rounded px-2 py-1.5 text-sm bg-gray-700 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
         </div>

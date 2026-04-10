@@ -239,7 +239,7 @@ export default function ActualsPanel({ input, actuals, onActualsChange }: Props)
               return (
                 <div key={wd.id}>
                   <div className="text-sm text-gray-200 mb-2">
-                    {wd.accountType === 'brokerage' ? 'Brokerage' : 'Retirement'}
+                    {wd.accountType === 'brokerage' ? 'Brokerage' : wd.accountType === 'roth' ? 'Roth' : 'IRA'}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {years.map(year => (

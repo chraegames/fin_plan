@@ -4,7 +4,8 @@ import { START_YEAR, END_YEAR } from './constants';
 export const defaultInput: PlanInput = {
   startingCash: 50000,
   brokerageBalance: 100000,
-  retirementBalance: 200000,
+  rothBalance: 100000,
+  iraBalance: 100000,
   returnRate: 0.07,
   incomes: [
     {
