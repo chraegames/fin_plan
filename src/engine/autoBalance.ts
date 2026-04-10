@@ -5,6 +5,7 @@ import { generateId } from './defaults';
 import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE } from './constants';
 
 const ROUND_GRANULARITY = 10000;
+const CASH_FLOOR = 10000;
 
 interface YearWithdrawal {
   year: number;
@@ -159,16 +160,35 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     let wd: Allocation = { brokerage: 0, roth: 0, ira: 0 };
 
     if (deficit > 0) {
-      // Cap each account at the annuity-due that depletes it exactly by
-      // END_YEAR. We never breach this cap — if the user's target is
-      // mathematically infeasible (sum of caps < deficit), this year will
-      // under-deliver rather than draining an account prematurely.
-      const caps: Allocation = {
+      // Phase 1: target the user's desired cash, capped per account at the
+      // annuity-due that depletes it exactly by END_YEAR. We don't breach
+      // this cap here — if the sum of caps < deficit, we under-deliver
+      // rather than draining an account. Some years dipping below target
+      // is acceptable; depleting accounts is not.
+      const annuityCaps: Allocation = {
         brokerage: annuityCap(brokerageBalance, input.returnRate, remainingYears),
         roth: annuityCap(rothBalance, input.returnRate, remainingYears),
         ira: annuityCap(iraBalance, input.returnRate, remainingYears),
       };
-      wd = solveOptimalAllocation(deficit, taxableIncome, year, caps);
+      wd = solveOptimalAllocation(deficit, taxableIncome, year, annuityCaps);
+    }
+
+    // Phase 2: enforce the absolute cash floor. The user has said it's OK
+    // to dip below the target some years, but cash must never drop below
+    // CASH_FLOOR unless mathematically impossible. If Phase 1 (which
+    // respects long-term sustainability) leaves us below the floor, we
+    // override the annuity caps and pull from full balances to cover at
+    // least the floor amount. This trades future depletion risk for an
+    // immediate liquidity guarantee, which is the right priority.
+    const cashAfterPhase1 = projectedCash + computeNet(wd, taxableIncome, year);
+    if (cashAfterPhase1 < CASH_FLOOR) {
+      const floorNetNeeded = CASH_FLOOR - projectedCash;
+      const hardCaps: Allocation = {
+        brokerage: brokerageBalance,
+        roth: rothBalance,
+        ira: iraBalance,
+      };
+      wd = solveOptimalAllocation(floorNetNeeded, taxableIncome, year, hardCaps);
     }
 
     // Round to granularity used by consolidation, so internal sim matches
@@ -180,6 +200,25 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     wd.brokerage = Math.max(0, Math.min(wd.brokerage, brokerageBalance));
     wd.roth = Math.max(0, Math.min(wd.roth, rothBalance));
     wd.ira = Math.max(0, Math.min(wd.ira, iraBalance));
+
+    // Post-rounding floor check: rounding down can push cash below the
+    // floor by up to ROUND_GRANULARITY. If so, bump the cheapest account
+    // up by one granularity step until the floor is met or capacity runs
+    // out across all accounts.
+    const balances: Allocation = { brokerage: brokerageBalance, roth: rothBalance, ira: iraBalance };
+    while (projectedCash + computeNet(wd, taxableIncome, year) < CASH_FLOOR) {
+      const baseTax = computeTotalTax(wd, taxableIncome, year);
+      let best: { acc: AccountKey; rate: number } | null = null;
+      for (const acc of (['brokerage', 'roth', 'ira'] as AccountKey[])) {
+        if (wd[acc] + ROUND_GRANULARITY > balances[acc]) continue;
+        const trial: Allocation = { ...wd };
+        trial[acc] += ROUND_GRANULARITY;
+        const rate = (computeTotalTax(trial, taxableIncome, year) - baseTax) / ROUND_GRANULARITY;
+        if (best === null || rate < best.rate) best = { acc, rate };
+      }
+      if (best === null) break;
+      wd[best.acc] += ROUND_GRANULARITY;
+    }
 
     yearlyWithdrawals.push({ year, brokerage: wd.brokerage, roth: wd.roth, ira: wd.ira });
 
