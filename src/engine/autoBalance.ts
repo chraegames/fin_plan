@@ -114,16 +114,27 @@ function solveOptimalAllocation(
 }
 
 /**
- * Maximum sustainable annual withdrawal from an account using the annuity
- * formula with an 80% safety factor.
+ * Maximum constant annual withdrawal that exactly depletes `balance` over
+ * `remainingYears`, given annual `returnRate`.
+ *
+ * Uses the **annuity-due** formula (payments at the start of each period)
+ * because the simulation withdraws before applying growth. With this cap,
+ * pulling exactly `annuityCap()` every year leaves the balance at zero in
+ * year `remainingYears`. No safety factor — it's mathematically exact.
+ *
+ * Recomputed each year on the *current* balance: years where we withdraw
+ * less than the cap (or skip entirely) leave a higher balance, which raises
+ * the cap for all future years. This is the forward-looking projection that
+ * makes the per-year greedy globally aware — surplus years naturally fund
+ * later deficits via compounded growth on the unused portion.
  */
-function sustainableWithdrawal(balance: number, returnRate: number, remainingYears: number): number {
+function annuityCap(balance: number, returnRate: number, remainingYears: number): number {
   if (balance <= 0 || remainingYears <= 0) return 0;
-  if (returnRate <= 0) return balance / remainingYears * 0.8;
+  if (returnRate <= 0) return balance / remainingYears;
   const r = returnRate;
   const n = remainingYears;
-  const maxAnnuity = balance * r / (1 - Math.pow(1 + r, -n));
-  return maxAnnuity * 0.8;
+  // annuity-due = ordinary-annuity / (1 + r)
+  return balance * r / ((1 + r) * (1 - Math.pow(1 + r, -n)));
 }
 
 export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSchedule[] {
@@ -148,39 +159,27 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     let wd: Allocation = { brokerage: 0, roth: 0, ira: 0 };
 
     if (deficit > 0) {
-      // Phase 1: solve within sustainable caps (preserves longevity)
-      const sustainCaps: Allocation = {
-        brokerage: Math.min(
-          sustainableWithdrawal(brokerageBalance, input.returnRate, remainingYears),
-          brokerageBalance * 0.95,
-        ),
-        roth: Math.min(
-          sustainableWithdrawal(rothBalance, input.returnRate, remainingYears),
-          rothBalance * 0.95,
-        ),
-        ira: Math.min(
-          sustainableWithdrawal(iraBalance, input.returnRate, remainingYears),
-          iraBalance * 0.95,
-        ),
+      // Cap each account at the annuity-due that depletes it exactly by
+      // END_YEAR. We never breach this cap — if the user's target is
+      // mathematically infeasible (sum of caps < deficit), this year will
+      // under-deliver rather than draining an account prematurely.
+      const caps: Allocation = {
+        brokerage: annuityCap(brokerageBalance, input.returnRate, remainingYears),
+        roth: annuityCap(rothBalance, input.returnRate, remainingYears),
+        ira: annuityCap(iraBalance, input.returnRate, remainingYears),
       };
-      wd = solveOptimalAllocation(deficit, taxableIncome, year, sustainCaps);
-
-      // Phase 2: if sustainable caps are too tight, relax to hard balance caps
-      const net = computeNet(wd, taxableIncome, year);
-      if (net < deficit - 1) {
-        const hardCaps: Allocation = {
-          brokerage: brokerageBalance * 0.95,
-          roth: rothBalance * 0.95,
-          ira: iraBalance * 0.95,
-        };
-        wd = solveOptimalAllocation(deficit, taxableIncome, year, hardCaps);
-      }
+      wd = solveOptimalAllocation(deficit, taxableIncome, year, caps);
     }
 
     // Round to granularity used by consolidation, so internal sim matches
     wd.brokerage = Math.round(wd.brokerage / ROUND_GRANULARITY) * ROUND_GRANULARITY;
     wd.roth = Math.round(wd.roth / ROUND_GRANULARITY) * ROUND_GRANULARITY;
     wd.ira = Math.round(wd.ira / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+
+    // Defensive clamp: rounding shouldn't push us above the current balance
+    wd.brokerage = Math.max(0, Math.min(wd.brokerage, brokerageBalance));
+    wd.roth = Math.max(0, Math.min(wd.roth, rothBalance));
+    wd.ira = Math.max(0, Math.min(wd.ira, iraBalance));
 
     yearlyWithdrawals.push({ year, brokerage: wd.brokerage, roth: wd.roth, ira: wd.ira });
 
