@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface Props {
   value: number;
@@ -12,16 +12,19 @@ interface Props {
 
 export default function NumericInput({ value, onChange, className, placeholder, step, min, max }: Props) {
   const [raw, setRaw] = useState(String(value));
-
-  useEffect(() => {
-    // Sync from parent only when not actively editing
-    setRaw(prev => {
-      const parsed = Number(prev);
-      if (prev === '' || prev === '-' || isNaN(parsed)) return prev;
-      if (parsed !== value) return String(value);
-      return prev;
-    });
-  }, [value]);
+  // Track the last `value` prop we synced from. When the parent's value
+  // changes between renders, adopt it — but only if the user isn't mid-edit
+  // (raw is empty, "-", or NaN). This is the React 19 derived-state pattern:
+  // compute the sync during render, never inside an effect.
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    const parsed = Number(raw);
+    const editing = raw === '' || raw === '-' || isNaN(parsed);
+    if (!editing && parsed !== value) {
+      setRaw(String(value));
+    }
+  }
 
   return (
     <input

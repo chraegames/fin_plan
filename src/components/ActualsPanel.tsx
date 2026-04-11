@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { PlanInput, ActualsData } from '../models/types';
 import { resolveAmount } from '../engine/resolve';
 import { START_YEAR } from '../engine/constants';
@@ -19,10 +19,13 @@ function ActualInput({ value, projected, onChange }: {
   onChange: (v: number | undefined) => void;
 }) {
   const [raw, setRaw] = useState(value != null ? String(value) : '');
-
-  useEffect(() => {
+  // Derived-state sync: adopt the parent's value during render when it
+  // changes, instead of running an effect after render.
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
     setRaw(value != null ? String(value) : '');
-  }, [value]);
+  }
 
   return (
     <input

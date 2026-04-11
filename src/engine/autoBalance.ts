@@ -2,6 +2,7 @@ import solver from 'javascript-lp-solver';
 import type { PlanInput, WithdrawalSchedule, TimePeriodValue } from '../models/types';
 import { resolveIncomeAndExpenses } from './resolve';
 import { generateId } from './defaults';
+import { STANDARD_DEDUCTION, INCOME_BRACKETS, CAPITAL_GAINS_BRACKETS } from './tax';
 import {
   START_YEAR,
   END_YEAR,
@@ -12,29 +13,28 @@ import {
 const ROUND_GRANULARITY = 10000;
 const CASH_FLOOR = 10000;
 
-// Tax bracket constants — must mirror src/engine/tax.ts. Duplicated rather
-// than imported because tax.ts keeps them module-private.
-const STANDARD_DEDUCTION = 29200;
+// LP coefficients must be finite. tax.ts encodes the top bracket as Infinity;
+// clamp to $10M here — well above any realistic withdrawal, but tight enough
+// that the simplex stays well-conditioned. (1e9+ produces spurious infeasibility
+// in javascript-lp-solver for otherwise-well-conditioned problems.)
+const LP_BRACKET_CAP = 10_000_000;
 
-// Bracket widths: top bracket capped at $10M (well above any realistic
-// withdrawal). Don't use 1e9+ — javascript-lp-solver's simplex is sensitive
-// to wide coefficient ranges and produces spurious infeasibility for
-// well-conditioned problems when "infinity" coefficients are present.
-const ORD_BRACKETS: { width: number; rate: number }[] = [
-  { width: 23200, rate: 0.10 },
-  { width: 94300 - 23200, rate: 0.12 },
-  { width: 201050 - 94300, rate: 0.22 },
-  { width: 383900 - 201050, rate: 0.24 },
-  { width: 487450 - 383900, rate: 0.32 },
-  { width: 731200 - 487450, rate: 0.35 },
-  { width: 10_000_000, rate: 0.37 },
-];
+const ORD_BRACKETS: { width: number; rate: number }[] = INCOME_BRACKETS.map(([width, rate]) => ({
+  width: isFinite(width) ? width : LP_BRACKET_CAP,
+  rate,
+}));
 
-const CG_BANDS: { cumulative: number; rate: number }[] = [
-  { cumulative: 94050, rate: 0.00 },
-  { cumulative: 583750, rate: 0.15 },
-  { cumulative: 10_000_000, rate: 0.20 },
-];
+// Convert tax.ts's width-form LTCG brackets into cumulative form for stacking logic.
+// The infinite top band is clamped so its cumulative cap = LP_BRACKET_CAP.
+const CG_BANDS: { cumulative: number; rate: number }[] = (() => {
+  const out: { cumulative: number; rate: number }[] = [];
+  let cum = 0;
+  for (const [width, rate] of CAPITAL_GAINS_BRACKETS) {
+    cum = isFinite(width) ? cum + width : LP_BRACKET_CAP;
+    out.push({ cumulative: cum, rate });
+  }
+  return out;
+})();
 
 // Soft-constraint weights in the NW objective.
 //   FLOOR_PENALTY: how much ending NW the LP will sacrifice per $1 of cash
@@ -348,14 +348,13 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
 
 function consolidate(entries: { year: number; amount: number }[]): TimePeriodValue[] {
   const periods: TimePeriodValue[] = [];
-  for (const entry of entries) {
-    const amount = Math.round(entry.amount / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+  for (const { year, amount } of entries) {
     if (amount === 0) continue;
     const last = periods[periods.length - 1];
-    if (last && last.amount === amount && last.endYear === entry.year - 1) {
-      last.endYear = entry.year;
+    if (last && last.amount === amount && last.endYear === year - 1) {
+      last.endYear = year;
     } else {
-      periods.push({ startYear: entry.year, endYear: entry.year, amount });
+      periods.push({ startYear: year, endYear: year, amount });
     }
   }
   return periods;

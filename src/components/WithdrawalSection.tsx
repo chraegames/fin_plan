@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { WithdrawalSchedule } from '../models/types';
-import { generateId } from '../engine/defaults';
-import { EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE, END_YEAR } from '../engine/constants';
+import { EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE } from '../engine/constants';
 import TimePeriodEditor from './TimePeriodEditor';
 import NumericInput from './NumericInput';
 
@@ -18,26 +17,14 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
   const [rothOpen, setRothOpen] = useState(false);
   const [iraOpen, setIraOpen] = useState(false);
 
-  const brokerage = items.find(w => w.accountType === 'brokerage');
-  const roth = items.find(w => w.accountType === 'roth');
-  const ira = items.find(w => w.accountType === 'ira');
-
-  // Ensure all three schedules exist — backfill missing ones on mount
-  useEffect(() => {
-    if (brokerage && roth && ira) return;
-    const next = [...items];
-    if (!brokerage) next.push({ id: generateId(), accountType: 'brokerage', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
-    if (!roth) next.push({ id: generateId(), accountType: 'roth', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
-    if (!ira) next.push({ id: generateId(), accountType: 'ira', periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }] });
-    onChange(next);
-  }, [brokerage, roth, ira]);
+  // All three schedules are guaranteed to exist by migratePlans() at load time.
+  const brokerage = items.find(w => w.accountType === 'brokerage')!;
+  const roth = items.find(w => w.accountType === 'roth')!;
+  const ira = items.find(w => w.accountType === 'ira')!;
 
   const updateSchedule = (id: string, updates: Partial<WithdrawalSchedule>) => {
     onChange(items.map(item => item.id === id ? { ...item, ...updates } : item));
   };
-
-  // Don't render until all three schedules exist
-  if (!brokerage || !roth || !ira) return null;
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">

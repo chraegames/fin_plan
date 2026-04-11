@@ -1,6 +1,6 @@
-const STANDARD_DEDUCTION = 29200;
+export const STANDARD_DEDUCTION = 29200;
 
-const INCOME_BRACKETS: [number, number][] = [
+export const INCOME_BRACKETS: readonly [number, number][] = [
   [23200, 0.10],
   [94300 - 23200, 0.12],
   [201050 - 94300, 0.22],
@@ -10,7 +10,7 @@ const INCOME_BRACKETS: [number, number][] = [
   [Infinity, 0.37],
 ];
 
-const CAPITAL_GAINS_BRACKETS: [number, number][] = [
+export const CAPITAL_GAINS_BRACKETS: readonly [number, number][] = [
   [94050, 0.00],
   [583750 - 94050, 0.15],
   [Infinity, 0.20],

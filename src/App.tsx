@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { defaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
-import { START_YEAR, END_YEAR } from './engine/constants';
+import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_CUTOFF } from './engine/constants';
 import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, ScenarioPlan, Profile, ProfilesState } from './models/types';
 import InputPanel from './components/InputPanel';
 import ResultsPanel from './components/ResultsPanel';
@@ -20,12 +20,22 @@ interface OldScenariosState {
   activePlanId: string;
 }
 
+// Fields that older saved plans may have had but the current PlanInput type
+// doesn't. Captured here so migratePlans can read/delete them without `any`.
+interface LegacyPlanInput {
+  brokerageReturnRate?: number;
+  retirementReturnRate?: number;
+  retirementBalance?: number;
+  rothBalance?: number;
+  iraBalance?: number;
+}
+
 function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
   for (const plan of plans) {
     if (plan.input.inflationRate == null) plan.input.inflationRate = 0.03;
     if (plan.input.targetCash == null) plan.input.targetCash = 200000;
     if (plan.input.returnRate == null) {
-      const old = plan.input as any;
+      const old = plan.input as PlanInput & LegacyPlanInput;
       plan.input.returnRate = old.brokerageReturnRate ?? old.retirementReturnRate ?? 0.07;
       delete old.brokerageReturnRate;
       delete old.retirementReturnRate;
@@ -35,7 +45,7 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
       if (exp.applyInflation == null) exp.applyInflation = true;
     }
     // Migrate retirement -> roth + ira
-    const inp = plan.input as any;
+    const inp = plan.input as PlanInput & LegacyPlanInput;
     if (inp.retirementBalance != null && inp.rothBalance == null) {
       inp.rothBalance = Math.round(inp.retirementBalance / 2);
       inp.iraBalance = inp.retirementBalance - inp.rothBalance;
@@ -43,7 +53,20 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
     }
     for (const wd of plan.input.withdrawals) {
       if ((wd.accountType as string) === 'retirement') {
-        (wd as any).accountType = 'ira';
+        (wd as WithdrawalSchedule).accountType = 'ira';
+      }
+    }
+    // Backfill missing brokerage/Roth/IRA withdrawal schedules so the UI
+    // always has all three to render. Was previously a mount-time effect
+    // in WithdrawalSection — moved here so the data is consistent at load time.
+    const accountTypes: Array<'brokerage' | 'roth' | 'ira'> = ['brokerage', 'roth', 'ira'];
+    for (const accountType of accountTypes) {
+      if (!plan.input.withdrawals.some(w => w.accountType === accountType)) {
+        plan.input.withdrawals.push({
+          id: generateId(),
+          accountType,
+          periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }],
+        });
       }
     }
   }
@@ -80,6 +103,19 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
   };
 }
 
+function freshStart(): ProfilesState {
+  const planId = generateId();
+  const profileId = generateId();
+  const plans: ScenarioPlan[] = [
+    { id: planId, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
+  ];
+  migratePlans(plans);
+  return {
+    profiles: [{ id: profileId, name: 'Default', plans, activePlanId: planId }],
+    activeProfileId: profileId,
+  };
+}
+
 function loadProfiles(): ProfilesState {
   // Try new format first
   try {
@@ -93,7 +129,9 @@ function loadProfiles(): ProfilesState {
         return parsed;
       }
     }
-  } catch {}
+  } catch {
+    // migration: ignore parse errors and fall through to legacy paths
+  }
 
   // Migrate from scenarios format
   try {
@@ -115,7 +153,9 @@ function loadProfiles(): ProfilesState {
         };
       }
     }
-  } catch {}
+  } catch {
+    // migration: ignore parse errors and fall through to next legacy path
+  }
 
   // Migrate from legacy format
   try {
@@ -143,6 +183,7 @@ function loadProfiles(): ProfilesState {
         plans.push({ id, name: 'Default', input, actuals: { ...defaultActuals } });
       }
 
+      migratePlans(plans);
       localStorage.removeItem(OLD_INPUT_KEY);
       localStorage.removeItem(OLD_PLANS_KEY);
 
@@ -157,20 +198,11 @@ function loadProfiles(): ProfilesState {
         activeProfileId: profileId,
       };
     }
-  } catch {}
+  } catch {
+    // migration: ignore parse errors and fall through to fresh start
+  }
 
-  // Fresh start
-  const planId = generateId();
-  const profileId = generateId();
-  return {
-    profiles: [{
-      id: profileId,
-      name: 'Default',
-      plans: [{ id: planId, name: 'Default', input: defaultInput, actuals: { ...defaultActuals } }],
-      activePlanId: planId,
-    }],
-    activeProfileId: profileId,
-  };
+  return freshStart();
 }
 
 export default function App() {
@@ -214,11 +246,15 @@ export default function App() {
   const createProfile = useCallback(() => {
     const profileId = generateId();
     const planId = generateId();
+    const plans: ScenarioPlan[] = [
+      { id: planId, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
+    ];
+    migratePlans(plans);
     setProfilesState(prev => ({
       profiles: [...prev.profiles, {
         id: profileId,
         name: `Profile ${prev.profiles.length + 1}`,
-        plans: [{ id: planId, name: 'Default', input: JSON.parse(JSON.stringify(defaultInput)), actuals: { ...defaultActuals } }],
+        plans,
         activePlanId: planId,
       }],
       activeProfileId: profileId,
@@ -235,19 +271,7 @@ export default function App() {
   const deleteProfile = useCallback((profileId: string) => {
     setProfilesState(prev => {
       const remaining = prev.profiles.filter(p => p.id !== profileId);
-      if (remaining.length === 0) {
-        const newProfileId = generateId();
-        const newPlanId = generateId();
-        return {
-          profiles: [{
-            id: newProfileId,
-            name: 'Default',
-            plans: [{ id: newPlanId, name: 'Default', input: defaultInput, actuals: { ...defaultActuals } }],
-            activePlanId: newPlanId,
-          }],
-          activeProfileId: newProfileId,
-        };
-      }
+      if (remaining.length === 0) return freshStart();
       const newActive = prev.activeProfileId === profileId ? remaining[0].id : prev.activeProfileId;
       return { profiles: remaining, activeProfileId: newActive };
     });
@@ -274,10 +298,14 @@ export default function App() {
     const newId = generateId();
     updateActiveProfile(profile => {
       const active = profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
-      const clonedInput = JSON.parse(JSON.stringify(active.input)) as PlanInput;
       return {
         ...profile,
-        plans: [...profile.plans, { id: newId, name, input: clonedInput, actuals: JSON.parse(JSON.stringify(active.actuals ?? defaultActuals)) }],
+        plans: [...profile.plans, {
+          id: newId,
+          name,
+          input: structuredClone(active.input),
+          actuals: structuredClone(active.actuals ?? defaultActuals),
+        }],
         activePlanId: newId,
       };
     });
@@ -295,7 +323,11 @@ export default function App() {
       const remaining = profile.plans.filter(p => p.id !== planId);
       if (remaining.length === 0) {
         const id = generateId();
-        return { ...profile, plans: [{ id, name: 'Default', input: defaultInput, actuals: { ...defaultActuals } }], activePlanId: id };
+        const plans: ScenarioPlan[] = [
+          { id, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
+        ];
+        migratePlans(plans);
+        return { ...profile, plans, activePlanId: id };
       }
       const newActive = profile.activePlanId === planId ? remaining[0].id : profile.activePlanId;
       return { ...profile, plans: remaining, activePlanId: newActive };
@@ -548,6 +580,9 @@ export default function App() {
                     if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
                       setImportError('Invalid data format.');
                       return;
+                    }
+                    for (const profile of decoded.profiles) {
+                      migratePlans(profile.plans);
                     }
                     setProfilesState(decoded);
                     setImportModalOpen(false);
