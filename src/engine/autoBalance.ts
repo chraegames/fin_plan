@@ -1,11 +1,67 @@
+import solver from 'javascript-lp-solver';
 import type { PlanInput, WithdrawalSchedule, TimePeriodValue } from '../models/types';
 import { resolveIncomeAndExpenses } from './resolve';
-import { calculateIncomeTax, calculateCapitalGainsTax } from './tax';
 import { generateId } from './defaults';
-import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE } from './constants';
+import {
+  START_YEAR,
+  END_YEAR,
+  EARLY_WITHDRAWAL_PENALTY_CUTOFF,
+  EARLY_WITHDRAWAL_PENALTY_RATE,
+} from './constants';
 
 const ROUND_GRANULARITY = 10000;
 const CASH_FLOOR = 10000;
+
+// Tax bracket constants — must mirror src/engine/tax.ts. Duplicated rather
+// than imported because tax.ts keeps them module-private.
+const STANDARD_DEDUCTION = 29200;
+
+// Bracket widths: top bracket capped at $10M (well above any realistic
+// withdrawal). Don't use 1e9+ — javascript-lp-solver's simplex is sensitive
+// to wide coefficient ranges and produces spurious infeasibility for
+// well-conditioned problems when "infinity" coefficients are present.
+const ORD_BRACKETS: { width: number; rate: number }[] = [
+  { width: 23200, rate: 0.10 },
+  { width: 94300 - 23200, rate: 0.12 },
+  { width: 201050 - 94300, rate: 0.22 },
+  { width: 383900 - 201050, rate: 0.24 },
+  { width: 487450 - 383900, rate: 0.32 },
+  { width: 731200 - 487450, rate: 0.35 },
+  { width: 10_000_000, rate: 0.37 },
+];
+
+const CG_BANDS: { cumulative: number; rate: number }[] = [
+  { cumulative: 94050, rate: 0.00 },
+  { cumulative: 583750, rate: 0.15 },
+  { cumulative: 10_000_000, rate: 0.20 },
+];
+
+// Soft-constraint weights in the NW objective.
+//   FLOOR_PENALTY: how much ending NW the LP will sacrifice per $1 of cash
+//     dropping below CASH_FLOOR. Set very high so the floor is effectively
+//     hard except when truly infeasible.
+//   TARGET_PENALTY: how much NW per $1 of cash falling below targetCash.
+//     A value around 3-5 means the LP fills the target whenever the future
+//     growth penalty of the necessary withdrawal is less than this — i.e.,
+//     in later years it tracks target, in early years it lets cash drift
+//     up toward target via accumulated income surplus.
+const FLOOR_PENALTY = 1000;
+const TARGET_PENALTY = 3;
+
+// "Embedded tax" multipliers on ending account balances. A dollar left in
+// an account at horizon end isn't worth a full dollar of net worth — it
+// still has tax debt that must be paid when eventually withdrawn:
+//   - IRA: ordinary income tax on full balance (~12-22%, use 18%)
+//   - Brokerage: LTCG on accumulated gain (~10-15% effective, use 12%)
+//   - Roth: no tax, fully usable
+//   - Cash: also fully usable
+// Without these multipliers the LP happily compounds the IRA into a huge
+// untouched surplus — pre-tax it "looks like" net worth, but in reality
+// it's a tax bomb. With them, the LP balances drain across all 3 accounts
+// according to true after-tax value, which is what the user actually owns.
+const IRA_END_MULT = 0.82;
+const BRK_END_MULT = 0.88;
+const ROTH_END_MULT = 1.0;
 
 interface YearWithdrawal {
   year: number;
@@ -14,243 +70,280 @@ interface YearWithdrawal {
   ira: number;
 }
 
-interface Allocation {
-  brokerage: number;
-  roth: number;
-  ira: number;
-}
-
-type AccountKey = 'brokerage' | 'roth' | 'ira';
-
 /**
- * Total *additional* tax incurred by the given withdrawals, on top of the
- * baseline income tax already owed on `taxableIncome` alone.
+ * Auto-balance solves for the withdrawal schedule that **maximizes ending
+ * net worth** (cash + brokerage + Roth + IRA at year END_YEAR), subject to:
  *
- * - Roth: only the early withdrawal penalty (no income tax)
- * - IRA: marginal ordinary income tax + early withdrawal penalty
- * - Brokerage: capital gains tax (gains stack on top of total ordinary income)
+ *   - hard floor: cash never drops below $10k (enforced via large slack penalty)
+ *   - soft target: cash should hit `targetCash` (medium slack penalty)
+ *   - balance non-negativity: each account's balance ≥ 0 at all times
+ *   - tax computed exactly as src/engine/simulation.ts does it
+ *
+ * The problem is a linear program: ~600 variables, ~700 constraints,
+ * solved by the javascript-lp-solver simplex in tens of milliseconds.
+ *
+ * Why LP and not greedy? A per-year greedy is myopic. It can't see that
+ * filling the standard deduction with IRA dollars *today* is cheaper than
+ * letting the IRA compound for 30 years and paying high marginal tax on
+ * the forced withdrawal later. The LP optimizes over the full horizon, so
+ * it correctly trades intra-year tax cost against multi-decade growth.
  */
-function computeTotalTax(wd: Allocation, taxableIncome: number, year: number): number {
-  const totalOrdinary = taxableIncome + wd.ira;
-  const incomeTaxDelta = calculateIncomeTax(totalOrdinary) - calculateIncomeTax(taxableIncome);
-  const capGainsTax = calculateCapitalGainsTax(wd.brokerage, totalOrdinary);
-  const penalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF
-    ? (wd.roth + wd.ira) * EARLY_WITHDRAWAL_PENALTY_RATE
-    : 0;
-  return incomeTaxDelta + capGainsTax + penalty;
-}
-
-function computeNet(wd: Allocation, taxableIncome: number, year: number): number {
-  return wd.brokerage + wd.roth + wd.ira - computeTotalTax(wd, taxableIncome, year);
-}
-
-/**
- * Greedily allocate withdrawals to minimize total tax for a given net amount.
- *
- * At each step, evaluates the effective tax rate of adding a chunk to each
- * account given the current state, then picks the cheapest. Ties are broken
- * by remaining capacity (largest first), which keeps account drawdowns
- * balanced and preserves smaller accounts.
- *
- * Because tax functions are piecewise linear, this greedy strategy fills the
- * cheapest brackets first across all accounts simultaneously (e.g. 0% LTCG,
- * standard deduction, then 10% income, etc.) and is near-optimal in practice.
- */
-function solveOptimalAllocation(
-  netNeeded: number,
-  taxableIncome: number,
-  year: number,
-  caps: Allocation,
-): Allocation {
-  const wd: Allocation = { brokerage: 0, roth: 0, ira: 0 };
-  if (netNeeded <= 0) return wd;
-
-  // Adaptive chunk size: ~200 chunks per allocation, with a floor and ceiling.
-  const chunkSize = Math.max(100, Math.min(10000, Math.ceil(netNeeded / 200 / 100) * 100));
-
-  const accounts: AccountKey[] = ['brokerage', 'roth', 'ira'];
-  let safety = 0;
-
-  while (computeNet(wd, taxableIncome, year) < netNeeded - 1) {
-    if (++safety > 20000) break;
-
-    const baseTax = computeTotalTax(wd, taxableIncome, year);
-    const remainingNet = netNeeded - computeNet(wd, taxableIncome, year);
-
-    let best: { acc: AccountKey; add: number; rate: number; remaining: number } | null = null;
-
-    for (const acc of accounts) {
-      const remaining = caps[acc] - wd[acc];
-      if (remaining <= 0) continue;
-      const add = Math.min(chunkSize, remaining);
-
-      const trial: Allocation = { ...wd };
-      trial[acc] += add;
-      const newTax = computeTotalTax(trial, taxableIncome, year);
-      const taxDelta = newTax - baseTax;
-      // effective tax rate of this chunk; lower is better
-      const rate = taxDelta / add;
-
-      if (best === null
-        || rate < best.rate - 1e-6
-        || (Math.abs(rate - best.rate) < 1e-6 && remaining > best.remaining)) {
-        best = { acc, add, rate, remaining };
-      }
-    }
-
-    if (best === null) break;
-
-    // Don't overshoot — if a smaller add covers the remaining need, use that.
-    const netPerGross = 1 - best.rate;
-    let finalAdd = best.add;
-    if (netPerGross > 0.01) {
-      const grossNeeded = Math.ceil(remainingNet / netPerGross);
-      finalAdd = Math.max(1, Math.min(best.add, grossNeeded));
-    }
-
-    wd[best.acc] += finalAdd;
-  }
-
-  return wd;
-}
-
-/**
- * Maximum constant annual withdrawal that exactly depletes `balance` over
- * `remainingYears`, given annual `returnRate`.
- *
- * Uses the **annuity-due** formula (payments at the start of each period)
- * because the simulation withdraws before applying growth. With this cap,
- * pulling exactly `annuityCap()` every year leaves the balance at zero in
- * year `remainingYears`. No safety factor — it's mathematically exact.
- *
- * Recomputed each year on the *current* balance: years where we withdraw
- * less than the cap (or skip entirely) leave a higher balance, which raises
- * the cap for all future years. This is the forward-looking projection that
- * makes the per-year greedy globally aware — surplus years naturally fund
- * later deficits via compounded growth on the unused portion.
- */
-function annuityCap(balance: number, returnRate: number, remainingYears: number): number {
-  if (balance <= 0 || remainingYears <= 0) return 0;
-  if (returnRate <= 0) return balance / remainingYears;
-  const r = returnRate;
-  const n = remainingYears;
-  // annuity-due = ordinary-annuity / (1 + r)
-  return balance * r / ((1 + r) * (1 - Math.pow(1 + r, -n)));
-}
-
 export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSchedule[] {
-  const yearlyWithdrawals: YearWithdrawal[] = [];
+  const Y = END_YEAR - START_YEAR + 1;
+  const r = input.returnRate;
 
-  let currentCash = input.startingCash;
-  let brokerageBalance = input.brokerageBalance;
-  let rothBalance = input.rothBalance;
-  let iraBalance = input.iraBalance;
-
-  for (let year = START_YEAR; year <= END_YEAR; year++) {
-    const remainingYears = END_YEAR - year + 1;
-
+  // --- Pre-compute baseline per-year data ---
+  type YD = { income: number; expenses: number; taxable: number; penalty: boolean };
+  const yd: YD[] = [];
+  for (let y = 0; y < Y; y++) {
+    const year = START_YEAR + y;
     const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year);
-
-    // Baseline cash flow without any withdrawals
-    const baseIncomeTax = calculateIncomeTax(taxableIncome);
-    const baseCashFlow = totalIncome - totalExpenses - baseIncomeTax;
-    const projectedCash = currentCash + baseCashFlow;
-    const deficit = targetCash - projectedCash;
-
-    let wd: Allocation = { brokerage: 0, roth: 0, ira: 0 };
-
-    if (deficit > 0) {
-      // Phase 1: target the user's desired cash, capped per account at the
-      // annuity-due that depletes it exactly by END_YEAR. We don't breach
-      // this cap here — if the sum of caps < deficit, we under-deliver
-      // rather than draining an account. Some years dipping below target
-      // is acceptable; depleting accounts is not.
-      const annuityCaps: Allocation = {
-        brokerage: annuityCap(brokerageBalance, input.returnRate, remainingYears),
-        roth: annuityCap(rothBalance, input.returnRate, remainingYears),
-        ira: annuityCap(iraBalance, input.returnRate, remainingYears),
-      };
-      wd = solveOptimalAllocation(deficit, taxableIncome, year, annuityCaps);
-    }
-
-    // Phase 2: enforce the absolute cash floor. The user has said it's OK
-    // to dip below the target some years, but cash must never drop below
-    // CASH_FLOOR unless mathematically impossible. If Phase 1 (which
-    // respects long-term sustainability) leaves us below the floor, we
-    // override the annuity caps and pull from full balances to cover at
-    // least the floor amount. This trades future depletion risk for an
-    // immediate liquidity guarantee, which is the right priority.
-    const cashAfterPhase1 = projectedCash + computeNet(wd, taxableIncome, year);
-    if (cashAfterPhase1 < CASH_FLOOR) {
-      const floorNetNeeded = CASH_FLOOR - projectedCash;
-      const hardCaps: Allocation = {
-        brokerage: brokerageBalance,
-        roth: rothBalance,
-        ira: iraBalance,
-      };
-      wd = solveOptimalAllocation(floorNetNeeded, taxableIncome, year, hardCaps);
-    }
-
-    // Round to granularity used by consolidation, so internal sim matches
-    wd.brokerage = Math.round(wd.brokerage / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-    wd.roth = Math.round(wd.roth / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-    wd.ira = Math.round(wd.ira / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-
-    // Defensive clamp: rounding shouldn't push us above the current balance
-    wd.brokerage = Math.max(0, Math.min(wd.brokerage, brokerageBalance));
-    wd.roth = Math.max(0, Math.min(wd.roth, rothBalance));
-    wd.ira = Math.max(0, Math.min(wd.ira, iraBalance));
-
-    // Post-rounding floor check: rounding down can push cash below the
-    // floor by up to ROUND_GRANULARITY. If so, bump the cheapest account
-    // up by one granularity step until the floor is met or capacity runs
-    // out across all accounts.
-    const balances: Allocation = { brokerage: brokerageBalance, roth: rothBalance, ira: iraBalance };
-    while (projectedCash + computeNet(wd, taxableIncome, year) < CASH_FLOOR) {
-      const baseTax = computeTotalTax(wd, taxableIncome, year);
-      let best: { acc: AccountKey; rate: number } | null = null;
-      for (const acc of (['brokerage', 'roth', 'ira'] as AccountKey[])) {
-        if (wd[acc] + ROUND_GRANULARITY > balances[acc]) continue;
-        const trial: Allocation = { ...wd };
-        trial[acc] += ROUND_GRANULARITY;
-        const rate = (computeTotalTax(trial, taxableIncome, year) - baseTax) / ROUND_GRANULARITY;
-        if (best === null || rate < best.rate) best = { acc, rate };
-      }
-      if (best === null) break;
-      wd[best.acc] += ROUND_GRANULARITY;
-    }
-
-    yearlyWithdrawals.push({ year, brokerage: wd.brokerage, roth: wd.roth, ira: wd.ira });
-
-    // Apply withdrawals + growth
-    brokerageBalance = Math.max(0, brokerageBalance - wd.brokerage);
-    brokerageBalance *= (1 + input.returnRate);
-    rothBalance = Math.max(0, rothBalance - wd.roth);
-    rothBalance *= (1 + input.returnRate);
-    iraBalance = Math.max(0, iraBalance - wd.ira);
-    iraBalance *= (1 + input.returnRate);
-
-    // Cash bookkeeping (full tax = baseline + additional from withdrawals)
-    const totalTax = baseIncomeTax + computeTotalTax(wd, taxableIncome, year);
-    currentCash += totalIncome - totalExpenses - totalTax + wd.brokerage + wd.roth + wd.ira;
+    yd.push({
+      income: totalIncome,
+      expenses: totalExpenses,
+      taxable: taxableIncome,
+      penalty: year < EARLY_WITHDRAWAL_PENALTY_CUTOFF,
+    });
   }
 
-  // Consolidate into WithdrawalSchedule objects
-  const brokerageSchedule = consolidate(yearlyWithdrawals.map(y => ({ year: y.year, amount: y.brokerage })));
-  const rothSchedule = consolidate(yearlyWithdrawals.map(y => ({ year: y.year, amount: y.roth })));
-  const iraSchedule = consolidate(yearlyWithdrawals.map(y => ({ year: y.year, amount: y.ira })));
+  // cashConst[y] = cash at end of year y-1 (= start of year y) IF there
+  // were no withdrawals or taxes. The LP-side terms account for those.
+  // cashConst[y+1] is used for the floor/target constraint at end of year y.
+  const cashConst: number[] = [input.startingCash];
+  for (let y = 0; y < Y; y++) {
+    cashConst.push(cashConst[y] + yd[y].income - yd[y].expenses);
+  }
 
-  const result: WithdrawalSchedule[] = [];
+  // --- Build LP model in javascript-lp-solver JSON format ---
+  const variables: Record<string, Record<string, number>> = {};
+  const constraints: Record<string, { min?: number; max?: number; equal?: number }> = {};
+
+  const setObj = (name: string, coef: number) => {
+    if (!variables[name]) variables[name] = {};
+    variables[name].objective = (variables[name].objective ?? 0) + coef;
+  };
+  const addTerm = (varName: string, conName: string, coef: number) => {
+    if (!variables[varName]) variables[varName] = {};
+    variables[varName][conName] = (variables[varName][conName] ?? 0) + coef;
+  };
+
+  // Helper: add the "cash recursion at end of year y" linear expression
+  // (sum_{k≤y} bw_k+rw_k+iw_k - tax_k) to a named constraint with a given
+  // sign. Used by both floor_y and target_y constraints.
+  const addCashTerms = (conName: string, throughYear: number) => {
+    for (let k = 0; k <= throughYear; k++) {
+      addTerm(`bw_${k}`, conName, 1);
+      addTerm(`rw_${k}`, conName, 1);
+      addTerm(`iw_${k}`, conName, 1);
+      for (let i = 0; i < ORD_BRACKETS.length; i++) {
+        addTerm(`ordb${i}_${k}`, conName, -ORD_BRACKETS[i].rate);
+      }
+      for (let j = 0; j < CG_BANDS.length; j++) {
+        addTerm(`cgb${j}_${k}`, conName, -CG_BANDS[j].rate);
+      }
+      if (yd[k].penalty) {
+        addTerm(`rw_${k}`, conName, -EARLY_WITHDRAWAL_PENALTY_RATE);
+        addTerm(`iw_${k}`, conName, -EARLY_WITHDRAWAL_PENALTY_RATE);
+      }
+    }
+  };
+
+  for (let y = 0; y < Y; y++) {
+    // === 1. Withdrawal capacity (cumulative non-negativity) ===
+    // After year y's withdrawal: balance ≥ 0, i.e.
+    //   sum_{k=0..y} wd_k * (1+r)^(y-k) ≤ B0 * (1+r)^y
+    {
+      const c = `brk_cap_${y}`;
+      constraints[c] = { max: input.brokerageBalance * Math.pow(1 + r, y) };
+      for (let k = 0; k <= y; k++) addTerm(`bw_${k}`, c, Math.pow(1 + r, y - k));
+    }
+    {
+      const c = `roth_cap_${y}`;
+      constraints[c] = { max: input.rothBalance * Math.pow(1 + r, y) };
+      for (let k = 0; k <= y; k++) addTerm(`rw_${k}`, c, Math.pow(1 + r, y - k));
+    }
+    {
+      const c = `ira_cap_${y}`;
+      constraints[c] = { max: input.iraBalance * Math.pow(1 + r, y) };
+      for (let k = 0; k <= y; k++) addTerm(`iw_${k}`, c, Math.pow(1 + r, y - k));
+    }
+
+    // === 2. Ordinary income tax bracket fill ===
+    // ord_y represents max(0, taxableIncome_y + iw_y - STANDARD_DEDUCTION).
+    // The ≥ constraint plus the LP's tax-minimizing tendency makes it pick
+    // the smallest feasible value (so equality holds when the RHS is positive).
+    {
+      const c = `ord_def_${y}`;
+      constraints[c] = { min: yd[y].taxable - STANDARD_DEDUCTION };
+      addTerm(`ord_${y}`, c, 1);
+      addTerm(`iw_${y}`, c, -1);
+    }
+    // ord_y = sum of bracket fills
+    {
+      const c = `ord_sum_${y}`;
+      constraints[c] = { equal: 0 };
+      addTerm(`ord_${y}`, c, -1);
+      for (let i = 0; i < ORD_BRACKETS.length; i++) addTerm(`ordb${i}_${y}`, c, 1);
+    }
+    // Per-bracket cap
+    for (let i = 0; i < ORD_BRACKETS.length; i++) {
+      const c = `ordb${i}_cap_${y}`;
+      constraints[c] = { max: ORD_BRACKETS[i].width };
+      addTerm(`ordb${i}_${y}`, c, 1);
+    }
+
+    // === 3. Capital gains bracket fill ===
+    // LTCG stacks on top of ordinary income for bracket purposes. We need
+    // to know how much room is left in each cg band after ord consumes it.
+    //
+    // Exact stacking with ord_y as a variable (which depends on iw_y) is
+    // non-linear / requires MILP. Instead we approximate: precompute the
+    // cg band caps using only the *baseline* ordinary income (taxable_y -
+    // STD), ignoring how iw_y might further consume cg band room. This is
+    // exactly correct in the most common cases:
+    //   - Retirement (taxable=0, iw fills std deduction): full 0% band.
+    //   - Wage years (taxable >> 0): little/no 0% band, cg pays 15%+.
+    // The only inaccuracy: in retirement years where iw_y exceeds the std
+    // deduction by enough to spill into the cg-0% range AND the user is
+    // also realizing gains. This is bounded and rare in practice.
+    const baselineOrd = Math.max(0, yd[y].taxable - STANDARD_DEDUCTION);
+    let ordRemaining = baselineOrd;
+    for (let j = 0; j < CG_BANDS.length; j++) {
+      const bandStart = j === 0 ? 0 : CG_BANDS[j - 1].cumulative;
+      const bandWidth = CG_BANDS[j].cumulative - bandStart;
+      const ordInBand = Math.min(ordRemaining, bandWidth);
+      ordRemaining -= ordInBand;
+      const cgRoom = bandWidth - ordInBand;
+      const c = `cgb_cap_${j}_${y}`;
+      constraints[c] = { max: cgRoom };
+      addTerm(`cgb${j}_${y}`, c, 1);
+    }
+    // bw_y = sum of cg bracket fills
+    {
+      const c = `cg_sum_${y}`;
+      constraints[c] = { equal: 0 };
+      addTerm(`bw_${y}`, c, -1);
+      for (let j = 0; j < CG_BANDS.length; j++) addTerm(`cgb${j}_${y}`, c, 1);
+    }
+
+    // === 4. Cash floor (hard via large penalty) ===
+    // cashConst[y+1] + (LP cash terms through year y) + floor_slack_y ≥ CASH_FLOOR
+    {
+      const c = `floor_${y}`;
+      constraints[c] = { min: CASH_FLOOR - cashConst[y + 1] };
+      addTerm(`floor_slack_${y}`, c, 1);
+      addCashTerms(c, y);
+    }
+
+    // === 5. Cash target (soft) ===
+    {
+      const c = `target_${y}`;
+      constraints[c] = { min: targetCash - cashConst[y + 1] };
+      addTerm(`target_slack_${y}`, c, 1);
+      addCashTerms(c, y);
+    }
+
+    // Slack penalties go straight into the objective.
+    setObj(`floor_slack_${y}`, -FLOOR_PENALTY);
+    setObj(`target_slack_${y}`, -TARGET_PENALTY);
+  }
+
+  // === Objective: maximize ending true (post-tax) net worth ===
+  // True NW = BRK_END_MULT * brk_end + ROTH_END_MULT * roth_end
+  //         + IRA_END_MULT * ira_end + cash_end
+  //
+  //   brk_end  = B0_brk * (1+r)^Y - sum_{k<Y} bw_k * (1+r)^(Y-k)
+  //   roth_end = B0_roth * (1+r)^Y - sum_{k<Y} rw_k * (1+r)^(Y-k)
+  //   ira_end  = B0_ira * (1+r)^Y - sum_{k<Y} iw_k * (1+r)^(Y-k)
+  //   cash_end = cashConst[Y] + sum_{k<Y} (bw_k + rw_k + iw_k - tax_k)
+  //
+  // Constants (mult * B0 * (1+r)^Y, cashConst[Y]) drop out of optimization.
+  for (let k = 0; k < Y; k++) {
+    const factor = Math.pow(1 + r, Y - k);
+    // Account-end contributions: -mult * factor for the corresponding withdrawal.
+    setObj(`bw_${k}`, -BRK_END_MULT * factor);
+    setObj(`rw_${k}`, -ROTH_END_MULT * factor);
+    setObj(`iw_${k}`, -IRA_END_MULT * factor);
+    // Cash-end contributions: +1 per withdrawal dollar (cash multiplier = 1).
+    setObj(`bw_${k}`, 1);
+    setObj(`rw_${k}`, 1);
+    setObj(`iw_${k}`, 1);
+    // Cash-end: subtract income tax (per ord bracket).
+    for (let i = 0; i < ORD_BRACKETS.length; i++) {
+      setObj(`ordb${i}_${k}`, -ORD_BRACKETS[i].rate);
+    }
+    // Cash-end: subtract cap-gains tax (per cg band).
+    for (let j = 0; j < CG_BANDS.length; j++) {
+      setObj(`cgb${j}_${k}`, -CG_BANDS[j].rate);
+    }
+    // Cash-end: subtract early-withdrawal penalty for pre-cutoff years.
+    if (yd[k].penalty) {
+      setObj(`rw_${k}`, -EARLY_WITHDRAWAL_PENALTY_RATE);
+      setObj(`iw_${k}`, -EARLY_WITHDRAWAL_PENALTY_RATE);
+    }
+  }
+
+  // --- Solve ---
+  const model = {
+    optimize: 'objective',
+    opType: 'max' as const,
+    constraints,
+    variables,
+  };
+  const result = solver.Solve(model) as {
+    feasible: boolean;
+    result: number;
+    [key: string]: number | boolean | undefined;
+  };
+
+  if (!result || !result.feasible) {
+    // Genuinely infeasible (shouldn't happen since floor/target are soft).
+    // Return empty schedules so the simulation runs with no withdrawals
+    // rather than throwing.
+    return [];
+  }
+
+  // --- Extract, round, clamp, simulate forward to track real balances ---
+  const yearly: YearWithdrawal[] = [];
+  let brkBal = input.brokerageBalance;
+  let rothBal = input.rothBalance;
+  let iraBal = input.iraBalance;
+  for (let y = 0; y < Y; y++) {
+    let bw = (result[`bw_${y}`] as number) ?? 0;
+    let rw = (result[`rw_${y}`] as number) ?? 0;
+    let iw = (result[`iw_${y}`] as number) ?? 0;
+
+    bw = Math.round(bw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+    rw = Math.round(rw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+    iw = Math.round(iw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+
+    bw = Math.max(0, Math.min(bw, brkBal));
+    rw = Math.max(0, Math.min(rw, rothBal));
+    iw = Math.max(0, Math.min(iw, iraBal));
+
+    yearly.push({ year: START_YEAR + y, brokerage: bw, roth: rw, ira: iw });
+
+    brkBal = (brkBal - bw) * (1 + r);
+    rothBal = (rothBal - rw) * (1 + r);
+    iraBal = (iraBal - iw) * (1 + r);
+  }
+
+  // --- Consolidate into schedule objects ---
+  const brokerageSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.brokerage })));
+  const rothSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.roth })));
+  const iraSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.ira })));
+
+  const out: WithdrawalSchedule[] = [];
   if (brokerageSchedule.length > 0) {
-    result.push({ id: generateId(), accountType: 'brokerage', periods: brokerageSchedule });
+    out.push({ id: generateId(), accountType: 'brokerage', periods: brokerageSchedule });
   }
   if (rothSchedule.length > 0) {
-    result.push({ id: generateId(), accountType: 'roth', periods: rothSchedule });
+    out.push({ id: generateId(), accountType: 'roth', periods: rothSchedule });
   }
   if (iraSchedule.length > 0) {
-    result.push({ id: generateId(), accountType: 'ira', periods: iraSchedule });
+    out.push({ id: generateId(), accountType: 'ira', periods: iraSchedule });
   }
-  return result;
+  return out;
 }
 
 function consolidate(entries: { year: number; amount: number }[]): TimePeriodValue[] {

@@ -133,13 +133,14 @@ function loadProfiles(): ProfilesState {
             id: p.id,
             name: p.name,
             input: { ...input, withdrawals: p.schedules },
+            actuals: { ...defaultActuals },
           });
         }
       }
 
       if (plans.length === 0) {
         const id = generateId();
-        plans.push({ id, name: 'Default', input });
+        plans.push({ id, name: 'Default', input, actuals: { ...defaultActuals } });
       }
 
       localStorage.removeItem(OLD_INPUT_KEY);
