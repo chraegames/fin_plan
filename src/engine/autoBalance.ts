@@ -10,7 +10,7 @@ import {
   EARLY_WITHDRAWAL_PENALTY_RATE,
 } from './constants';
 
-const ROUND_GRANULARITY = 10000;
+const ROUND_GRANULARITY = 1000;
 const CASH_FLOOR = 10000;
 
 // LP coefficients must be finite. tax.ts encodes the top bracket as Infinity;
@@ -70,6 +70,13 @@ interface YearWithdrawal {
   ira: number;
 }
 
+type YD = { income: number; expenses: number; taxable: number; penalty: boolean };
+
+interface LpSolveResult {
+  feasible: boolean;
+  raw: Record<string, number>;
+}
+
 /**
  * Auto-balance solves for the withdrawal schedule that **maximizes ending
  * net worth** (cash + brokerage + Roth + IRA at year END_YEAR), subject to:
@@ -93,7 +100,6 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
   const r = input.returnRate;
 
   // --- Pre-compute baseline per-year data ---
-  type YD = { income: number; expenses: number; taxable: number; penalty: boolean };
   const yd: YD[] = [];
   for (let y = 0; y < Y; y++) {
     const year = START_YEAR + y;
@@ -113,6 +119,101 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
   for (let y = 0; y < Y; y++) {
     cashConst.push(cashConst[y] + yd[y].income - yd[y].expenses);
   }
+
+  // --- Monotone fixed-point iteration to honor capital-gains stacking ---
+  //
+  // LTCG stacks on top of ordinary income for bracket purposes. In the LP,
+  // `ord_y` depends on `iw_y` (an IRA withdrawal variable), so exact stacking
+  // with cg band caps is non-linear (requires MILP aux binaries). We avoid
+  // MILP by solving the LP iteratively, each pass feeding back the previous
+  // iteration's iw_y as an assumed value when sizing cg band caps.
+  //
+  // A naive fixed-point iteration here can oscillate: tighter cg caps push
+  // the LP toward more iw, which tightens caps further. To guarantee monotone
+  // convergence we feed back the *running maximum* of iw_y across iterations.
+  // This is safe because assumedIw[y] ≥ actual iw_y always produces cg caps
+  // that are accurate-or-tighter, which keeps simulated cash ≥ LP-predicted
+  // cash. We stop when no year's iw moved up by more than CONVERGENCE_TOL, or
+  // after MAX_ITER passes.
+  const MAX_ITER = 8;
+  const CONVERGENCE_TOL = 500;
+  const assumedIw = new Array<number>(Y).fill(0);
+  let lastFeasible: LpSolveResult | null = null;
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const pass = solveOnce(input, targetCash, yd, cashConst, assumedIw);
+    if (!pass.feasible) break;
+    lastFeasible = pass;
+    let maxDelta = 0;
+    for (let y = 0; y < Y; y++) {
+      const newIw = pass.raw[`iw_${y}`] ?? 0;
+      if (newIw > assumedIw[y]) {
+        maxDelta = Math.max(maxDelta, newIw - assumedIw[y]);
+        assumedIw[y] = newIw;
+      }
+    }
+    if (maxDelta < CONVERGENCE_TOL) break;
+  }
+  if (!lastFeasible) return [];
+  const result = lastFeasible.raw;
+
+  // --- Extract, round, clamp, simulate forward to track real balances ---
+  const yearly: YearWithdrawal[] = [];
+  let brkBal = input.brokerageBalance;
+  let rothBal = input.rothBalance;
+  let iraBal = input.iraBalance;
+  for (let y = 0; y < Y; y++) {
+    let bw = result[`bw_${y}`] ?? 0;
+    let rw = result[`rw_${y}`] ?? 0;
+    let iw = result[`iw_${y}`] ?? 0;
+
+    bw = Math.round(bw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+    rw = Math.round(rw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+    iw = Math.round(iw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
+
+    bw = Math.max(0, Math.min(bw, brkBal));
+    rw = Math.max(0, Math.min(rw, rothBal));
+    iw = Math.max(0, Math.min(iw, iraBal));
+
+    yearly.push({ year: START_YEAR + y, brokerage: bw, roth: rw, ira: iw });
+
+    brkBal = (brkBal - bw) * (1 + r);
+    rothBal = (rothBal - rw) * (1 + r);
+    iraBal = (iraBal - iw) * (1 + r);
+  }
+
+  // --- Consolidate into schedule objects ---
+  const brokerageSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.brokerage })));
+  const rothSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.roth })));
+  const iraSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.ira })));
+
+  const out: WithdrawalSchedule[] = [];
+  if (brokerageSchedule.length > 0) {
+    out.push({ id: generateId(), accountType: 'brokerage', periods: brokerageSchedule });
+  }
+  if (rothSchedule.length > 0) {
+    out.push({ id: generateId(), accountType: 'roth', periods: rothSchedule });
+  }
+  if (iraSchedule.length > 0) {
+    out.push({ id: generateId(), accountType: 'ira', periods: iraSchedule });
+  }
+  return out;
+}
+
+/**
+ * Build and solve the LP once, parameterized by `assumedIw[y]` — the value
+ * used to tighten the cg band caps to account for IRA withdrawals stacking
+ * under LTCG. Called iteratively by `autoBalance`: the outer loop feeds back
+ * a monotone upper-bound of prior-iteration `iw_y` values until convergence.
+ */
+function solveOnce(
+  input: PlanInput,
+  targetCash: number,
+  yd: YD[],
+  cashConst: number[],
+  assumedIw: number[],
+): LpSolveResult {
+  const Y = yd.length;
+  const r = input.returnRate;
 
   // --- Build LP model in javascript-lp-solver JSON format ---
   const variables: Record<string, Record<string, number>> = {};
@@ -197,16 +298,14 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     // to know how much room is left in each cg band after ord consumes it.
     //
     // Exact stacking with ord_y as a variable (which depends on iw_y) is
-    // non-linear / requires MILP. Instead we approximate: precompute the
-    // cg band caps using only the *baseline* ordinary income (taxable_y -
-    // STD), ignoring how iw_y might further consume cg band room. This is
-    // exactly correct in the most common cases:
-    //   - Retirement (taxable=0, iw fills std deduction): full 0% band.
-    //   - Wage years (taxable >> 0): little/no 0% band, cg pays 15%+.
-    // The only inaccuracy: in retirement years where iw_y exceeds the std
-    // deduction by enough to spill into the cg-0% range AND the user is
-    // also realizing gains. This is bounded and rare in practice.
-    const baselineOrd = Math.max(0, yd[y].taxable - STANDARD_DEDUCTION);
+    // non-linear / requires MILP. Instead we precompute the cg band caps
+    // using `taxable_y - STD + assumedIw[y]`, where assumedIw[y] is:
+    //   - 0 on pass 1 (baseline), then
+    //   - pass 1's iw_y on pass 2.
+    // This two-pass fixed-point iteration converges in practice because
+    // iw_y is shaped by the exact ordinary-tax and cash-floor constraints,
+    // not the cg approximation; so iw_y barely moves between passes.
+    const baselineOrd = Math.max(0, yd[y].taxable - STANDARD_DEDUCTION + assumedIw[y]);
     let ordRemaining = baselineOrd;
     for (let j = 0; j < CG_BANDS.length; j++) {
       const bandStart = j === 0 ? 0 : CG_BANDS[j - 1].cumulative;
@@ -297,53 +396,14 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
   };
 
   if (!result || !result.feasible) {
-    // Genuinely infeasible (shouldn't happen since floor/target are soft).
-    // Return empty schedules so the simulation runs with no withdrawals
-    // rather than throwing.
-    return [];
+    return { feasible: false, raw: {} };
   }
 
-  // --- Extract, round, clamp, simulate forward to track real balances ---
-  const yearly: YearWithdrawal[] = [];
-  let brkBal = input.brokerageBalance;
-  let rothBal = input.rothBalance;
-  let iraBal = input.iraBalance;
-  for (let y = 0; y < Y; y++) {
-    let bw = (result[`bw_${y}`] as number) ?? 0;
-    let rw = (result[`rw_${y}`] as number) ?? 0;
-    let iw = (result[`iw_${y}`] as number) ?? 0;
-
-    bw = Math.round(bw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-    rw = Math.round(rw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-    iw = Math.round(iw / ROUND_GRANULARITY) * ROUND_GRANULARITY;
-
-    bw = Math.max(0, Math.min(bw, brkBal));
-    rw = Math.max(0, Math.min(rw, rothBal));
-    iw = Math.max(0, Math.min(iw, iraBal));
-
-    yearly.push({ year: START_YEAR + y, brokerage: bw, roth: rw, ira: iw });
-
-    brkBal = (brkBal - bw) * (1 + r);
-    rothBal = (rothBal - rw) * (1 + r);
-    iraBal = (iraBal - iw) * (1 + r);
+  const raw: Record<string, number> = {};
+  for (const [key, val] of Object.entries(result)) {
+    if (typeof val === 'number') raw[key] = val;
   }
-
-  // --- Consolidate into schedule objects ---
-  const brokerageSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.brokerage })));
-  const rothSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.roth })));
-  const iraSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.ira })));
-
-  const out: WithdrawalSchedule[] = [];
-  if (brokerageSchedule.length > 0) {
-    out.push({ id: generateId(), accountType: 'brokerage', periods: brokerageSchedule });
-  }
-  if (rothSchedule.length > 0) {
-    out.push({ id: generateId(), accountType: 'roth', periods: rothSchedule });
-  }
-  if (iraSchedule.length > 0) {
-    out.push({ id: generateId(), accountType: 'ira', periods: iraSchedule });
-  }
-  return out;
+  return { feasible: true, raw };
 }
 
 function consolidate(entries: { year: number; amount: number }[]): TimePeriodValue[] {
