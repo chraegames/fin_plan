@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PlanInput, ActualsData } from '../models/types';
+import type { PlanInput, ActualsData, AccountType } from '../models/types';
 import { resolveAmount } from '../engine/resolve';
 import { START_YEAR } from '../engine/constants';
 import { formatDollars as $ } from '../utils/format';
@@ -63,7 +63,7 @@ function getYearsForItem(periods: { startYear: number; endYear: number }[]): num
 
 export default function ActualsPanel({ input, actuals, onActualsChange }: Props) {
   const updateActual = (
-    category: 'incomes' | 'expenses' | 'withdrawals',
+    category: 'incomes' | 'expenses',
     itemId: string,
     year: number,
     value: number | undefined,
@@ -83,6 +83,28 @@ export default function ActualsPanel({ input, actuals, onActualsChange }: Props)
       }
     }
     onActualsChange({ ...actuals, [category]: catData });
+  };
+
+  const updateWithdrawalActual = (
+    acctType: AccountType,
+    year: number,
+    value: number | undefined,
+  ) => {
+    const wdData = { ...actuals.withdrawals };
+    if (value != null) {
+      wdData[acctType] = { ...wdData[acctType], [year]: value };
+    } else {
+      if (wdData[acctType]) {
+        const yearData = { ...wdData[acctType] };
+        delete yearData[year];
+        if (Object.keys(yearData).length === 0) {
+          delete wdData[acctType];
+        } else {
+          wdData[acctType] = yearData;
+        }
+      }
+    }
+    onActualsChange({ ...actuals, withdrawals: wdData });
   };
 
   const updateMonthlyActual = (
@@ -231,37 +253,38 @@ export default function ActualsPanel({ input, actuals, onActualsChange }: Props)
         </div>
       )}
 
-      {/* Withdrawals Section */}
-      {input.withdrawals.length > 0 && (
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-amber-400 mb-4">Withdrawals</h3>
-          <div className="space-y-4">
-            {input.withdrawals.map(wd => {
-              const years = getYearsForItem(wd.periods);
-              if (years.length === 0) return null;
-              return (
-                <div key={wd.id}>
-                  <div className="text-sm text-gray-200 mb-2">
-                    {wd.accountType === 'brokerage' ? 'Brokerage' : wd.accountType === 'roth' ? 'Roth' : 'IRA'}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {years.map(year => (
-                      <div key={year} className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-gray-500">{year}</span>
-                        <ActualInput
-                          value={actuals.withdrawals[wd.id]?.[year]}
-                          projected={$(resolveAmount(wd.periods, year))}
-                          onChange={v => updateActual('withdrawals', wd.id, year, v)}
-                        />
-                      </div>
-                    ))}
-                  </div>
+      {/* Withdrawals Section — always show all 3 account types */}
+      <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+        <h3 className="text-sm font-semibold text-amber-400 mb-4">Withdrawals</h3>
+        <div className="space-y-4">
+          {([['brokerage', 'Brokerage'], ['roth', 'Roth'], ['ira', 'IRA']] as const).map(([acctType, label]) => {
+            const allYears: number[] = [];
+            for (let y = START_YEAR; y <= CURRENT_YEAR; y++) allYears.push(y);
+            if (allYears.length === 0) return null;
+            const projectedForYear = (year: number) =>
+              input.withdrawals
+                .filter(wd => wd.accountType === acctType)
+                .reduce((sum, wd) => sum + resolveAmount(wd.periods, year), 0);
+            return (
+              <div key={acctType}>
+                <div className="text-sm text-gray-200 mb-2">{label}</div>
+                <div className="flex flex-wrap gap-2">
+                  {allYears.map(year => (
+                    <div key={year} className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-gray-500">{year}</span>
+                      <ActualInput
+                        value={actuals.withdrawals[acctType]?.[year]}
+                        projected={$(projectedForYear(year))}
+                        onChange={v => updateWithdrawalActual(acctType, year, v)}
+                      />
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

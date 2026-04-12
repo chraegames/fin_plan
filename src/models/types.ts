@@ -34,7 +34,7 @@ export interface WithdrawalSchedule {
 export interface ActualsData {
   incomes: Record<string, Record<number, number>>;
   expenses: Record<string, Record<number, number>>;
-  withdrawals: Record<string, Record<number, number>>;
+  withdrawals: Partial<Record<AccountType, Record<number, number>>>;
 }
 
 export interface ScenarioPlan {

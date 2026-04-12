@@ -50,7 +50,7 @@ export const defaultInput: PlanInput = {
   withdrawals: [],
 };
 
-export const defaultActuals: ActualsData = { incomes: {}, expenses: {}, withdrawals: {} };
+export const defaultActuals: ActualsData = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} } };
 
 let nextId = 100;
 export function generateId(): string {

@@ -40,7 +40,7 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
       delete old.brokerageReturnRate;
       delete old.retirementReturnRate;
     }
-    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: {} };
+    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} } };
     for (const exp of plan.input.expenses) {
       if (exp.applyInflation == null) exp.applyInflation = true;
     }
@@ -69,6 +69,27 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
         });
       }
     }
+    // Migrate withdrawal actuals from schedule-ID keys to account-type keys
+    const wdActuals = plan.actuals.withdrawals;
+    const accountTypeKeySet = new Set(['brokerage', 'roth', 'ira']);
+    const oldKeys = Object.keys(wdActuals).filter(k => !accountTypeKeySet.has(k));
+    if (oldKeys.length > 0) {
+      const migrated: Record<string, Record<number, number>> = {
+        brokerage: { ...wdActuals.brokerage },
+        roth: { ...wdActuals.roth },
+        ira: { ...wdActuals.ira },
+      };
+      for (const oldKey of oldKeys) {
+        const schedule = plan.input.withdrawals.find(w => w.id === oldKey);
+        if (!schedule) continue;
+        const target = migrated[schedule.accountType];
+        for (const [yearStr, val] of Object.entries(wdActuals[oldKey as keyof typeof wdActuals] ?? {})) {
+          const year = Number(yearStr);
+          target[year] = (target[year] ?? 0) + val;
+        }
+      }
+      plan.actuals.withdrawals = migrated as typeof plan.actuals.withdrawals;
+    }
   }
   return plans;
 }
@@ -96,10 +117,23 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
     }
     return result;
   };
+  // Withdrawal actuals are keyed by account type; just keep valid years
+  const currentYear = new Date().getFullYear();
+  const cleanedWithdrawals: typeof actuals.withdrawals = {};
+  for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
+    const yearMap = actuals.withdrawals[acctType];
+    if (!yearMap) continue;
+    const cleaned: Record<number, number> = {};
+    for (const [yearStr, val] of Object.entries(yearMap)) {
+      const year = Number(yearStr);
+      if (year >= START_YEAR && year <= currentYear) cleaned[year] = val;
+    }
+    if (Object.keys(cleaned).length > 0) cleanedWithdrawals[acctType] = cleaned;
+  }
   return {
     incomes: clean(input.incomes, actuals.incomes),
     expenses: clean(input.expenses, actuals.expenses),
-    withdrawals: clean(input.withdrawals, actuals.withdrawals),
+    withdrawals: cleanedWithdrawals,
   };
 }
 
@@ -347,7 +381,7 @@ export default function App() {
     updateActiveProfile(profile => {
       const active = profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
       const inputWithoutWithdrawals = { ...active.input, withdrawals: [] as WithdrawalSchedule[] };
-      const schedules = autoBalance(inputWithoutWithdrawals, targetCash);
+      const schedules = autoBalance(inputWithoutWithdrawals, targetCash, active.actuals);
       return {
         ...profile,
         plans: profile.plans.map(p =>

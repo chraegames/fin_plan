@@ -1,8 +1,8 @@
 import solver from 'javascript-lp-solver';
-import type { PlanInput, WithdrawalSchedule, TimePeriodValue } from '../models/types';
+import type { PlanInput, ActualsData, WithdrawalSchedule, TimePeriodValue } from '../models/types';
 import { resolveIncomeAndExpenses } from './resolve';
 import { generateId } from './defaults';
-import { STANDARD_DEDUCTION, INCOME_BRACKETS, CAPITAL_GAINS_BRACKETS } from './tax';
+import { STANDARD_DEDUCTION, INCOME_BRACKETS, CAPITAL_GAINS_BRACKETS, calculateIncomeTax, calculateCapitalGainsTax } from './tax';
 import {
   START_YEAR,
   END_YEAR,
@@ -95,15 +95,62 @@ interface LpSolveResult {
  * the forced withdrawal later. The LP optimizes over the full horizon, so
  * it correctly trades intra-year tax cost against multi-decade growth.
  */
-export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSchedule[] {
-  const Y = END_YEAR - START_YEAR + 1;
+export function autoBalance(input: PlanInput, targetCash: number, actuals?: ActualsData): WithdrawalSchedule[] {
   const r = input.returnRate;
 
-  // --- Pre-compute baseline per-year data ---
+  // --- Determine frozen boundary ---
+  // Any year with non-zero actual withdrawal data is frozen.
+  // The boundary is the last such year — all years up to and including it are frozen.
+  let frozenThrough = START_YEAR - 1;
+  if (actuals) {
+    for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
+      const yearMap = actuals.withdrawals[acctType];
+      if (!yearMap) continue;
+      for (const [yearStr, val] of Object.entries(yearMap)) {
+        if (val !== 0) frozenThrough = Math.max(frozenThrough, Number(yearStr));
+      }
+    }
+  }
+  const frozenYears = frozenThrough >= START_YEAR ? frozenThrough - START_YEAR + 1 : 0;
+
+  // --- Simulate through frozen years to get post-frozen balances ---
+  let lpStartCash = input.startingCash;
+  let lpBrkBal = input.brokerageBalance;
+  let lpRothBal = input.rothBalance;
+  let lpIraBal = input.iraBalance;
+
+  const frozenYearly: YearWithdrawal[] = [];
+  for (let fy = 0; fy < frozenYears; fy++) {
+    const year = START_YEAR + fy;
+    const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year, actuals);
+
+    const bw = actuals?.withdrawals.brokerage?.[year] ?? 0;
+    const rw = actuals?.withdrawals.roth?.[year] ?? 0;
+    const iw = actuals?.withdrawals.ira?.[year] ?? 0;
+
+    frozenYearly.push({ year, brokerage: bw, roth: rw, ira: iw });
+
+    const totalTaxableOrdinary = taxableIncome + iw;
+    const incomeTax = calculateIncomeTax(totalTaxableOrdinary);
+    const capitalGainsTax = calculateCapitalGainsTax(bw, totalTaxableOrdinary);
+    const earlyPenalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF
+      ? (rw + iw) * EARLY_WITHDRAWAL_PENALTY_RATE : 0;
+    const totalTax = incomeTax + capitalGainsTax + earlyPenalty;
+
+    lpBrkBal = Math.max(0, lpBrkBal - bw) * (1 + r);
+    lpRothBal = Math.max(0, lpRothBal - rw) * (1 + r);
+    lpIraBal = Math.max(0, lpIraBal - iw) * (1 + r);
+    lpStartCash += totalIncome - totalExpenses - totalTax + bw + rw + iw;
+  }
+
+  // --- Pre-compute baseline per-year data (LP horizon only) ---
+  const Y = END_YEAR - START_YEAR + 1 - frozenYears;
+  if (Y <= 0) return buildSchedules(frozenYearly);
+
   const yd: YD[] = [];
   for (let y = 0; y < Y; y++) {
-    const year = START_YEAR + y;
-    const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year);
+    const year = START_YEAR + frozenYears + y;
+    const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year, actuals);
     yd.push({
       income: totalIncome,
       expenses: totalExpenses,
@@ -115,32 +162,20 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
   // cashConst[y] = cash at end of year y-1 (= start of year y) IF there
   // were no withdrawals or taxes. The LP-side terms account for those.
   // cashConst[y+1] is used for the floor/target constraint at end of year y.
-  const cashConst: number[] = [input.startingCash];
+  const cashConst: number[] = [lpStartCash];
   for (let y = 0; y < Y; y++) {
     cashConst.push(cashConst[y] + yd[y].income - yd[y].expenses);
   }
 
+  const lpBalances = { brokerage: lpBrkBal, roth: lpRothBal, ira: lpIraBal };
+
   // --- Monotone fixed-point iteration to honor capital-gains stacking ---
-  //
-  // LTCG stacks on top of ordinary income for bracket purposes. In the LP,
-  // `ord_y` depends on `iw_y` (an IRA withdrawal variable), so exact stacking
-  // with cg band caps is non-linear (requires MILP aux binaries). We avoid
-  // MILP by solving the LP iteratively, each pass feeding back the previous
-  // iteration's iw_y as an assumed value when sizing cg band caps.
-  //
-  // A naive fixed-point iteration here can oscillate: tighter cg caps push
-  // the LP toward more iw, which tightens caps further. To guarantee monotone
-  // convergence we feed back the *running maximum* of iw_y across iterations.
-  // This is safe because assumedIw[y] ≥ actual iw_y always produces cg caps
-  // that are accurate-or-tighter, which keeps simulated cash ≥ LP-predicted
-  // cash. We stop when no year's iw moved up by more than CONVERGENCE_TOL, or
-  // after MAX_ITER passes.
   const MAX_ITER = 8;
   const CONVERGENCE_TOL = 500;
   const assumedIw = new Array<number>(Y).fill(0);
   let lastFeasible: LpSolveResult | null = null;
   for (let iter = 0; iter < MAX_ITER; iter++) {
-    const pass = solveOnce(input, targetCash, yd, cashConst, assumedIw);
+    const pass = solveOnce(input, targetCash, yd, cashConst, assumedIw, lpBalances);
     if (!pass.feasible) break;
     lastFeasible = pass;
     let maxDelta = 0;
@@ -153,14 +188,14 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     }
     if (maxDelta < CONVERGENCE_TOL) break;
   }
-  if (!lastFeasible) return [];
+  if (!lastFeasible) return buildSchedules(frozenYearly);
   const result = lastFeasible.raw;
 
   // --- Extract, round, clamp, simulate forward to track real balances ---
-  const yearly: YearWithdrawal[] = [];
-  let brkBal = input.brokerageBalance;
-  let rothBal = input.rothBalance;
-  let iraBal = input.iraBalance;
+  const lpYearly: YearWithdrawal[] = [];
+  let brkBal = lpBrkBal;
+  let rothBal = lpRothBal;
+  let iraBal = lpIraBal;
   for (let y = 0; y < Y; y++) {
     let bw = result[`bw_${y}`] ?? 0;
     let rw = result[`rw_${y}`] ?? 0;
@@ -174,14 +209,18 @@ export function autoBalance(input: PlanInput, targetCash: number): WithdrawalSch
     rw = Math.max(0, Math.min(rw, rothBal));
     iw = Math.max(0, Math.min(iw, iraBal));
 
-    yearly.push({ year: START_YEAR + y, brokerage: bw, roth: rw, ira: iw });
+    lpYearly.push({ year: START_YEAR + frozenYears + y, brokerage: bw, roth: rw, ira: iw });
 
     brkBal = (brkBal - bw) * (1 + r);
     rothBal = (rothBal - rw) * (1 + r);
     iraBal = (iraBal - iw) * (1 + r);
   }
 
-  // --- Consolidate into schedule objects ---
+  // --- Consolidate frozen + LP-optimized years into schedule objects ---
+  return buildSchedules([...frozenYearly, ...lpYearly]);
+}
+
+function buildSchedules(yearly: YearWithdrawal[]): WithdrawalSchedule[] {
   const brokerageSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.brokerage })));
   const rothSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.roth })));
   const iraSchedule = consolidate(yearly.map(y => ({ year: y.year, amount: y.ira })));
@@ -211,6 +250,7 @@ function solveOnce(
   yd: YD[],
   cashConst: number[],
   assumedIw: number[],
+  lpBalances: { brokerage: number; roth: number; ira: number },
 ): LpSolveResult {
   const Y = yd.length;
   const r = input.returnRate;
@@ -255,17 +295,17 @@ function solveOnce(
     //   sum_{k=0..y} wd_k * (1+r)^(y-k) ≤ B0 * (1+r)^y
     {
       const c = `brk_cap_${y}`;
-      constraints[c] = { max: input.brokerageBalance * Math.pow(1 + r, y) };
+      constraints[c] = { max: lpBalances.brokerage * Math.pow(1 + r, y) };
       for (let k = 0; k <= y; k++) addTerm(`bw_${k}`, c, Math.pow(1 + r, y - k));
     }
     {
       const c = `roth_cap_${y}`;
-      constraints[c] = { max: input.rothBalance * Math.pow(1 + r, y) };
+      constraints[c] = { max: lpBalances.roth * Math.pow(1 + r, y) };
       for (let k = 0; k <= y; k++) addTerm(`rw_${k}`, c, Math.pow(1 + r, y - k));
     }
     {
       const c = `ira_cap_${y}`;
-      constraints[c] = { max: input.iraBalance * Math.pow(1 + r, y) };
+      constraints[c] = { max: lpBalances.ira * Math.pow(1 + r, y) };
       for (let k = 0; k <= y; k++) addTerm(`iw_${k}`, c, Math.pow(1 + r, y - k));
     }
 

@@ -15,23 +15,25 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
     const { totalIncome, taxableIncome, incomeBreakdown, totalExpenses, expenseBreakdown } =
       resolveIncomeAndExpenses(input, year, actuals);
 
-    // Resolve withdrawals
+    // Resolve withdrawals — actuals are keyed by account type
     let withdrawalsBrokerage = 0;
     let withdrawalsRoth = 0;
     let withdrawalsIra = 0;
     const withdrawalBreakdown: NamedAmount[] = [];
 
-    for (const wd of input.withdrawals) {
-      const actual = actuals?.withdrawals[wd.id]?.[year];
-      const amount = actual != null ? actual : resolveAmount(wd.periods, year);
-      if (amount <= 0) continue;
-      if (wd.accountType === 'brokerage') {
-        withdrawalsBrokerage += amount;
-      } else if (wd.accountType === 'roth') {
-        withdrawalsRoth += amount;
+    for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
+      const actual = actuals?.withdrawals[acctType]?.[year];
+      let amount: number;
+      if (actual != null) {
+        amount = actual;
       } else {
-        withdrawalsIra += amount;
+        amount = input.withdrawals
+          .filter(wd => wd.accountType === acctType)
+          .reduce((sum, wd) => sum + resolveAmount(wd.periods, year), 0);
       }
+      if (acctType === 'brokerage') withdrawalsBrokerage = amount;
+      else if (acctType === 'roth') withdrawalsRoth = amount;
+      else withdrawalsIra = amount;
     }
     if (withdrawalsBrokerage > 0) withdrawalBreakdown.push({ name: 'Brokerage', amount: withdrawalsBrokerage });
     if (withdrawalsRoth > 0) withdrawalBreakdown.push({ name: 'Roth', amount: withdrawalsRoth });
