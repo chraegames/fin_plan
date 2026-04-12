@@ -41,11 +41,14 @@ export function resolveIncomeAndExpenses(input: PlanInput, year: number, actuals
     // For monthly expenses, actuals are stored as year*100+month keys
     let actual: number | undefined;
     if (exp.frequency === 'monthly' && actuals?.expenses[exp.id]) {
+      const baseMonthly = resolveAmount(exp.periods, year);
+      const projectedMonthly = exp.applyInflation !== false
+        ? Math.round(baseMonthly * inflationMultiplier) : baseMonthly;
       let monthTotal = 0;
       let hasAny = false;
       for (let m = 0; m < 12; m++) {
         const v = actuals.expenses[exp.id][year * 100 + m];
-        if (v != null) { hasAny = true; monthTotal += v; }
+        if (v != null) { hasAny = true; monthTotal += v; } else { monthTotal += projectedMonthly; }
       }
       if (hasAny) actual = monthTotal;
     } else {
