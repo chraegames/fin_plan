@@ -141,6 +141,15 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
     lpRothBal = Math.max(0, lpRothBal - rw) * (1 + r);
     lpIraBal = Math.max(0, lpIraBal - iw) * (1 + r);
     lpStartCash += totalIncome - totalExpenses - totalTax + bw + rw + iw;
+
+    // Honor actual year-end balances so the LP starts post-frozen years from
+    // real numbers, not projected growth.
+    const actualBrkEnd = actuals?.endingBalances?.brokerage?.[year];
+    if (actualBrkEnd != null) lpBrkBal = actualBrkEnd;
+    const actualRothEnd = actuals?.endingBalances?.roth?.[year];
+    if (actualRothEnd != null) lpRothBal = actualRothEnd;
+    const actualIraEnd = actuals?.endingBalances?.ira?.[year];
+    if (actualIraEnd != null) lpIraBal = actualIraEnd;
   }
 
   // --- Pre-compute baseline per-year data (LP horizon only) ---

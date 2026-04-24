@@ -49,6 +49,16 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
     iraBalance = Math.max(0, iraBalance - withdrawalsIra);
     iraBalance *= (1 + input.returnRate);
 
+    // Override year-end balances with actuals if present. The overridden value
+    // persists across loop iterations, so it naturally becomes next year's
+    // starting balance.
+    const actualBrokerEnd = actuals?.endingBalances?.brokerage?.[year];
+    if (actualBrokerEnd != null) brokerageBalance = actualBrokerEnd;
+    const actualRothEnd = actuals?.endingBalances?.roth?.[year];
+    if (actualRothEnd != null) rothBalance = actualRothEnd;
+    const actualIraEnd = actuals?.endingBalances?.ira?.[year];
+    if (actualIraEnd != null) iraBalance = actualIraEnd;
+
     // Calculate taxes
     // IRA withdrawals are taxed as ordinary income; Roth withdrawals are tax-free
     const totalTaxableOrdinary = taxableIncome + withdrawalsIra;

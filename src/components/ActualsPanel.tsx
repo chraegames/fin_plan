@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PlanInput, ActualsData, AccountType } from '../models/types';
+import type { PlanInput, ActualsData, AccountType, SimulationResult } from '../models/types';
 import { resolveAmount } from '../engine/resolve';
 import { START_YEAR } from '../engine/constants';
 import { formatDollars as $ } from '../utils/format';
@@ -7,6 +7,7 @@ import { formatDollars as $ } from '../utils/format';
 interface Props {
   input: PlanInput;
   actuals: ActualsData;
+  results: SimulationResult;
   onActualsChange: (actuals: ActualsData) => void;
 }
 
@@ -61,7 +62,7 @@ function getYearsForItem(periods: { startYear: number; endYear: number }[]): num
   return years;
 }
 
-export default function ActualsPanel({ input, actuals, onActualsChange }: Props) {
+export default function ActualsPanel({ input, actuals, results, onActualsChange }: Props) {
   const updateActual = (
     category: 'incomes' | 'expenses',
     itemId: string,
@@ -105,6 +106,28 @@ export default function ActualsPanel({ input, actuals, onActualsChange }: Props)
       }
     }
     onActualsChange({ ...actuals, withdrawals: wdData });
+  };
+
+  const updateEndingBalanceActual = (
+    acctType: AccountType,
+    year: number,
+    value: number | undefined,
+  ) => {
+    const ebData = { ...(actuals.endingBalances ?? {}) };
+    if (value != null) {
+      ebData[acctType] = { ...ebData[acctType], [year]: value };
+    } else {
+      if (ebData[acctType]) {
+        const yearData = { ...ebData[acctType] };
+        delete yearData[year];
+        if (Object.keys(yearData).length === 0) {
+          delete ebData[acctType];
+        } else {
+          ebData[acctType] = yearData;
+        }
+      }
+    }
+    onActualsChange({ ...actuals, endingBalances: ebData });
   };
 
   const updateMonthlyActual = (
@@ -276,6 +299,43 @@ export default function ActualsPanel({ input, actuals, onActualsChange }: Props)
                         value={actuals.withdrawals[acctType]?.[year]}
                         projected={$(projectedForYear(year))}
                         onChange={v => updateWithdrawalActual(acctType, year, v)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Investment Balances Section — year-end balance per account */}
+      <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+        <h3 className="text-sm font-semibold text-cyan-400 mb-1">Investment Balances (Year-End)</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Overrides the simulated end-of-year balance. Propagates forward as next year's starting balance.
+        </p>
+        <div className="space-y-4">
+          {([['brokerage', 'Brokerage'], ['roth', 'Roth'], ['ira', 'IRA']] as const).map(([acctType, label]) => {
+            const allYears: number[] = [];
+            for (let y = START_YEAR; y <= CURRENT_YEAR; y++) allYears.push(y);
+            if (allYears.length === 0) return null;
+            const balanceKey = `${acctType}Balance` as 'brokerageBalance' | 'rothBalance' | 'iraBalance';
+            const projectedForYear = (year: number) => {
+              const yr = results.find(r => r.year === year);
+              return yr ? yr[balanceKey] : 0;
+            };
+            return (
+              <div key={acctType}>
+                <div className="text-sm text-gray-200 mb-2">{label}</div>
+                <div className="flex flex-wrap gap-2">
+                  {allYears.map(year => (
+                    <div key={year} className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-gray-500">{year}</span>
+                      <ActualInput
+                        value={actuals.endingBalances?.[acctType]?.[year]}
+                        projected={$(projectedForYear(year))}
+                        onChange={v => updateEndingBalanceActual(acctType, year, v)}
                       />
                     </div>
                   ))}

@@ -40,7 +40,8 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
       delete old.brokerageReturnRate;
       delete old.retirementReturnRate;
     }
-    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} } };
+    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} }, endingBalances: { brokerage: {}, roth: {}, ira: {} } };
+    if (!plan.actuals.endingBalances) plan.actuals.endingBalances = { brokerage: {}, roth: {}, ira: {} };
     for (const exp of plan.input.expenses) {
       if (exp.applyInflation == null) exp.applyInflation = true;
     }
@@ -130,10 +131,22 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
     }
     if (Object.keys(cleaned).length > 0) cleanedWithdrawals[acctType] = cleaned;
   }
+  const cleanedEndingBalances: NonNullable<ActualsData['endingBalances']> = {};
+  for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
+    const yearMap = actuals.endingBalances?.[acctType];
+    if (!yearMap) continue;
+    const cleaned: Record<number, number> = {};
+    for (const [yearStr, val] of Object.entries(yearMap)) {
+      const year = Number(yearStr);
+      if (year >= START_YEAR && year <= currentYear) cleaned[year] = val;
+    }
+    if (Object.keys(cleaned).length > 0) cleanedEndingBalances[acctType] = cleaned;
+  }
   return {
     incomes: clean(input.incomes, actuals.incomes),
     expenses: clean(input.expenses, actuals.expenses),
     withdrawals: cleanedWithdrawals,
+    endingBalances: cleanedEndingBalances,
   };
 }
 
@@ -545,6 +558,7 @@ export default function App() {
         <ActualsPanel
           input={input}
           actuals={actuals}
+          results={results}
           onActualsChange={handleActualsChange}
         />
       )}
