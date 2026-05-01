@@ -55,6 +55,7 @@ export const defaultActuals: ActualsData = {
   expenses: {},
   withdrawals: { brokerage: {}, roth: {}, ira: {} },
   endingBalances: { brokerage: {}, roth: {}, ira: {} },
+  endingCash: {},
 };
 
 let nextId = 100;

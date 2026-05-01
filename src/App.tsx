@@ -40,8 +40,9 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
       delete old.brokerageReturnRate;
       delete old.retirementReturnRate;
     }
-    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} }, endingBalances: { brokerage: {}, roth: {}, ira: {} } };
+    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} }, endingBalances: { brokerage: {}, roth: {}, ira: {} }, endingCash: {} };
     if (!plan.actuals.endingBalances) plan.actuals.endingBalances = { brokerage: {}, roth: {}, ira: {} };
+    if (!plan.actuals.endingCash) plan.actuals.endingCash = {};
     for (const exp of plan.input.expenses) {
       if (exp.applyInflation == null) exp.applyInflation = true;
     }
@@ -142,11 +143,17 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
     }
     if (Object.keys(cleaned).length > 0) cleanedEndingBalances[acctType] = cleaned;
   }
+  const cleanedEndingCash: Record<number, number> = {};
+  for (const [yearStr, val] of Object.entries(actuals.endingCash ?? {})) {
+    const year = Number(yearStr);
+    if (year >= START_YEAR && year <= currentYear) cleanedEndingCash[year] = val;
+  }
   return {
     incomes: clean(input.incomes, actuals.incomes),
     expenses: clean(input.expenses, actuals.expenses),
     withdrawals: cleanedWithdrawals,
     endingBalances: cleanedEndingBalances,
+    endingCash: cleanedEndingCash,
   };
 }
 

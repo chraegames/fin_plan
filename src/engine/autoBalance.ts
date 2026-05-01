@@ -150,6 +150,8 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
     if (actualRothEnd != null) lpRothBal = actualRothEnd;
     const actualIraEnd = actuals?.endingBalances?.ira?.[year];
     if (actualIraEnd != null) lpIraBal = actualIraEnd;
+    const actualCashEnd = actuals?.endingCash?.[year];
+    if (actualCashEnd != null) lpStartCash = actualCashEnd;
   }
 
   // --- Pre-compute baseline per-year data (LP horizon only) ---

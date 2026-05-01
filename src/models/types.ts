@@ -36,6 +36,7 @@ export interface ActualsData {
   expenses: Record<string, Record<number, number>>;
   withdrawals: Partial<Record<AccountType, Record<number, number>>>;
   endingBalances?: Partial<Record<AccountType, Record<number, number>>>;
+  endingCash?: Record<number, number>;
 }
 
 export interface ScenarioPlan {

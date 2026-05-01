@@ -130,6 +130,16 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
     onActualsChange({ ...actuals, endingBalances: ebData });
   };
 
+  const updateEndingCashActual = (year: number, value: number | undefined) => {
+    const cashData = { ...(actuals.endingCash ?? {}) };
+    if (value != null) {
+      cashData[year] = value;
+    } else {
+      delete cashData[year];
+    }
+    onActualsChange({ ...actuals, endingCash: cashData });
+  };
+
   const updateMonthlyActual = (
     itemId: string,
     year: number,
@@ -303,6 +313,29 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
                     </div>
                   ))}
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Cash Balance Section — year-end cash override */}
+      <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+        <h3 className="text-sm font-semibold text-cyan-400 mb-1">Cash Balance (Year-End)</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Overrides the simulated end-of-year cash. Propagates forward as next year's starting cash.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: CURRENT_YEAR - START_YEAR + 1 }, (_, i) => START_YEAR + i).map(year => {
+            const projected = results.find(r => r.year === year)?.endingCash ?? 0;
+            return (
+              <div key={year} className="flex flex-col items-center gap-1">
+                <span className="text-xs text-gray-500">{year}</span>
+                <ActualInput
+                  value={actuals.endingCash?.[year]}
+                  projected={$(projected)}
+                  onChange={v => updateEndingCashActual(year, v)}
+                />
               </div>
             );
           })}

@@ -82,6 +82,9 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
 
     currentCash += netCashFlow;
 
+    const actualCashEnd = actuals?.endingCash?.[year];
+    if (actualCashEnd != null) currentCash = actualCashEnd;
+
     const totalInvestments = brokerageBalance + rothBalance + iraBalance;
     const totalNetWorth = currentCash + totalInvestments;
 
