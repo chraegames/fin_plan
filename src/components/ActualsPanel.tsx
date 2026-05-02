@@ -13,11 +13,17 @@ interface Props {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const ACCOUNT_ROWS = [
+  ['brokerage', 'Brokerage'],
+  ['roth', 'Roth'],
+  ['ira', 'IRA'],
+] as const;
 
-function ActualInput({ value, projected, onChange }: {
+function ActualInput({ value, projected, onChange, widthClass = 'w-24' }: {
   value: number | undefined;
   projected: string;
   onChange: (v: number | undefined) => void;
+  widthClass?: string;
 }) {
   const [raw, setRaw] = useState(value != null ? String(value) : '');
   // Derived-state sync: adopt the parent's value during render when it
@@ -33,7 +39,7 @@ function ActualInput({ value, projected, onChange }: {
       type="number"
       value={raw}
       placeholder={projected}
-      className={`w-24 bg-gray-900 text-sm rounded px-2 py-1 border text-right
+      className={`${widthClass} bg-gray-900 text-sm rounded px-2 py-1 border text-right
         ${value != null ? 'text-gray-100 border-blue-600' : 'text-gray-500 border-gray-700'}
         focus:border-blue-500 focus:outline-none`}
       onFocus={e => e.target.select()}
@@ -63,6 +69,8 @@ function getYearsForItem(periods: { startYear: number; endYear: number }[]): num
 }
 
 export default function ActualsPanel({ input, actuals, results, onActualsChange }: Props) {
+  const [activeYear, setActiveYear] = useState(CURRENT_YEAR);
+
   const updateActual = (
     category: 'incomes' | 'expenses',
     itemId: string,
@@ -146,9 +154,6 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
     monthIndex: number,
     value: number | undefined,
   ) => {
-    // Store monthly actuals as year.01, year.02, etc. encoded in a single number
-    // Actually, let's store monthly data as: year -> 12-element concept
-    // We'll encode 12 months into the record using year * 100 + month as key
     const key = year * 100 + monthIndex;
     updateActual('expenses', itemId, key, value);
   };
@@ -183,199 +188,189 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
     );
   }
 
+  const years: number[] = [];
+  for (let y = START_YEAR; y <= CURRENT_YEAR; y++) years.push(y);
+
+  const projectedCashEnd = results.find(r => r.year === activeYear)?.endingCash ?? 0;
+  const projectedAcctEnd = (acctType: AccountType): number => {
+    const balanceKey = `${acctType}Balance` as 'brokerageBalance' | 'rothBalance' | 'iraBalance';
+    return results.find(r => r.year === activeYear)?.[balanceKey] ?? 0;
+  };
+  const projectedWithdrawal = (acctType: AccountType): number =>
+    input.withdrawals
+      .filter(wd => wd.accountType === acctType)
+      .reduce((sum, wd) => sum + resolveAmount(wd.periods, activeYear), 0);
+
+  const incomesForYear = input.incomes.filter(inc => getYearsForItem(inc.periods).includes(activeYear));
+  const expensesForYear = input.expenses.filter(exp => getYearsForItem(exp.periods).includes(activeYear));
+
+  // 14 columns total: Item (1) + months (12) + Total (1).
+  const TOTAL_COLS = 14;
+
   return (
-    <div className="max-w-[120rem] mx-auto px-4 py-6 space-y-6">
-      <p className="text-sm text-gray-400">
-        Enter actual amounts for past/current years. Empty cells use the projected value. Blue borders indicate entered actuals.
+    <div className="max-w-[120rem] mx-auto px-4 py-6">
+      <p className="text-sm text-gray-400 mb-4">
+        Enter actual amounts for the selected year. Empty cells use the projected value. Blue borders indicate entered actuals.
       </p>
+      <div className="flex gap-4">
+        {/* Year sidebar */}
+        <nav className="flex flex-col shrink-0 self-start sticky top-20">
+          {years.map(y => (
+            <button
+              key={y}
+              onClick={() => setActiveYear(y)}
+              className={`text-sm font-medium px-3 py-2 border-l-2 transition-colors text-left ${
+                y === activeYear
+                  ? 'text-blue-400 border-blue-400 bg-gray-800/60'
+                  : 'text-gray-400 border-transparent hover:text-gray-200 hover:bg-gray-800/30'
+              }`}
+            >
+              {y}
+            </button>
+          ))}
+        </nav>
 
-      {/* Income Section */}
-      {input.incomes.length > 0 && (
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-emerald-400 mb-4">Income</h3>
-          <div className="space-y-4">
-            {input.incomes.map(inc => {
-              const years = getYearsForItem(inc.periods);
-              if (years.length === 0) return null;
-              return (
-                <div key={inc.id}>
-                  <div className="text-sm text-gray-200 mb-2">{inc.name} <span className="text-gray-500 text-xs">({inc.type})</span></div>
-                  <div className="flex flex-wrap gap-2">
-                    {years.map(year => (
-                      <div key={year} className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-gray-500">{year}</span>
-                        <ActualInput
-                          value={actuals.incomes[inc.id]?.[year]}
-                          projected={$(resolveAmount(inc.periods, year))}
-                          onChange={v => updateActual('incomes', inc.id, year, v)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Expenses Section */}
-      {input.expenses.length > 0 && (
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-rose-400 mb-4">Expenses</h3>
-          <div className="space-y-4">
-            {input.expenses.map(exp => {
-              const years = getYearsForItem(exp.periods);
-              if (years.length === 0) return null;
-              const isMonthly = exp.frequency === 'monthly';
-              return (
-                <div key={exp.id}>
-                  <div className="text-sm text-gray-200 mb-2">
-                    {exp.name}
-                    <span className="text-gray-500 text-xs ml-1">({exp.frequency})</span>
-                  </div>
-                  {isMonthly ? (
-                    <div className="space-y-3">
-                      {years.map(year => {
-                        const projectedMonthly = resolveAmount(exp.periods, year);
-                        const monthlyTotal = getMonthlyTotal(exp.id, year);
-                        return (
-                          <div key={year}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-gray-400 w-10">{year}</span>
-                              {monthlyTotal != null && (
-                                <span className="text-xs text-gray-500">
-                                  Total: {$(monthlyTotal)}/yr (projected: {$(projectedMonthly * 12)}/yr)
-                                </span>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-6 gap-1 ml-10">
-                              {MONTH_LABELS.map((label, mi) => (
-                                <div key={mi} className="flex flex-col items-center gap-0.5">
-                                  <span className="text-[10px] text-gray-600">{label}</span>
-                                  <ActualInput
-                                    value={getMonthlyActual(exp.id, year, mi)}
-                                    projected={$(projectedMonthly)}
-                                    onChange={v => updateMonthlyActual(exp.id, year, mi, v)}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {years.map(year => (
-                        <div key={year} className="flex flex-col items-center gap-1">
-                          <span className="text-xs text-gray-500">{year}</span>
-                          <ActualInput
-                            value={actuals.expenses[exp.id]?.[year]}
-                            projected={$(resolveAmount(exp.periods, year))}
-                            onChange={v => updateActual('expenses', exp.id, year, v)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Withdrawals Section — always show all 3 account types */}
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-        <h3 className="text-sm font-semibold text-amber-400 mb-4">Withdrawals</h3>
-        <div className="space-y-4">
-          {([['brokerage', 'Brokerage'], ['roth', 'Roth'], ['ira', 'IRA']] as const).map(([acctType, label]) => {
-            const allYears: number[] = [];
-            for (let y = START_YEAR; y <= CURRENT_YEAR; y++) allYears.push(y);
-            if (allYears.length === 0) return null;
-            const projectedForYear = (year: number) =>
-              input.withdrawals
-                .filter(wd => wd.accountType === acctType)
-                .reduce((sum, wd) => sum + resolveAmount(wd.periods, year), 0);
-            return (
-              <div key={acctType}>
-                <div className="text-sm text-gray-200 mb-2">{label}</div>
-                <div className="flex flex-wrap gap-2">
-                  {allYears.map(year => (
-                    <div key={year} className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-gray-500">{year}</span>
-                      <ActualInput
-                        value={actuals.withdrawals[acctType]?.[year]}
-                        projected={$(projectedForYear(year))}
-                        onChange={v => updateWithdrawalActual(acctType, year, v)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Cash Balance Section — year-end cash override */}
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-        <h3 className="text-sm font-semibold text-cyan-400 mb-1">Cash Balance (Year-End)</h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Overrides the simulated end-of-year cash. Propagates forward as next year's starting cash.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {Array.from({ length: CURRENT_YEAR - START_YEAR + 1 }, (_, i) => START_YEAR + i).map(year => {
-            const projected = results.find(r => r.year === year)?.endingCash ?? 0;
-            return (
-              <div key={year} className="flex flex-col items-center gap-1">
-                <span className="text-xs text-gray-500">{year}</span>
+        {/* Right pane */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Year-end balances */}
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+            <h3 className="text-sm font-semibold text-cyan-400 mb-1">Year-End Balances ({activeYear})</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Overrides the simulated end-of-year value. Propagates forward as next year's starting value.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-gray-500">Cash</span>
                 <ActualInput
-                  value={actuals.endingCash?.[year]}
-                  projected={$(projected)}
-                  onChange={v => updateEndingCashActual(year, v)}
+                  value={actuals.endingCash?.[activeYear]}
+                  projected={$(projectedCashEnd)}
+                  onChange={v => updateEndingCashActual(activeYear, v)}
                 />
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Investment Balances Section — year-end balance per account */}
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-        <h3 className="text-sm font-semibold text-cyan-400 mb-1">Investment Balances (Year-End)</h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Overrides the simulated end-of-year balance. Propagates forward as next year's starting balance.
-        </p>
-        <div className="space-y-4">
-          {([['brokerage', 'Brokerage'], ['roth', 'Roth'], ['ira', 'IRA']] as const).map(([acctType, label]) => {
-            const allYears: number[] = [];
-            for (let y = START_YEAR; y <= CURRENT_YEAR; y++) allYears.push(y);
-            if (allYears.length === 0) return null;
-            const balanceKey = `${acctType}Balance` as 'brokerageBalance' | 'rothBalance' | 'iraBalance';
-            const projectedForYear = (year: number) => {
-              const yr = results.find(r => r.year === year);
-              return yr ? yr[balanceKey] : 0;
-            };
-            return (
-              <div key={acctType}>
-                <div className="text-sm text-gray-200 mb-2">{label}</div>
-                <div className="flex flex-wrap gap-2">
-                  {allYears.map(year => (
-                    <div key={year} className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-gray-500">{year}</span>
-                      <ActualInput
-                        value={actuals.endingBalances?.[acctType]?.[year]}
-                        projected={$(projectedForYear(year))}
-                        onChange={v => updateEndingBalanceActual(acctType, year, v)}
-                      />
-                    </div>
-                  ))}
+              {ACCOUNT_ROWS.map(([acctType, label]) => (
+                <div key={acctType} className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-500">{label}</span>
+                  <ActualInput
+                    value={actuals.endingBalances?.[acctType]?.[activeYear]}
+                    projected={$(projectedAcctEnd(acctType))}
+                    onChange={v => updateEndingBalanceActual(acctType, activeYear, v)}
+                  />
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          </div>
+
+          {/* Items table */}
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
+            <table className="text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <thead>
+                <tr className="text-xs text-gray-500">
+                  <th className="text-left font-normal pr-4 pb-2 min-w-[10rem]">Item</th>
+                  {MONTH_LABELS.map(m => (
+                    <th key={m} className="font-normal px-1 pb-2 text-center">{m}</th>
+                  ))}
+                  <th className="font-normal pl-3 pb-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* INCOME */}
+                {incomesForYear.length > 0 && (
+                  <tr>
+                    <td colSpan={TOTAL_COLS} className="pt-2 pb-1 text-xs font-semibold text-emerald-400">Income</td>
+                  </tr>
+                )}
+                {incomesForYear.map(inc => (
+                  <tr key={inc.id} className="hover:bg-gray-800/40">
+                    <td className="pr-4 py-1 text-gray-200">
+                      {inc.name}
+                      <span className="text-gray-500 text-xs ml-1">({inc.type})</span>
+                    </td>
+                    <td colSpan={12} className="py-1 text-center text-xs text-gray-700">—</td>
+                    <td className="pl-3 py-1">
+                      <ActualInput
+                        value={actuals.incomes[inc.id]?.[activeYear]}
+                        projected={$(resolveAmount(inc.periods, activeYear))}
+                        onChange={v => updateActual('incomes', inc.id, activeYear, v)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+
+                {/* EXPENSES */}
+                {expensesForYear.length > 0 && (
+                  <tr>
+                    <td colSpan={TOTAL_COLS} className="pt-3 pb-1 text-xs font-semibold text-rose-400">Expenses</td>
+                  </tr>
+                )}
+                {expensesForYear.map(exp => {
+                  const projected = resolveAmount(exp.periods, activeYear);
+                  if (exp.frequency === 'monthly') {
+                    const total = getMonthlyTotal(exp.id, activeYear);
+                    const projectedTotal = projected * 12;
+                    return (
+                      <tr key={exp.id} className="hover:bg-gray-800/40">
+                        <td className="pr-4 py-1 text-gray-200">
+                          {exp.name}
+                          <span className="text-gray-500 text-xs ml-1">(monthly)</span>
+                        </td>
+                        {MONTH_LABELS.map((_, mi) => (
+                          <td key={mi} className="px-1 py-1">
+                            <ActualInput
+                              value={getMonthlyActual(exp.id, activeYear, mi)}
+                              projected={$(projected)}
+                              onChange={v => updateMonthlyActual(exp.id, activeYear, mi, v)}
+                              widthClass="w-20"
+                            />
+                          </td>
+                        ))}
+                        <td className="pl-3 py-1 text-right text-xs whitespace-nowrap">
+                          {total != null ? (
+                            <span className="text-gray-200">{$(total)}</span>
+                          ) : (
+                            <span className="text-gray-600">{$(projectedTotal)}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={exp.id} className="hover:bg-gray-800/40">
+                      <td className="pr-4 py-1 text-gray-200">
+                        {exp.name}
+                        <span className="text-gray-500 text-xs ml-1">(annual)</span>
+                      </td>
+                      <td colSpan={12} className="py-1 text-center text-xs text-gray-700">—</td>
+                      <td className="pl-3 py-1">
+                        <ActualInput
+                          value={actuals.expenses[exp.id]?.[activeYear]}
+                          projected={$(projected)}
+                          onChange={v => updateActual('expenses', exp.id, activeYear, v)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* WITHDRAWALS */}
+                <tr>
+                  <td colSpan={TOTAL_COLS} className="pt-3 pb-1 text-xs font-semibold text-amber-400">Withdrawals</td>
+                </tr>
+                {ACCOUNT_ROWS.map(([acctType, label]) => (
+                  <tr key={acctType} className="hover:bg-gray-800/40">
+                    <td className="pr-4 py-1 text-gray-200">{label}</td>
+                    <td colSpan={12} className="py-1 text-center text-xs text-gray-700">—</td>
+                    <td className="pl-3 py-1">
+                      <ActualInput
+                        value={actuals.withdrawals[acctType]?.[activeYear]}
+                        projected={$(projectedWithdrawal(acctType))}
+                        onChange={v => updateWithdrawalActual(acctType, activeYear, v)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
