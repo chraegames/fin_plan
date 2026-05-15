@@ -1,5 +1,6 @@
 import type { PlanInput } from '../models/types';
 import NumericInput from './NumericInput';
+import { earlyWithdrawalCutoff } from '../engine/constants';
 
 interface Props {
   input: PlanInput;
@@ -7,10 +8,24 @@ interface Props {
 }
 
 export default function InvestmentSection({ input, onChange }: Props) {
+  const cutoff = earlyWithdrawalCutoff(input.birthYear);
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-      <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">Starting Balances</h3>
+      <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">About You &amp; Starting Balances</h3>
       <div className="space-y-3">
+        {/* Birth Year */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-300 w-24 shrink-0">Birth year</span>
+          <NumericInput
+            value={input.birthYear}
+            onChange={v => onChange({ birthYear: v })}
+            className="w-24 border border-gray-600 rounded px-2 py-1.5 text-sm bg-gray-700 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <span className="text-xs text-gray-500">10% early-withdrawal penalty ends in {cutoff}</span>
+        </div>
+
+        <div className="border-t border-gray-700" />
+
         {/* Cash */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-300 w-24 shrink-0">Cash</span>
@@ -33,6 +48,16 @@ export default function InvestmentSection({ input, onChange }: Props) {
             onChange={v => onChange({ brokerageBalance: v })}
             className="flex-1 border border-gray-600 rounded px-2 py-1.5 text-sm bg-gray-700 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 w-24 shrink-0 pl-3">Cost basis</span>
+          <span className="text-gray-500 text-xs">$</span>
+          <NumericInput
+            value={input.brokerageBasis}
+            onChange={v => onChange({ brokerageBasis: v })}
+            className="flex-1 border border-gray-600 rounded px-2 py-1 text-xs bg-gray-700 text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <span className="text-xs text-gray-500" title="What you originally paid; the rest is unrealized gain taxed when sold.">?</span>
         </div>
 
         {/* Roth */}

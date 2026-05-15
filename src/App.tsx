@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { defaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
-import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_CUTOFF } from './engine/constants';
+import { START_YEAR, END_YEAR, earlyWithdrawalCutoff } from './engine/constants';
 import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, ScenarioPlan, Profile, ProfilesState } from './models/types';
 import InputPanel from './components/InputPanel';
 import ResultsPanel from './components/ResultsPanel';
@@ -34,6 +34,13 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
   for (const plan of plans) {
     if (plan.input.inflationRate == null) plan.input.inflationRate = 0.03;
     if (plan.input.targetCash == null) plan.input.targetCash = 200000;
+    // birthYear default 1985 means the 10% early-withdrawal penalty stops at
+    // year 2045 (≈ age 60). Users can edit this in the UI.
+    if (plan.input.birthYear == null) plan.input.birthYear = 1985;
+    // Conservative default: treat the full starting brokerage balance as
+    // basis (no embedded gains). Avoids surprising tax for migrated plans;
+    // users can lower it to reflect actual unrealized gains.
+    if (plan.input.brokerageBasis == null) plan.input.brokerageBasis = plan.input.brokerageBalance ?? 0;
     if (plan.input.returnRate == null) {
       const old = plan.input as PlanInput & LegacyPlanInput;
       plan.input.returnRate = old.brokerageReturnRate ?? old.retirementReturnRate ?? 0.07;
@@ -62,12 +69,13 @@ function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
     // always has all three to render. Was previously a mount-time effect
     // in WithdrawalSection — moved here so the data is consistent at load time.
     const accountTypes: Array<'brokerage' | 'roth' | 'ira'> = ['brokerage', 'roth', 'ira'];
+    const defaultWithdrawalStart = earlyWithdrawalCutoff(plan.input.birthYear);
     for (const accountType of accountTypes) {
       if (!plan.input.withdrawals.some(w => w.accountType === accountType)) {
         plan.input.withdrawals.push({
           id: generateId(),
           accountType,
-          periods: [{ startYear: EARLY_WITHDRAWAL_PENALTY_CUTOFF, endYear: END_YEAR, amount: 0 }],
+          periods: [{ startYear: defaultWithdrawalStart, endYear: END_YEAR, amount: 0 }],
         });
       }
     }
@@ -280,6 +288,7 @@ export default function App() {
   const input = activePlan.input;
   const actuals = activePlan.actuals ?? defaultActuals;
   const results = useMemo(() => runSimulation(input, actuals), [input, actuals]);
+  const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
 
   // Helper to update the active profile
   const updateActiveProfile = useCallback((updater: (profile: Profile) => Profile) => {
@@ -424,10 +433,11 @@ export default function App() {
     <div className="min-h-screen bg-gray-950">
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-700 sticky top-0 z-10">
-        <div className="max-w-[120rem] mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-baseline gap-3">
+        <div className="max-w-[120rem] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-y-2">
+          <div className="flex items-baseline gap-3 flex-wrap">
             <h1 className="text-lg font-bold text-gray-100 tracking-tight">Financial Planner</h1>
-            <span className="text-xs text-gray-500">{START_YEAR} - {END_YEAR}</span>
+            <span className="text-xs text-gray-500">{START_YEAR}&ndash;{END_YEAR}</span>
+            <span className="text-xs text-amber-400/80 italic">Educational tool &mdash; not financial advice.</span>
           </div>
 
           {/* Profile Selector */}
@@ -557,6 +567,7 @@ export default function App() {
               <ResultsPanel
                 results={results}
                 onCashFlowClick={setModalYear}
+                penaltyCutoff={penaltyCutoff}
               />
             </div>
           </div>
@@ -577,6 +588,7 @@ export default function App() {
           withdrawals={input.withdrawals}
           onClose={() => setModalYear(null)}
           onUpdateWithdrawals={handleUpdateWithdrawals}
+          penaltyCutoff={penaltyCutoff}
         />
       )}
 

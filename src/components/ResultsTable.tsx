@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { YearResult, SimulationResult, NamedAmount } from '../models/types';
 import { formatDollars as $ } from '../utils/format';
-import { EARLY_WITHDRAWAL_PENALTY_CUTOFF } from '../engine/constants';
 
 interface TooltipState {
   items: NamedAmount[];
@@ -34,9 +33,10 @@ function useBreakdownTooltip() {
 interface Props {
   results: SimulationResult;
   onCashFlowClick: (yearResult: YearResult) => void;
+  penaltyCutoff: number;
 }
 
-export default function ResultsTable({ results, onCashFlowClick }: Props) {
+export default function ResultsTable({ results, onCashFlowClick, penaltyCutoff }: Props) {
   const { tooltip, show, hide } = useBreakdownTooltip();
 
   return (
@@ -76,7 +76,7 @@ export default function ResultsTable({ results, onCashFlowClick }: Props) {
           </thead>
           <tbody>
             {results.map(r => (
-              <tr key={r.year} className={`group/row ${r.year === EARLY_WITHDRAWAL_PENALTY_CUTOFF - 1 ? 'border-b-2 border-amber-500' : 'border-b border-gray-700'}`}>
+              <tr key={r.year} className={`group/row ${r.year === penaltyCutoff - 1 ? 'border-b-2 border-amber-500' : 'border-b border-gray-700'}`}>
                 {/* Year */}
                 <td className="px-3 py-1.5 font-medium text-gray-300 sticky left-0 bg-gray-800 group-hover/row:bg-gray-700">{r.year}</td>
 

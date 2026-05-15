@@ -42,16 +42,11 @@ export default function ExpenseSection({ items, onChange }: Props) {
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-rose-400 uppercase tracking-wide">Expenses</h3>
         <button onClick={addItem} className="text-xs bg-rose-900/30 text-rose-400 hover:bg-rose-800/40 px-2 py-1 rounded">
           + Add
         </button>
-      </div>
-      <div className="text-xs text-gray-500 mb-3 space-y-0.5">
-        <div>Ryan 2031-2035</div>
-        <div>Alex 2033-2037</div>
-        <div>Evelyn 2038-2042</div>
       </div>
       <div className="space-y-3">
         {items.map((item, i) => {

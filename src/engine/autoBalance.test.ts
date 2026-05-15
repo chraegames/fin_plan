@@ -14,8 +14,10 @@ const ROUNDING_SLACK = 20000;
 
 function makeInput(overrides: Partial<PlanInput> = {}): PlanInput {
   return {
+    birthYear: 1980,
     startingCash: 50000,
     brokerageBalance: 300000,
+    brokerageBasis: 0,
     rothBalance: 300000,
     iraBalance: 400000,
     returnRate: 0.07,

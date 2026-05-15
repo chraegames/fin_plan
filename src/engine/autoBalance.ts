@@ -6,8 +6,8 @@ import { STANDARD_DEDUCTION, INCOME_BRACKETS, CAPITAL_GAINS_BRACKETS, calculateI
 import {
   START_YEAR,
   END_YEAR,
-  EARLY_WITHDRAWAL_PENALTY_CUTOFF,
   EARLY_WITHDRAWAL_PENALTY_RATE,
+  earlyWithdrawalCutoff,
 } from './constants';
 
 const ROUND_GRANULARITY = 1000;
@@ -70,7 +70,7 @@ interface YearWithdrawal {
   ira: number;
 }
 
-type YD = { income: number; expenses: number; taxable: number; penalty: boolean };
+type YD = { income: number; expenses: number; taxable: number; penalty: boolean; brkGainFrac: number };
 
 interface LpSolveResult {
   feasible: boolean;
@@ -97,6 +97,7 @@ interface LpSolveResult {
  */
 export function autoBalance(input: PlanInput, targetCash: number, actuals?: ActualsData): WithdrawalSchedule[] {
   const r = input.returnRate;
+  const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
 
   // --- Determine frozen boundary ---
   // Any year with non-zero actual withdrawal data is frozen.
@@ -116,6 +117,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
   // --- Simulate through frozen years to get post-frozen balances ---
   let lpStartCash = input.startingCash;
   let lpBrkBal = input.brokerageBalance;
+  let lpBrkBasis = Math.min(input.brokerageBasis, input.brokerageBalance);
   let lpRothBal = input.rothBalance;
   let lpIraBal = input.iraBalance;
 
@@ -130,13 +132,19 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
 
     frozenYearly.push({ year, brokerage: bw, roth: rw, ira: iw });
 
+    const bwApplied = Math.min(bw, lpBrkBal);
+    const basisFrac = lpBrkBal > 0 ? lpBrkBasis / lpBrkBal : 0;
+    const bwBasis = bwApplied * basisFrac;
+    const bwGain = bwApplied - bwBasis;
+
     const totalTaxableOrdinary = taxableIncome + iw;
     const incomeTax = calculateIncomeTax(totalTaxableOrdinary);
-    const capitalGainsTax = calculateCapitalGainsTax(bw, totalTaxableOrdinary);
-    const earlyPenalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF
+    const capitalGainsTax = calculateCapitalGainsTax(bwGain, totalTaxableOrdinary);
+    const earlyPenalty = year < penaltyCutoff
       ? (rw + iw) * EARLY_WITHDRAWAL_PENALTY_RATE : 0;
     const totalTax = incomeTax + capitalGainsTax + earlyPenalty;
 
+    lpBrkBasis = Math.max(0, lpBrkBasis - bwBasis);
     lpBrkBal = Math.max(0, lpBrkBal - bw) * (1 + r);
     lpRothBal = Math.max(0, lpRothBal - rw) * (1 + r);
     lpIraBal = Math.max(0, lpIraBal - iw) * (1 + r);
@@ -145,7 +153,10 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
     // Honor actual year-end balances so the LP starts post-frozen years from
     // real numbers, not projected growth.
     const actualBrkEnd = actuals?.endingBalances?.brokerage?.[year];
-    if (actualBrkEnd != null) lpBrkBal = actualBrkEnd;
+    if (actualBrkEnd != null) {
+      lpBrkBal = actualBrkEnd;
+      if (lpBrkBasis > lpBrkBal) lpBrkBasis = lpBrkBal;
+    }
     const actualRothEnd = actuals?.endingBalances?.roth?.[year];
     if (actualRothEnd != null) lpRothBal = actualRothEnd;
     const actualIraEnd = actuals?.endingBalances?.ira?.[year];
@@ -158,15 +169,25 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
   const Y = END_YEAR - START_YEAR + 1 - frozenYears;
   if (Y <= 0) return buildSchedules(frozenYearly);
 
+  // Per-year brokerage gain fraction. Approximation: assume *no* prior LP-side
+  // withdrawals depleting basis, so the brokerage balance is lpBrkBal*(1+r)^y
+  // and basis is lpBrkBasis. The LP then multiplies each year's bw_y by this
+  // fraction to determine how much fills capital-gains brackets. This
+  // underestimates gains in later years (real withdrawals deplete basis faster
+  // than balance grows, raising the true fraction), but is a stable LP-friendly
+  // approximation — improving it requires MILP or nested iteration.
   const yd: YD[] = [];
   for (let y = 0; y < Y; y++) {
     const year = START_YEAR + frozenYears + y;
     const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year, actuals);
+    const balY = lpBrkBal * Math.pow(1 + r, y);
+    const brkGainFrac = balY > 0 ? Math.max(0, Math.min(1, 1 - lpBrkBasis / balY)) : 0;
     yd.push({
       income: totalIncome,
       expenses: totalExpenses,
       taxable: taxableIncome,
-      penalty: year < EARLY_WITHDRAWAL_PENALTY_CUTOFF,
+      penalty: year < penaltyCutoff,
+      brkGainFrac,
     });
   }
 
@@ -368,11 +389,12 @@ function solveOnce(
       constraints[c] = { max: cgRoom };
       addTerm(`cgb${j}_${y}`, c, 1);
     }
-    // bw_y = sum of cg bracket fills
+    // gain portion of bw_y = sum of cg bracket fills.
+    //   gain = bw_y * brkGainFrac (basis is return-of-capital and untaxed).
     {
       const c = `cg_sum_${y}`;
       constraints[c] = { equal: 0 };
-      addTerm(`bw_${y}`, c, -1);
+      addTerm(`bw_${y}`, c, -yd[y].brkGainFrac);
       for (let j = 0; j < CG_BANDS.length; j++) addTerm(`cgb${j}_${y}`, c, 1);
     }
 

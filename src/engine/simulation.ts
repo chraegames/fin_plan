@@ -1,13 +1,15 @@
 import type { PlanInput, ActualsData, NamedAmount, SimulationResult } from '../models/types';
 import { resolveAmount, resolveIncomeAndExpenses } from './resolve';
 import { calculateIncomeTax, calculateCapitalGainsTax } from './tax';
-import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE } from './constants';
+import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_RATE, earlyWithdrawalCutoff } from './constants';
 
 export function runSimulation(input: PlanInput, actuals?: ActualsData): SimulationResult {
   const results: SimulationResult = [];
+  const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
 
   let currentCash = input.startingCash;
   let brokerageBalance = input.brokerageBalance;
+  let brokerageBasis = Math.min(input.brokerageBasis, input.brokerageBalance);
   let rothBalance = input.rothBalance;
   let iraBalance = input.iraBalance;
 
@@ -39,7 +41,13 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
     if (withdrawalsRoth > 0) withdrawalBreakdown.push({ name: 'Roth', amount: withdrawalsRoth });
     if (withdrawalsIra > 0) withdrawalBreakdown.push({ name: 'IRA', amount: withdrawalsIra });
 
-    // Calculate investment growth
+    // Brokerage: split each withdrawal into basis (return of capital, untaxed)
+    // and gain (LTCG). Basis depletes proportionally to the withdrawn fraction.
+    const brokerageWithdrawalApplied = Math.min(withdrawalsBrokerage, brokerageBalance);
+    const basisFraction = brokerageBalance > 0 ? brokerageBasis / brokerageBalance : 0;
+    const basisOfWithdrawal = brokerageWithdrawalApplied * basisFraction;
+    const gainOfWithdrawal = brokerageWithdrawalApplied - basisOfWithdrawal;
+    brokerageBasis = Math.max(0, brokerageBasis - basisOfWithdrawal);
     brokerageBalance = Math.max(0, brokerageBalance - withdrawalsBrokerage);
     brokerageBalance *= (1 + input.returnRate);
 
@@ -53,7 +61,10 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
     // persists across loop iterations, so it naturally becomes next year's
     // starting balance.
     const actualBrokerEnd = actuals?.endingBalances?.brokerage?.[year];
-    if (actualBrokerEnd != null) brokerageBalance = actualBrokerEnd;
+    if (actualBrokerEnd != null) {
+      brokerageBalance = actualBrokerEnd;
+      if (brokerageBasis > brokerageBalance) brokerageBasis = brokerageBalance;
+    }
     const actualRothEnd = actuals?.endingBalances?.roth?.[year];
     if (actualRothEnd != null) rothBalance = actualRothEnd;
     const actualIraEnd = actuals?.endingBalances?.ira?.[year];
@@ -63,10 +74,10 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
     // IRA withdrawals are taxed as ordinary income; Roth withdrawals are tax-free
     const totalTaxableOrdinary = taxableIncome + withdrawalsIra;
     const incomeTax = calculateIncomeTax(totalTaxableOrdinary);
-    const capitalGainsTax = calculateCapitalGainsTax(withdrawalsBrokerage, totalTaxableOrdinary);
+    const capitalGainsTax = calculateCapitalGainsTax(gainOfWithdrawal, totalTaxableOrdinary);
 
     // Early withdrawal penalty applies to both Roth and IRA before cutoff
-    const earlyWithdrawalPenalty = year < EARLY_WITHDRAWAL_PENALTY_CUTOFF
+    const earlyWithdrawalPenalty = year < penaltyCutoff
       ? (withdrawalsRoth + withdrawalsIra) * EARLY_WITHDRAWAL_PENALTY_RATE
       : 0;
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PlanInput, ScenarioPlan } from '../models/types';
+import { earlyWithdrawalCutoff } from '../engine/constants';
 import IncomeSection from './IncomeSection';
 import ExpenseSection from './ExpenseSection';
 import InvestmentSection from './InvestmentSection';
@@ -21,6 +22,7 @@ export default function InputPanel({
   input, onChange, plans, activePlanId,
   onSwitchPlan, onCreatePlan, onRenamePlan, onDeletePlan, onAutoBalance,
 }: Props) {
+  const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
@@ -112,6 +114,7 @@ export default function InputPanel({
         targetCash={input.targetCash}
         onTargetCashChange={targetCash => onChange({ ...input, targetCash })}
         onAutoBalance={onAutoBalance}
+        penaltyCutoff={penaltyCutoff}
       />
       <ExpenseSection
         items={input.expenses}

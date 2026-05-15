@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { YearResult, WithdrawalSchedule, AccountType } from '../models/types';
 import { generateId } from '../engine/defaults';
-import { EARLY_WITHDRAWAL_PENALTY_CUTOFF, END_YEAR, YEARS } from '../engine/constants';
+import { END_YEAR, YEARS } from '../engine/constants';
 import { formatDollars as $ } from '../utils/format';
 import NumericInput from './NumericInput';
 
@@ -10,9 +10,10 @@ interface Props {
   withdrawals: WithdrawalSchedule[];
   onClose: () => void;
   onUpdateWithdrawals: (withdrawals: WithdrawalSchedule[]) => void;
+  penaltyCutoff: number;
 }
 
-export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onUpdateWithdrawals }: Props) {
+export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onUpdateWithdrawals, penaltyCutoff }: Props) {
   const [localWithdrawals, setLocalWithdrawals] = useState<WithdrawalSchedule[]>(withdrawals);
   const year = r.year;
 
@@ -67,7 +68,7 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
         <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-gray-100">Cash Flow — {year}</h3>
-            {year < EARLY_WITHDRAWAL_PENALTY_CUTOFF && (
+            {year < penaltyCutoff && (
               <p className="text-xs text-amber-400 mt-0.5">Early withdrawal penalty applies</p>
             )}
           </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { WithdrawalSchedule } from '../models/types';
-import { EARLY_WITHDRAWAL_PENALTY_CUTOFF, EARLY_WITHDRAWAL_PENALTY_RATE } from '../engine/constants';
+import { EARLY_WITHDRAWAL_PENALTY_RATE } from '../engine/constants';
 import TimePeriodEditor from './TimePeriodEditor';
 import NumericInput from './NumericInput';
 
@@ -10,9 +10,10 @@ interface Props {
   targetCash: number;
   onTargetCashChange: (value: number) => void;
   onAutoBalance: (targetCash: number) => void;
+  penaltyCutoff: number;
 }
 
-export default function WithdrawalSection({ items, onChange, targetCash, onTargetCashChange, onAutoBalance }: Props) {
+export default function WithdrawalSection({ items, onChange, targetCash, onTargetCashChange, onAutoBalance, penaltyCutoff }: Props) {
   const [brokerageOpen, setBrokerageOpen] = useState(false);
   const [rothOpen, setRothOpen] = useState(false);
   const [iraOpen, setIraOpen] = useState(false);
@@ -83,7 +84,7 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
                 <span className="text-sm font-medium text-gray-300">Roth</span>
               </div>
               <div className="text-xs text-emerald-400 bg-emerald-900/30 rounded px-2 py-1">
-                Tax-free withdrawals. {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early withdrawal penalty before {EARLY_WITHDRAWAL_PENALTY_CUTOFF}
+                Tax-free withdrawals. {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early withdrawal penalty before {penaltyCutoff}
               </div>
               <div className="text-xs text-gray-500 mb-1">Annual withdrawal per period:</div>
               <TimePeriodEditor
@@ -109,7 +110,7 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
                 <span className="text-sm font-medium text-gray-300">IRA</span>
               </div>
               <div className="text-xs text-amber-400 bg-amber-900/30 rounded px-2 py-1">
-                {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early withdrawal penalty applies before {EARLY_WITHDRAWAL_PENALTY_CUTOFF}
+                {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early withdrawal penalty applies before {penaltyCutoff}
               </div>
               <div className="text-xs text-gray-500 mb-1">Annual withdrawal per period:</div>
               <TimePeriodEditor

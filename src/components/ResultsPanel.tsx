@@ -7,9 +7,10 @@ import ResultsTable from './ResultsTable';
 interface Props {
   results: SimulationResult | null;
   onCashFlowClick: (yearResult: YearResult) => void;
+  penaltyCutoff: number;
 }
 
-export default function ResultsPanel({ results, onCashFlowClick }: Props) {
+export default function ResultsPanel({ results, onCashFlowClick, penaltyCutoff }: Props) {
   const summary = useMemo(() => {
     if (!results || results.length === 0) return null;
     const last = results[results.length - 1];
@@ -25,7 +26,7 @@ export default function ResultsPanel({ results, onCashFlowClick }: Props) {
   if (!summary) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
-        Click "Calculate" to run the simulation
+        Add income, expenses, and starting balances to see your projection.
       </div>
     );
   }
@@ -59,7 +60,7 @@ export default function ResultsPanel({ results, onCashFlowClick }: Props) {
       </div>
 
       <ResultsChart results={results!} />
-      <ResultsTable results={results!} onCashFlowClick={onCashFlowClick} />
+      <ResultsTable results={results!} onCashFlowClick={onCashFlowClick} penaltyCutoff={penaltyCutoff} />
     </div>
   );
 }

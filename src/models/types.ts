@@ -47,8 +47,14 @@ export interface ScenarioPlan {
 }
 
 export interface PlanInput {
+  birthYear: number;
   startingCash: number;
   brokerageBalance: number;
+  // Cost basis of the brokerage account. Withdrawals proportionally return
+  // basis (untaxed) and gain (LTCG-taxed). Defaults to brokerageBalance on
+  // load — i.e. no embedded gains — which means migrated plans pay no LTCG
+  // until contributions appreciate during the simulation.
+  brokerageBasis: number;
   rothBalance: number;
   iraBalance: number;
   returnRate: number;
