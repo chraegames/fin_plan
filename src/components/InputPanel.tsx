@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PlanInput, ScenarioPlan } from '../models/types';
+import type { PlanInput, Scenario } from '../models/types';
 import { earlyWithdrawalCutoff } from '../engine/constants';
 import IncomeSection from './IncomeSection';
 import ExpenseSection from './ExpenseSection';
@@ -9,7 +9,7 @@ import WithdrawalSection from './WithdrawalSection';
 interface Props {
   input: PlanInput;
   onChange: (input: PlanInput) => void;
-  plans: ScenarioPlan[];
+  plans: Scenario[];
   activePlanId: string;
   onSwitchPlan: (planId: string) => void;
   onCreatePlan: (name: string) => void;
@@ -30,10 +30,10 @@ export default function InputPanel({
 
   const handleNewPlan = () => {
     const count = plans.length + 1;
-    onCreatePlan(`Plan ${count}`);
+    onCreatePlan(`Scenario ${count}`);
   };
 
-  const startRename = (plan: ScenarioPlan) => {
+  const startRename = (plan: Scenario) => {
     setRenaming(plan.id);
     setRenameValue(plan.name);
   };

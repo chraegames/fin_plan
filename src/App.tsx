@@ -3,7 +3,7 @@ import { defaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
 import { START_YEAR, END_YEAR, earlyWithdrawalCutoff } from './engine/constants';
-import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, ScenarioPlan, Profile, ProfilesState } from './models/types';
+import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, Scenario, Profile, ProfilesState } from './models/types';
 import InputPanel from './components/InputPanel';
 import ResultsPanel from './components/ResultsPanel';
 import CashFlowModal from './components/CashFlowModal';
@@ -16,7 +16,7 @@ const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';
 
 interface OldScenariosState {
-  plans: ScenarioPlan[];
+  plans: Scenario[];
   activePlanId: string;
 }
 
@@ -30,7 +30,7 @@ interface LegacyPlanInput {
   iraBalance?: number;
 }
 
-function migratePlans(plans: ScenarioPlan[]): ScenarioPlan[] {
+function migratePlans(plans: Scenario[]): Scenario[] {
   for (const plan of plans) {
     if (plan.input.inflationRate == null) plan.input.inflationRate = 0.03;
     if (plan.input.targetCash == null) plan.input.targetCash = 200000;
@@ -168,7 +168,7 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
 function freshStart(): ProfilesState {
   const planId = generateId();
   const profileId = generateId();
-  const plans: ScenarioPlan[] = [
+  const plans: Scenario[] = [
     { id: planId, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
   ];
   migratePlans(plans);
@@ -226,7 +226,7 @@ function loadProfiles(): ProfilesState {
 
     if (oldInput) {
       const input = JSON.parse(oldInput) as PlanInput;
-      const plans: ScenarioPlan[] = [];
+      const plans: Scenario[] = [];
 
       if (oldPlans) {
         const parsed = JSON.parse(oldPlans) as { plans: { id: string; name: string; schedules: WithdrawalSchedule[] }[]; activePlanId: string | null };
@@ -272,7 +272,7 @@ export default function App() {
   const [modalYear, setModalYear] = useState<YearResult | null>(null);
   const [renamingProfile, setRenamingProfile] = useState(false);
   const [profileRenameValue, setProfileRenameValue] = useState('');
-  const [activeTab, setActiveTab] = useState<'projections' | 'actuals'>('projections');
+  const [activeTab, setActiveTab] = useState<'projections' | 'history'>('projections');
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importValue, setImportValue] = useState('');
@@ -309,7 +309,7 @@ export default function App() {
   const createProfile = useCallback(() => {
     const profileId = generateId();
     const planId = generateId();
-    const plans: ScenarioPlan[] = [
+    const plans: Scenario[] = [
       { id: planId, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
     ];
     migratePlans(plans);
@@ -386,7 +386,7 @@ export default function App() {
       const remaining = profile.plans.filter(p => p.id !== planId);
       if (remaining.length === 0) {
         const id = generateId();
-        const plans: ScenarioPlan[] = [
+        const plans: Scenario[] = [
           { id, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
         ];
         migratePlans(plans);
@@ -531,14 +531,14 @@ export default function App() {
             Projections
           </button>
           <button
-            onClick={() => setActiveTab('actuals')}
+            onClick={() => setActiveTab('history')}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === 'actuals'
+              activeTab === 'history'
                 ? 'text-blue-400 border-blue-400'
                 : 'text-gray-400 border-transparent hover:text-gray-200'
             }`}
           >
-            Actuals
+            History
           </button>
         </div>
       </div>

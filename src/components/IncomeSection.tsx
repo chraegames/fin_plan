@@ -48,6 +48,14 @@ export default function IncomeSection({ items, onChange }: Props) {
         </button>
       </div>
       <div className="space-y-3">
+        {items.length === 0 && (
+          <button
+            onClick={addItem}
+            className="w-full text-xs text-gray-500 hover:text-emerald-400 border border-dashed border-gray-700 hover:border-emerald-700 rounded px-3 py-3 transition-colors"
+          >
+            No income sources yet &mdash; add salary, side income, or other.
+          </button>
+        )}
         {items.map((item, i) => {
           const isOpen = expanded.has(item.id);
           return (

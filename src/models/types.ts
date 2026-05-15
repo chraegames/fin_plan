@@ -39,7 +39,7 @@ export interface ActualsData {
   endingCash?: Record<number, number>;
 }
 
-export interface ScenarioPlan {
+export interface Scenario {
   id: string;
   name: string;
   input: PlanInput;
@@ -99,7 +99,7 @@ export type SimulationResult = YearResult[];
 export interface Profile {
   id: string;
   name: string;
-  plans: ScenarioPlan[];
+  plans: Scenario[];
   activePlanId: string;
 }
 

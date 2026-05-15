@@ -182,7 +182,7 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
     return (
       <div className="max-w-[120rem] mx-auto px-4 py-6">
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 text-center text-gray-400">
-          Actuals tracking will be available starting in {START_YEAR}.
+          History tracking will be available starting in {START_YEAR}.
         </div>
       </div>
     );
@@ -210,7 +210,7 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
   return (
     <div className="max-w-[120rem] mx-auto px-4 py-6">
       <p className="text-sm text-gray-400 mb-4">
-        Enter actual amounts for the selected year. Empty cells use the projected value. Blue borders indicate entered actuals.
+        Record what actually happened each past year to refine the projection going forward. Empty cells fall back to the projected value; blue borders mark cells you have entered.
       </p>
       <div className="flex gap-4">
         {/* Year sidebar */}
