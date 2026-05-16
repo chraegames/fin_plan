@@ -34,13 +34,138 @@ const toneColor: Record<NonNullable<ChartMarker['tone']>, string> = {
   negative: 'var(--negative)',
 };
 
+// Display order in the tooltip (top → bottom). Matches the legend.
+const SERIES = [
+  { key: 'cash', label: 'Cash', color: 'var(--chart-cash)' },
+  { key: 'brokerage', label: 'Brokerage', color: 'var(--chart-brokerage)' },
+  { key: 'ira', label: 'Traditional IRA', color: 'var(--chart-ira)' },
+  { key: 'roth', label: 'Roth IRA', color: 'var(--chart-roth)' },
+] as const;
+
+interface ChartDatum {
+  year: number;
+  cash: number;
+  brokerage: number;
+  ira: number;
+  roth: number;
+  netWorth: number;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  label?: number | string;
+  payload?: Array<{ payload?: ChartDatum }>;
+  showAreas: boolean;
+}
+
+function CustomTooltip({ active, label, payload, showAreas }: CustomTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  const datum = payload[0]?.payload;
+  if (!datum) return null;
+
+  return (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 10,
+        boxShadow: 'var(--shadow-card)',
+        padding: 12,
+        minWidth: 220,
+        fontFamily: 'var(--font-sans)',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontWeight: 500,
+          fontSize: 14,
+          color: 'var(--ink)',
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </div>
+      {showAreas &&
+        SERIES.map(s => {
+          const val = datum[s.key];
+          return (
+            <div
+              key={s.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '3px 0',
+                fontSize: 12,
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 3,
+                  background: s.color,
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ flex: 1, color: 'var(--ink-2)' }}>{s.label}</span>
+              <span
+                className="num-mono"
+                style={{
+                  color: val > 0 ? 'var(--ink)' : 'var(--ink-muted)',
+                  fontVariantNumeric: 'tabular-nums',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                {formatDollars(val)}
+              </span>
+            </div>
+          );
+        })}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: showAreas ? '8px 0 0' : '3px 0',
+          marginTop: showAreas ? 6 : 0,
+          borderTop: showAreas ? '1px dashed var(--border)' : 'none',
+          fontSize: 12.5,
+          fontWeight: 600,
+        }}
+      >
+        <span
+          style={{
+            width: 10,
+            height: 2,
+            background: 'var(--chart-line)',
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ flex: 1, color: 'var(--ink)' }}>Net worth</span>
+        <span
+          className="num-mono"
+          style={{
+            color: datum.netWorth < 0 ? 'var(--negative)' : 'var(--ink)',
+            fontVariantNumeric: 'tabular-nums',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {formatDollars(datum.netWorth)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function NetWorthChart({
   results,
   markers = [],
   height = 360,
   lineOnly = false,
 }: NetWorthChartProps) {
-  const data = useMemo(
+  const data: ChartDatum[] = useMemo(
     () =>
       results.map(r => ({
         year: r.year,
@@ -97,17 +222,7 @@ export function NetWorthChart({
           />
           <Tooltip
             cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }}
-            contentStyle={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              fontSize: 12,
-              fontFamily: 'var(--font-sans)',
-              color: 'var(--ink)',
-              boxShadow: 'var(--shadow-card)',
-            }}
-            labelStyle={{ color: 'var(--ink-2)', fontWeight: 500 }}
-            formatter={(v, name) => [formatDollars(Number(v) || 0), name]}
+            content={<CustomTooltip showAreas={!lineOnly} />}
           />
           {!lineOnly && (
             <>
@@ -149,7 +264,7 @@ export function NetWorthChart({
                 strokeWidth={0.5}
                 fill="var(--chart-roth)"
                 fillOpacity={0.92}
-                name="Roth"
+                name="Roth IRA"
               />
             </>
           )}
