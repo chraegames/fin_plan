@@ -212,17 +212,17 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
       <p className="text-sm text-gray-400 mb-4">
         Record what actually happened each past year to refine the projection going forward. Empty cells fall back to the projected value; blue borders mark cells you have entered.
       </p>
-      <div className="flex gap-4">
-        {/* Year sidebar */}
-        <nav className="flex flex-col shrink-0 self-start sticky top-20">
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Year navigation: horizontal scroller on mobile, vertical sidebar on desktop */}
+        <nav className="flex md:flex-col flex-row shrink-0 self-start md:sticky md:top-20 overflow-x-auto md:overflow-visible w-full md:w-auto border-b md:border-b-0 border-gray-700">
           {years.map(y => (
             <button
               key={y}
               onClick={() => setActiveYear(y)}
-              className={`text-sm font-medium px-3 py-2 border-l-2 transition-colors text-left ${
+              className={`text-sm font-medium px-3 py-2 md:border-l-2 border-b-2 md:border-b-0 transition-colors text-left whitespace-nowrap ${
                 y === activeYear
-                  ? 'text-blue-400 border-blue-400 bg-gray-800/60'
-                  : 'text-gray-400 border-transparent hover:text-gray-200 hover:bg-gray-800/30'
+                  ? 'text-blue-400 md:border-l-blue-400 border-b-blue-400 bg-gray-800/60'
+                  : 'text-gray-400 md:border-l-transparent border-b-transparent hover:text-gray-200 hover:bg-gray-800/30'
               }`}
             >
               {y}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { YearResult, WithdrawalSchedule, AccountType } from '../models/types';
 import { generateId } from '../engine/defaults';
-import { END_YEAR, YEARS } from '../engine/constants';
+import { START_YEAR, END_YEAR } from '../engine/constants';
 import { formatDollars as $ } from '../utils/format';
 import NumericInput from './NumericInput';
 
@@ -123,21 +123,21 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
               </div>
               {schedule.periods.map((p, pi) => (
                 <div key={pi} className="flex items-center gap-2 text-sm">
-                  <select
+                  <NumericInput
                     value={p.startYear}
-                    onChange={e => updatePeriod(schedule.id, pi, 'startYear', Number(e.target.value))}
+                    onChange={v => updatePeriod(schedule.id, pi, 'startYear', v)}
+                    min={String(START_YEAR)}
+                    max={String(END_YEAR)}
                     className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  >
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                  <span className="text-gray-500">-</span>
-                  <select
+                  />
+                  <span className="text-gray-500">&ndash;</span>
+                  <NumericInput
                     value={p.endYear}
-                    onChange={e => updatePeriod(schedule.id, pi, 'endYear', Number(e.target.value))}
+                    onChange={v => updatePeriod(schedule.id, pi, 'endYear', v)}
+                    min={String(START_YEAR)}
+                    max={String(END_YEAR)}
                     className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  >
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                  />
                   <span className="text-gray-500">$</span>
                   <NumericInput
                     value={p.amount}

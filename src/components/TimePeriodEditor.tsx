@@ -1,5 +1,5 @@
 import type { TimePeriodValue } from '../models/types';
-import { START_YEAR, END_YEAR, YEARS } from '../engine/constants';
+import { START_YEAR, END_YEAR } from '../engine/constants';
 import NumericInput from './NumericInput';
 
 interface Props {
@@ -27,21 +27,21 @@ export default function TimePeriodEditor({ periods, onChange, amountLabel = 'Amo
     <div className="space-y-2">
       {periods.map((p, i) => (
         <div key={i} className="flex items-center gap-2 text-sm">
-          <select
+          <NumericInput
             value={p.startYear}
-            onChange={e => update(i, 'startYear', Number(e.target.value))}
+            onChange={v => update(i, 'startYear', v)}
+            min={String(START_YEAR)}
+            max={String(END_YEAR)}
             className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          >
-            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <span className="text-gray-500">-</span>
-          <select
+          />
+          <span className="text-gray-500">&ndash;</span>
+          <NumericInput
             value={p.endYear}
-            onChange={e => update(i, 'endYear', Number(e.target.value))}
+            onChange={v => update(i, 'endYear', v)}
+            min={String(START_YEAR)}
+            max={String(END_YEAR)}
             className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          >
-            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          />
           <span className="text-gray-500">$</span>
           <NumericInput
             value={p.amount}

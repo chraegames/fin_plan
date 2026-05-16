@@ -568,6 +568,7 @@ export default function App() {
                 results={results}
                 onCashFlowClick={setModalYear}
                 penaltyCutoff={penaltyCutoff}
+                inflationRate={input.inflationRate}
               />
             </div>
           </div>
