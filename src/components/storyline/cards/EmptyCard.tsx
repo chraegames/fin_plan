@@ -35,7 +35,7 @@ export function EmptyCard({
             ? 'var(--surface-2)'
             : 'var(--surface)',
         border: `1px ${highlight ? 'solid' : 'dashed'} ${
-          highlight ? 'oklch(0.84 0.06 40)' : 'var(--border-strong)'
+          highlight ? 'var(--accent)' : 'var(--border-strong)'
         }`,
         borderRadius: 14,
         padding: 18,

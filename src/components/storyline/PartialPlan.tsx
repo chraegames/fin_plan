@@ -291,7 +291,7 @@ export function PartialPlan({
                   background: 'var(--caution-soft)',
                   borderRadius: 9,
                   fontSize: 11.5,
-                  color: 'oklch(0.45 0.11 70)',
+                  color: 'var(--caution)',
                   lineHeight: 1.45,
                 }}
               >

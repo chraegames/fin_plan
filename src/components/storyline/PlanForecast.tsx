@@ -447,7 +447,7 @@ function toggleStyle(active: boolean): React.CSSProperties {
     color: active ? 'oklch(0.995 0.005 80)' : 'var(--ink-3)',
     border: 'none',
     boxShadow: active
-      ? '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.40 0.04 60 / 0.18)'
+      ? '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.20 0.04 260 / 0.18)'
       : 'none',
     transition: 'background-color 120ms ease, color 120ms ease',
   };

@@ -29,7 +29,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'oklch(0.20 0.018 60 / 0.50)',
+        background: 'oklch(0.18 0.012 260 / 0.50)',
         backdropFilter: 'blur(2px)',
         WebkitBackdropFilter: 'blur(2px)',
         padding: 24,

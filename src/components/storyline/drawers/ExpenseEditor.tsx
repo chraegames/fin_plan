@@ -272,7 +272,7 @@ function PillSwitch({
             width: 12,
             height: 12,
             borderRadius: 99,
-            background: 'oklch(0.995 0.005 80)',
+            background: 'var(--surface)',
             transition: 'left 120ms ease',
           }}
         />

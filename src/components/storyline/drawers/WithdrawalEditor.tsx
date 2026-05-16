@@ -48,7 +48,7 @@ export function WithdrawalEditor({
       <article
         style={{
           background: 'var(--accent-tint)',
-          border: '1px solid oklch(0.84 0.06 40)',
+          border: '1px solid var(--accent)',
           borderRadius: 12,
           padding: 14,
           display: 'flex',
@@ -139,7 +139,7 @@ export function WithdrawalEditor({
                   padding: '6px 10px',
                   borderRadius: 8,
                   background: 'var(--caution-soft)',
-                  color: 'oklch(0.45 0.11 70)',
+                  color: 'var(--caution)',
                 }}
               >
                 {EARLY_WITHDRAWAL_PENALTY_RATE * 100}% early-withdrawal penalty before {penaltyCutoff}

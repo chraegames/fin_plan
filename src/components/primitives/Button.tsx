@@ -25,7 +25,7 @@ function variantStyle(variant: ButtonVariant, hovered: boolean): React.CSSProper
         color: 'oklch(0.995 0.005 80)',
         border: '1px solid var(--accent-2)',
         boxShadow:
-          '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.40 0.04 60 / 0.18)',
+          '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.20 0.04 260 / 0.18)',
       };
     case 'soft':
       return {

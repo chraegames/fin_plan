@@ -47,7 +47,7 @@ export function EditDrawer({
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'oklch(0.20 0.018 60 / 0.30)',
+          background: 'oklch(0.18 0.012 260 / 0.30)',
           backdropFilter: 'blur(2px)',
           WebkitBackdropFilter: 'blur(2px)',
           animation: 'fadein 200ms ease-out',

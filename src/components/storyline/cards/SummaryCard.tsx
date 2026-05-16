@@ -37,7 +37,7 @@ export function SummaryCard({
     <article
       style={{
         background: highlight ? 'var(--accent-tint)' : 'var(--surface)',
-        border: `1px solid ${highlight ? 'oklch(0.84 0.06 40)' : 'var(--border)'}`,
+        border: `1px solid ${highlight ? 'var(--accent)' : 'var(--border)'}`,
         borderRadius: 14,
         padding: 18,
         boxShadow: 'var(--shadow-card)',

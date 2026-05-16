@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────
- * FIRE Planner — Design tokens (Storyline direction)
+ * FIRE Planner — Design tokens (Modernist v2)
  *
  * Drop this file into your global stylesheet, then reference the
  * variables anywhere with var(--token-name). Both light and dark
@@ -14,108 +14,113 @@
 
 :root,
 :root[data-theme="light"] {
-  /* Surfaces — warm cream paper */
-  --bg:             oklch(0.965 0.013 75);    /* page background */
-  --bg-soft:        oklch(0.945 0.017 75);    /* subtly recessed */
-  --surface:        oklch(0.995 0.005 80);    /* cards */
-  --surface-2:      oklch(0.975 0.010 78);    /* card interior accents */
-  --surface-3:      oklch(0.945 0.017 75);    /* deepest tone */
-  --border:         oklch(0.89 0.018 70);     /* default hairline */
-  --border-soft:    oklch(0.92 0.014 72);     /* very subtle */
-  --border-strong:  oklch(0.78 0.022 65);     /* emphasised */
+  /* Fonts */
+  --font-display:  'Space Grotesk', system-ui, sans-serif;
+  --font-sans:     'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
-  /* Ink (text) */
-  --ink:            oklch(0.20 0.018 60);     /* primary text, headlines */
-  --ink-2:          oklch(0.34 0.015 62);     /* secondary text */
-  --ink-3:          oklch(0.50 0.013 65);     /* body copy, labels */
-  --ink-muted:      oklch(0.62 0.012 68);     /* placeholder, hints */
+  /* Surfaces — cool near-white */
+  --bg:             oklch(0.985 0.004 250);     /* page background */
+  --bg-soft:        oklch(0.97 0.005 250);
+  --surface:        oklch(1 0 0);                /* cards */
+  --surface-2:      oklch(0.975 0.004 250);
+  --surface-3:      oklch(0.94 0.007 250);
+  --border:         oklch(0.91 0.008 250);
+  --border-soft:    oklch(0.94 0.006 250);
+  --border-strong:  oklch(0.78 0.012 250);
 
-  /* Brand accent — terracotta */
-  --accent:         oklch(0.55 0.14 35);      /* primary brand */
-  --accent-2:       oklch(0.48 0.15 30);      /* hover/active */
-  --accent-soft:    oklch(0.94 0.04 45);      /* tint backgrounds */
-  --accent-tint:    oklch(0.97 0.018 50);     /* lightest wash */
-  --accent-ink:     oklch(0.36 0.13 32);      /* text-on-tint */
+  /* Ink (text) — cool near-black */
+  --ink:            oklch(0.18 0.012 260);
+  --ink-2:          oklch(0.34 0.014 258);
+  --ink-3:          oklch(0.50 0.014 255);
+  --ink-muted:      oklch(0.62 0.012 252);
+
+  /* Brand accent — deep indigo */
+  --accent:         oklch(0.48 0.18 280);
+  --accent-2:       oklch(0.42 0.20 280);
+  --accent-soft:    oklch(0.93 0.06 280);
+  --accent-tint:    oklch(0.965 0.025 280);
+  --accent-ink:     oklch(0.40 0.18 280);
 
   /* Semantic colors */
-  --positive:       oklch(0.46 0.10 152);     /* sage — gains, completed */
-  --positive-soft:  oklch(0.93 0.05 150);
-  --positive-tint:  oklch(0.96 0.025 150);
-  --negative:       oklch(0.48 0.16 28);      /* clay-red — losses, depletion */
-  --negative-soft:  oklch(0.94 0.045 28);
-  --negative-tint:  oklch(0.97 0.02 28);
-  --caution:        oklch(0.62 0.12 70);      /* ochre — warnings */
-  --caution-soft:   oklch(0.94 0.06 80);
-  --info:           oklch(0.50 0.10 245);     /* sober blue — hints, tips */
-  --info-soft:      oklch(0.94 0.04 245);
+  --positive:       oklch(0.55 0.13 155);        /* emerald */
+  --positive-soft:  oklch(0.93 0.06 155);
+  --positive-tint:  oklch(0.965 0.025 155);
+  --negative:       oklch(0.55 0.20 25);         /* coral */
+  --negative-soft:  oklch(0.93 0.06 25);
+  --negative-tint:  oklch(0.965 0.025 25);
+  --caution:        oklch(0.65 0.15 50);         /* tangerine */
+  --caution-soft:   oklch(0.94 0.07 60);
+  --info:           oklch(0.50 0.16 245);
+  --info-soft:      oklch(0.93 0.05 245);
 
-  /* Chart colors (stacked-area / bar series) */
-  --chart-bg:        oklch(0.995 0.005 80);
-  --chart-cash:      oklch(0.82 0.08 75);     /* warm wheat */
-  --chart-brokerage: oklch(0.62 0.13 38);     /* terracotta */
-  --chart-ira:       oklch(0.58 0.10 152);    /* sage */
-  --chart-roth:      oklch(0.55 0.10 230);    /* slate-blue */
-  --chart-line:      oklch(0.22 0.020 60);    /* net-worth line, deep ink */
-  --chart-line-fill: oklch(0.55 0.14 35 / 0.08);
-  --chart-grid:      oklch(0.90 0.014 70);
-  --chart-label:     oklch(0.52 0.012 65);
-  --chart-marker:    oklch(0.45 0.018 60);    /* timeline annotations */
-  --chart-marker-bg: oklch(0.995 0.005 80);
+  /* Chart series */
+  --chart-bg:        oklch(1 0 0);
+  --chart-cash:      oklch(0.72 0.10 75);        /* warm wheat (unchanged for contrast) */
+  --chart-brokerage: oklch(0.55 0.18 280);       /* deep indigo */
+  --chart-ira:       oklch(0.62 0.14 155);       /* emerald */
+  --chart-roth:      oklch(0.62 0.14 220);       /* sky blue */
+  --chart-line:      oklch(0.18 0.012 260);
+  --chart-line-fill: oklch(0.48 0.18 280 / 0.08);
+  --chart-grid:      oklch(0.93 0.008 250);
+  --chart-label:     oklch(0.50 0.014 255);
+  --chart-marker:    oklch(0.36 0.014 258);
+  --chart-marker-bg: oklch(1 0 0);
 
-  /* Elevation */
-  --shadow-card: 0 1px 0 oklch(1 0 0 / 0.4) inset,
-                 0 1px 2px oklch(0.40 0.04 60 / 0.06);
-  --shadow-pop:  0 16px 48px oklch(0.30 0.05 60 / 0.16),
-                 0 2px 8px oklch(0.20 0.05 60 / 0.06);
+  /* Elevation — softer & more diffuse */
+  --shadow-card: 0 1px 2px oklch(0.20 0.04 260 / 0.04),
+                 0 8px 24px oklch(0.20 0.04 260 / 0.06);
+  --shadow-pop:  0 24px 64px oklch(0.20 0.06 260 / 0.18),
+                 0 4px 12px oklch(0.20 0.04 260 / 0.08);
 }
 
 :root[data-theme="dark"] {
-  --bg:             oklch(0.16 0.008 60);
-  --bg-soft:        oklch(0.19 0.010 62);
-  --surface:        oklch(0.22 0.011 62);
-  --surface-2:      oklch(0.26 0.011 62);
-  --surface-3:      oklch(0.30 0.011 62);
-  --border:         oklch(0.32 0.013 62);
-  --border-soft:    oklch(0.28 0.012 62);
-  --border-strong:  oklch(0.42 0.013 62);
+  --bg:             oklch(0.155 0.010 260);
+  --bg-soft:        oklch(0.180 0.012 260);
+  --surface:        oklch(0.215 0.013 260);
+  --surface-2:      oklch(0.245 0.013 260);
+  --surface-3:      oklch(0.285 0.013 260);
+  --border:         oklch(0.30 0.014 260);
+  --border-soft:    oklch(0.26 0.013 260);
+  --border-strong:  oklch(0.40 0.014 260);
 
-  --ink:            oklch(0.97 0.006 75);
-  --ink-2:          oklch(0.86 0.008 72);
-  --ink-3:          oklch(0.70 0.010 68);
-  --ink-muted:      oklch(0.56 0.012 65);
+  --ink:            oklch(0.97 0.005 250);
+  --ink-2:          oklch(0.86 0.008 252);
+  --ink-3:          oklch(0.70 0.010 255);
+  --ink-muted:      oklch(0.58 0.012 258);
 
-  --accent:         oklch(0.76 0.15 38);
-  --accent-2:       oklch(0.70 0.16 32);
-  --accent-soft:    oklch(0.30 0.08 35);
-  --accent-tint:    oklch(0.25 0.05 35);
-  --accent-ink:     oklch(0.85 0.13 38);
+  --accent:         oklch(0.72 0.18 280);
+  --accent-2:       oklch(0.78 0.18 285);
+  --accent-soft:    oklch(0.30 0.10 280);
+  --accent-tint:    oklch(0.24 0.06 280);
+  --accent-ink:     oklch(0.82 0.16 280);
 
-  --positive:       oklch(0.78 0.13 152);
-  --positive-soft:  oklch(0.30 0.05 150);
-  --positive-tint:  oklch(0.24 0.04 150);
-  --negative:       oklch(0.72 0.16 28);
-  --negative-soft:  oklch(0.30 0.06 28);
-  --negative-tint:  oklch(0.24 0.05 28);
-  --caution:        oklch(0.80 0.13 75);
-  --caution-soft:   oklch(0.30 0.07 75);
-  --info:           oklch(0.75 0.12 240);
+  --positive:       oklch(0.78 0.14 155);
+  --positive-soft:  oklch(0.30 0.06 155);
+  --positive-tint:  oklch(0.24 0.04 155);
+  --negative:       oklch(0.74 0.18 25);
+  --negative-soft:  oklch(0.30 0.07 25);
+  --negative-tint:  oklch(0.24 0.05 25);
+  --caution:        oklch(0.82 0.15 70);
+  --caution-soft:   oklch(0.30 0.08 70);
+  --info:           oklch(0.78 0.14 240);
   --info-soft:      oklch(0.30 0.06 240);
 
-  --chart-bg:        oklch(0.22 0.011 62);
+  --chart-bg:        oklch(0.215 0.013 260);
   --chart-cash:      oklch(0.74 0.10 80);
-  --chart-brokerage: oklch(0.74 0.14 38);
-  --chart-ira:       oklch(0.72 0.13 152);
-  --chart-roth:      oklch(0.70 0.13 230);
-  --chart-line:      oklch(0.96 0.008 75);
-  --chart-line-fill: oklch(0.76 0.15 38 / 0.10);
-  --chart-grid:      oklch(0.30 0.011 62);
-  --chart-label:     oklch(0.62 0.011 65);
-  --chart-marker:    oklch(0.86 0.010 70);
-  --chart-marker-bg: oklch(0.22 0.011 62);
+  --chart-brokerage: oklch(0.74 0.18 280);
+  --chart-ira:       oklch(0.78 0.13 155);
+  --chart-roth:      oklch(0.74 0.14 220);
+  --chart-line:      oklch(0.97 0.005 250);
+  --chart-line-fill: oklch(0.72 0.18 280 / 0.10);
+  --chart-grid:      oklch(0.28 0.013 260);
+  --chart-label:     oklch(0.62 0.010 258);
+  --chart-marker:    oklch(0.86 0.010 252);
+  --chart-marker-bg: oklch(0.215 0.013 260);
 
-  --shadow-card: 0 0 0 1px oklch(0 0 0 / 0.15) inset,
-                 0 6px 20px oklch(0 0 0 / 0.24);
-  --shadow-pop:  0 24px 64px oklch(0 0 0 / 0.5);
+  --shadow-card: 0 0 0 1px oklch(0 0 0 / 0.20) inset,
+                 0 12px 32px oklch(0 0 0 / 0.30);
+  --shadow-pop:  0 32px 80px oklch(0 0 0 / 0.55);
 }
 
 /* ─── Spacing scale ───────────────────────────────────────────────── */
@@ -140,11 +145,6 @@
   --radius-3xl: 18px;
   --radius-pill: 99px;
 
-  /* Type scale */
-  --font-display: 'Newsreader', Georgia, serif;
-  --font-sans:    'Geist', system-ui, -apple-system, sans-serif;
-  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', monospace;
-
   /* Type sizes — body */
   --text-xs:    11px;
   --text-sm:    12.5px;
@@ -152,7 +152,7 @@
   --text-md:    15px;
   --text-lg:    17px;
 
-  /* Type sizes — display (serif headlines) */
+  /* Type sizes — display */
   --display-xs: 22px;   /* H4 */
   --display-sm: 26px;   /* card titles, eyebrow + value */
   --display-md: 30px;   /* page H1 secondary */
@@ -180,5 +180,5 @@
 /* ─── Google Font loader ─────────────────────────────────────────────
  * Paste into <head> if you don't already self-host these:
  *
- * <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Geist:wght@300..700&family=Geist+Mono:wght@300..600&display=swap" rel="stylesheet" />
+ * <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@300..600&display=swap" rel="stylesheet" />
  * ─────────────────────────────────────────────────────────────────── */

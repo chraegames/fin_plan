@@ -21,7 +21,7 @@ export function StepCard({ num, title, sub, done, cta, primary, onClick }: StepC
             ? 'var(--positive-tint)'
             : 'var(--surface)',
         border: `1px solid ${
-          primary ? 'oklch(0.84 0.06 40)' : done ? 'oklch(0.84 0.04 150)' : 'var(--border)'
+          primary ? 'var(--accent)' : done ? 'var(--positive)' : 'var(--border)'
         }`,
         borderRadius: 14,
         padding: 18,
