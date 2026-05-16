@@ -1,17 +1,27 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildDefaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
 import { earlyWithdrawalCutoff } from './engine/constants';
-import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, Scenario, Profile, ProfilesState } from './models/types';
-import InputPanel from './components/InputPanel';
-import ResultsPanel from './components/ResultsPanel';
-import CashFlowModal from './components/CashFlowModal';
-import ActualsPanel from './components/ActualsPanel';
+import { buildPresetInput, type PresetKey } from './engine/presets';
+import type {
+  PlanInput,
+  ActualsData,
+  WithdrawalSchedule,
+  Scenario,
+  Profile,
+  ProfilesState,
+} from './models/types';
+import { AppBar } from './components/layout/AppBar';
+import { Welcome } from './components/storyline/Welcome';
+import { PartialPlan } from './components/storyline/PartialPlan';
+import { PlanForecast } from './components/storyline/PlanForecast';
+import { HistoryPage } from './components/storyline/HistoryPage';
+import { AboutModal } from './components/storyline/AboutModal';
+import { useTheme } from './hooks/useTheme';
 
 const PROFILES_KEY = 'financial-planner-profiles';
 const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
-// Legacy keys for migration
 const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';
 
@@ -20,8 +30,6 @@ interface OldScenariosState {
   activePlanId: string;
 }
 
-// Fields that older saved plans may have had but the current PlanInput type
-// doesn't. Captured here so migratePlans can read/delete them without `any`.
 interface LegacyPlanInput {
   brokerageReturnRate?: number;
   retirementReturnRate?: number;
@@ -34,29 +42,31 @@ function migratePlans(plans: Scenario[]): Scenario[] {
   for (const plan of plans) {
     if (plan.input.inflationRate == null) plan.input.inflationRate = 0.03;
     if (plan.input.targetCash == null) plan.input.targetCash = 200000;
-    // Backfill projection horizon. Existing plans assumed 2026-2065.
     if (plan.input.startYear == null) plan.input.startYear = 2026;
     if (plan.input.endYear == null) plan.input.endYear = 2065;
-    // birthYear default 1985 means the 10% early-withdrawal penalty stops at
-    // year 2045 (≈ age 60). Users can edit this in the UI.
     if (plan.input.birthYear == null) plan.input.birthYear = 1985;
-    // Conservative default: treat the full starting brokerage balance as
-    // basis (no embedded gains). Avoids surprising tax for migrated plans;
-    // users can lower it to reflect actual unrealized gains.
-    if (plan.input.brokerageBasis == null) plan.input.brokerageBasis = plan.input.brokerageBalance ?? 0;
+    if (plan.input.brokerageBasis == null)
+      plan.input.brokerageBasis = plan.input.brokerageBalance ?? 0;
     if (plan.input.returnRate == null) {
       const old = plan.input as PlanInput & LegacyPlanInput;
       plan.input.returnRate = old.brokerageReturnRate ?? old.retirementReturnRate ?? 0.07;
       delete old.brokerageReturnRate;
       delete old.retirementReturnRate;
     }
-    if (!plan.actuals) plan.actuals = { incomes: {}, expenses: {}, withdrawals: { brokerage: {}, roth: {}, ira: {} }, endingBalances: { brokerage: {}, roth: {}, ira: {} }, endingCash: {} };
-    if (!plan.actuals.endingBalances) plan.actuals.endingBalances = { brokerage: {}, roth: {}, ira: {} };
+    if (!plan.actuals)
+      plan.actuals = {
+        incomes: {},
+        expenses: {},
+        withdrawals: { brokerage: {}, roth: {}, ira: {} },
+        endingBalances: { brokerage: {}, roth: {}, ira: {} },
+        endingCash: {},
+      };
+    if (!plan.actuals.endingBalances)
+      plan.actuals.endingBalances = { brokerage: {}, roth: {}, ira: {} };
     if (!plan.actuals.endingCash) plan.actuals.endingCash = {};
     for (const exp of plan.input.expenses) {
       if (exp.applyInflation == null) exp.applyInflation = true;
     }
-    // Migrate retirement -> roth + ira
     const inp = plan.input as PlanInput & LegacyPlanInput;
     if (inp.retirementBalance != null && inp.rothBalance == null) {
       inp.rothBalance = Math.round(inp.retirementBalance / 2);
@@ -68,21 +78,26 @@ function migratePlans(plans: Scenario[]): Scenario[] {
         (wd as WithdrawalSchedule).accountType = 'ira';
       }
     }
-    // Backfill missing brokerage/Roth/IRA withdrawal schedules so the UI
-    // always has all three to render. Was previously a mount-time effect
-    // in WithdrawalSection — moved here so the data is consistent at load time.
     const accountTypes: Array<'brokerage' | 'roth' | 'ira'> = ['brokerage', 'roth', 'ira'];
-    const defaultWithdrawalStart = Math.max(plan.input.startYear, earlyWithdrawalCutoff(plan.input.birthYear));
+    const defaultWithdrawalStart = Math.max(
+      plan.input.startYear,
+      earlyWithdrawalCutoff(plan.input.birthYear),
+    );
     for (const accountType of accountTypes) {
       if (!plan.input.withdrawals.some(w => w.accountType === accountType)) {
         plan.input.withdrawals.push({
           id: generateId(),
           accountType,
-          periods: [{ startYear: defaultWithdrawalStart, endYear: plan.input.endYear, amount: 0 }],
+          periods: [
+            {
+              startYear: defaultWithdrawalStart,
+              endYear: plan.input.endYear,
+              amount: 0,
+            },
+          ],
         });
       }
     }
-    // Migrate withdrawal actuals from schedule-ID keys to account-type keys
     const wdActuals = plan.actuals.withdrawals;
     const accountTypeKeySet = new Set(['brokerage', 'roth', 'ira']);
     const oldKeys = Object.keys(wdActuals).filter(k => !accountTypeKeySet.has(k));
@@ -96,13 +111,17 @@ function migratePlans(plans: Scenario[]): Scenario[] {
         const schedule = plan.input.withdrawals.find(w => w.id === oldKey);
         if (!schedule) continue;
         const target = migrated[schedule.accountType];
-        for (const [yearStr, val] of Object.entries(wdActuals[oldKey as keyof typeof wdActuals] ?? {})) {
+        for (const [yearStr, val] of Object.entries(
+          wdActuals[oldKey as keyof typeof wdActuals] ?? {},
+        )) {
           const year = Number(yearStr);
           target[year] = (target[year] ?? 0) + val;
         }
       }
       plan.actuals.withdrawals = migrated as typeof plan.actuals.withdrawals;
     }
+    // Pre-existing plans are assumed touched (skip Welcome).
+    if (plan.touched == null) plan.touched = true;
   }
   return plans;
 }
@@ -121,7 +140,6 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
       const cleaned: Record<number, number> = {};
       for (const [keyStr, val] of Object.entries(yearMap)) {
         const key = Number(keyStr);
-        // Monthly expense keys are year*100+month, so derive the year
         const year = key > 9999 ? Math.floor(key / 100) : key;
         if (item.periods.some(p => year >= p.startYear && year <= p.endYear)) {
           cleaned[key] = val;
@@ -131,7 +149,6 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
     }
     return result;
   };
-  // Withdrawal actuals are keyed by account type; just keep valid years
   const currentYear = new Date().getFullYear();
   const cleanedWithdrawals: typeof actuals.withdrawals = {};
   for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
@@ -172,10 +189,17 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
 function freshStart(): ProfilesState {
   const planId = generateId();
   const profileId = generateId();
+  // Fresh start = untouched plan → user lands on Welcome.
   const plans: Scenario[] = [
-    { id: planId, name: 'Default', input: buildDefaultInput(), actuals: { ...defaultActuals } },
+    {
+      id: planId,
+      name: 'Default',
+      input: buildDefaultInput(),
+      actuals: { ...defaultActuals },
+      touched: false,
+    },
   ];
-  migratePlans(plans);
+  // Skip migratePlans' touched-fill so the flag stays false.
   return {
     profiles: [{ id: profileId, name: 'Default', plans, activePlanId: planId }],
     activeProfileId: profileId,
@@ -183,7 +207,6 @@ function freshStart(): ProfilesState {
 }
 
 function loadProfiles(): ProfilesState {
-  // Try new format first
   try {
     const saved = localStorage.getItem(PROFILES_KEY);
     if (saved) {
@@ -196,10 +219,9 @@ function loadProfiles(): ProfilesState {
       }
     }
   } catch {
-    // migration: ignore parse errors and fall through to legacy paths
+    // ignore
   }
 
-  // Migrate from scenarios format
   try {
     const oldScenarios = localStorage.getItem(OLD_SCENARIOS_KEY);
     if (oldScenarios) {
@@ -209,31 +231,33 @@ function loadProfiles(): ProfilesState {
         const profileId = generateId();
         localStorage.removeItem(OLD_SCENARIOS_KEY);
         return {
-          profiles: [{
-            id: profileId,
-            name: 'Default',
-            plans: parsed.plans,
-            activePlanId: parsed.activePlanId,
-          }],
+          profiles: [
+            {
+              id: profileId,
+              name: 'Default',
+              plans: parsed.plans,
+              activePlanId: parsed.activePlanId,
+            },
+          ],
           activeProfileId: profileId,
         };
       }
     }
   } catch {
-    // migration: ignore parse errors and fall through to next legacy path
+    // ignore
   }
 
-  // Migrate from legacy format
   try {
     const oldInput = localStorage.getItem(OLD_INPUT_KEY);
     const oldPlans = localStorage.getItem(OLD_PLANS_KEY);
-
     if (oldInput) {
       const input = JSON.parse(oldInput) as PlanInput;
       const plans: Scenario[] = [];
-
       if (oldPlans) {
-        const parsed = JSON.parse(oldPlans) as { plans: { id: string; name: string; schedules: WithdrawalSchedule[] }[]; activePlanId: string | null };
+        const parsed = JSON.parse(oldPlans) as {
+          plans: { id: string; name: string; schedules: WithdrawalSchedule[] }[];
+          activePlanId: string | null;
+        };
         for (const p of parsed.plans) {
           plans.push({
             id: p.id,
@@ -243,213 +267,205 @@ function loadProfiles(): ProfilesState {
           });
         }
       }
-
       if (plans.length === 0) {
         const id = generateId();
         plans.push({ id, name: 'Default', input, actuals: { ...defaultActuals } });
       }
-
       migratePlans(plans);
       localStorage.removeItem(OLD_INPUT_KEY);
       localStorage.removeItem(OLD_PLANS_KEY);
-
       const profileId = generateId();
       return {
-        profiles: [{
-          id: profileId,
-          name: 'Default',
-          plans,
-          activePlanId: plans[0].id,
-        }],
+        profiles: [
+          { id: profileId, name: 'Default', plans, activePlanId: plans[0].id },
+        ],
         activeProfileId: profileId,
       };
     }
   } catch {
-    // migration: ignore parse errors and fall through to fresh start
+    // ignore
   }
 
   return freshStart();
 }
 
+type Route = 'plan' | 'history';
+
 export default function App() {
   const [profilesState, setProfilesState] = useState<ProfilesState>(loadProfiles);
-  const [modalYear, setModalYear] = useState<YearResult | null>(null);
-  const [renamingProfile, setRenamingProfile] = useState(false);
-  const [profileRenameValue, setProfileRenameValue] = useState('');
-  const [activeTab, setActiveTab] = useState<'projections' | 'history'>('projections');
+  const [route, setRoute] = useState<Route>('plan');
   const [aboutOpen, setAboutOpen] = useState(false);
   const [importError, setImportError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
+  const { theme, toggle: toggleTheme } = useTheme();
 
-  // Persist
   useEffect(() => {
     localStorage.setItem(PROFILES_KEY, JSON.stringify(profilesState));
   }, [profilesState]);
 
-  const activeProfile = profilesState.profiles.find(p => p.id === profilesState.activeProfileId) ?? profilesState.profiles[0];
-  const activePlan = activeProfile.plans.find(p => p.id === activeProfile.activePlanId) ?? activeProfile.plans[0];
+  const activeProfile =
+    profilesState.profiles.find(p => p.id === profilesState.activeProfileId) ??
+    profilesState.profiles[0];
+  const activePlan =
+    activeProfile.plans.find(p => p.id === activeProfile.activePlanId) ??
+    activeProfile.plans[0];
   const input = activePlan.input;
   const actuals = activePlan.actuals ?? defaultActuals;
   const results = useMemo(() => runSimulation(input, actuals), [input, actuals]);
-  const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
 
-  // Helper to update the active profile
-  const updateActiveProfile = useCallback((updater: (profile: Profile) => Profile) => {
-    setProfilesState(prev => ({
-      ...prev,
-      profiles: prev.profiles.map(p =>
-        p.id === prev.activeProfileId ? updater(p) : p
-      ),
-    }));
-  }, []);
+  const screen: 'welcome' | 'partial' | 'forecast' = useMemo(() => {
+    if (!activePlan.touched) return 'welcome';
+    if (input.expenses.length === 0) return 'partial';
+    return 'forecast';
+  }, [activePlan.touched, input.expenses.length]);
 
-  // --- Profile CRUD ---
+  const updateActiveProfile = useCallback(
+    (updater: (p: Profile) => Profile) =>
+      setProfilesState(prev => ({
+        ...prev,
+        profiles: prev.profiles.map(p =>
+          p.id === prev.activeProfileId ? updater(p) : p,
+        ),
+      })),
+    [],
+  );
 
-  const switchProfile = useCallback((profileId: string) => {
-    setProfilesState(prev => ({ ...prev, activeProfileId: profileId }));
-  }, []);
-
-  const createProfile = useCallback(() => {
-    const profileId = generateId();
-    const planId = generateId();
-    const plans: Scenario[] = [
-      { id: planId, name: 'Default', input: buildDefaultInput(), actuals: { ...defaultActuals } },
-    ];
-    migratePlans(plans);
-    setProfilesState(prev => ({
-      profiles: [...prev.profiles, {
-        id: profileId,
-        name: `Profile ${prev.profiles.length + 1}`,
-        plans,
-        activePlanId: planId,
-      }],
-      activeProfileId: profileId,
-    }));
-  }, []);
-
-  const renameProfile = useCallback((profileId: string, name: string) => {
-    setProfilesState(prev => ({
-      ...prev,
-      profiles: prev.profiles.map(p => p.id === profileId ? { ...p, name } : p),
-    }));
-  }, []);
-
-  const deleteProfile = useCallback((profileId: string) => {
-    setProfilesState(prev => {
-      const remaining = prev.profiles.filter(p => p.id !== profileId);
-      if (remaining.length === 0) return freshStart();
-      const newActive = prev.activeProfileId === profileId ? remaining[0].id : prev.activeProfileId;
-      return { profiles: remaining, activeProfileId: newActive };
-    });
-  }, []);
-
-  // --- Plan CRUD (within active profile) ---
-
-  const handleInputChange = useCallback((newInput: PlanInput) => {
-    updateActiveProfile(profile => ({
-      ...profile,
-      plans: profile.plans.map(p => {
-        if (p.id !== profile.activePlanId) return p;
-        const cleaned = cleanActuals(newInput, p.actuals ?? defaultActuals);
-        return { ...p, input: newInput, actuals: cleaned };
-      }),
-    }));
-  }, [updateActiveProfile]);
-
-  const switchPlan = useCallback((planId: string) => {
-    updateActiveProfile(profile => ({ ...profile, activePlanId: planId }));
-  }, [updateActiveProfile]);
-
-  const createPlan = useCallback((name: string) => {
-    const newId = generateId();
-    updateActiveProfile(profile => {
-      const active = profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
-      return {
+  const handleInputChange = useCallback(
+    (newInput: PlanInput) => {
+      updateActiveProfile(profile => ({
         ...profile,
-        plans: [...profile.plans, {
-          id: newId,
-          name,
-          input: structuredClone(active.input),
-          actuals: structuredClone(active.actuals ?? defaultActuals),
-        }],
-        activePlanId: newId,
-      };
-    });
-  }, [updateActiveProfile]);
+        plans: profile.plans.map(p => {
+          if (p.id !== profile.activePlanId) return p;
+          const cleaned = cleanActuals(newInput, p.actuals ?? defaultActuals);
+          return { ...p, input: newInput, actuals: cleaned, touched: true };
+        }),
+      }));
+    },
+    [updateActiveProfile],
+  );
 
-  const renamePlan = useCallback((planId: string, name: string) => {
-    updateActiveProfile(profile => ({
-      ...profile,
-      plans: profile.plans.map(p => p.id === planId ? { ...p, name } : p),
-    }));
-  }, [updateActiveProfile]);
-
-  const deletePlan = useCallback((planId: string) => {
-    updateActiveProfile(profile => {
-      const remaining = profile.plans.filter(p => p.id !== planId);
-      if (remaining.length === 0) {
-        const id = generateId();
-        const plans: Scenario[] = [
-          { id, name: 'Default', input: buildDefaultInput(), actuals: { ...defaultActuals } },
-        ];
-        migratePlans(plans);
-        return { ...profile, plans, activePlanId: id };
-      }
-      const newActive = profile.activePlanId === planId ? remaining[0].id : profile.activePlanId;
-      return { ...profile, plans: remaining, activePlanId: newActive };
-    });
-  }, [updateActiveProfile]);
-
-  const handleUpdateWithdrawals = useCallback((withdrawals: WithdrawalSchedule[]) => {
-    updateActiveProfile(profile => ({
-      ...profile,
-      plans: profile.plans.map(p =>
-        p.id === profile.activePlanId ? { ...p, input: { ...p.input, withdrawals } } : p
-      ),
-    }));
-  }, [updateActiveProfile]);
-
-  const handleAutoBalance = useCallback((targetCash: number) => {
-    updateActiveProfile(profile => {
-      const active = profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
-      const inputWithoutWithdrawals = { ...active.input, withdrawals: [] as WithdrawalSchedule[] };
-      const schedules = autoBalance(inputWithoutWithdrawals, targetCash, active.actuals);
-      return {
+  const handleActualsChange = useCallback(
+    (newActuals: ActualsData) =>
+      updateActiveProfile(profile => ({
         ...profile,
         plans: profile.plans.map(p =>
-          p.id === profile.activePlanId ? { ...p, input: { ...p.input, withdrawals: schedules } } : p
+          p.id === profile.activePlanId ? { ...p, actuals: newActuals, touched: true } : p,
         ),
-      };
-    });
-  }, [updateActiveProfile]);
+      })),
+    [updateActiveProfile],
+  );
 
-  const handleActualsChange = useCallback((newActuals: ActualsData) => {
+  const handleAutoBalance = useCallback(
+    (targetCash: number) => {
+      updateActiveProfile(profile => {
+        const active =
+          profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
+        const inputWithoutWithdrawals = {
+          ...active.input,
+          withdrawals: [] as WithdrawalSchedule[],
+        };
+        const schedules = autoBalance(inputWithoutWithdrawals, targetCash, active.actuals);
+        return {
+          ...profile,
+          plans: profile.plans.map(p =>
+            p.id === profile.activePlanId
+              ? {
+                  ...p,
+                  input: { ...p.input, withdrawals: schedules, targetCash },
+                  touched: true,
+                }
+              : p,
+          ),
+        };
+      });
+    },
+    [updateActiveProfile],
+  );
+
+  const handleLoadPreset = useCallback(
+    (preset: PresetKey) => {
+      const newInput = buildPresetInput(preset);
+      const newScenario: Scenario = {
+        id: generateId(),
+        name:
+          preset === 'coast' ? 'Coast FIRE' :
+          preset === 'mid' ? 'Mid-career' : 'Approaching retirement',
+        input: newInput,
+        actuals: { ...defaultActuals },
+        touched: true,
+      };
+      migratePlans([newScenario]);
+      newScenario.touched = true;
+      updateActiveProfile(profile => ({
+        ...profile,
+        plans: profile.plans.map(p =>
+          p.id === profile.activePlanId
+            ? { ...newScenario, id: p.id }
+            : p,
+        ),
+      }));
+    },
+    [updateActiveProfile],
+  );
+
+  const handleBuild = useCallback(
+    ({ birthYear, endYear, total }: { birthYear: number; endYear: number; total: number }) => {
+      updateActiveProfile(profile => ({
+        ...profile,
+        plans: profile.plans.map(p => {
+          if (p.id !== profile.activePlanId) return p;
+          // Put the lump sum into starting cash; the splitter step will divide.
+          const updated: PlanInput = {
+            ...p.input,
+            birthYear,
+            endYear,
+            startingCash: total,
+            brokerageBalance: 0,
+            brokerageBasis: 0,
+            rothBalance: 0,
+            iraBalance: 0,
+            // Clear default expenses/incomes so the user adds their own.
+            expenses: [],
+            incomes: [],
+          };
+          return { ...p, input: updated, touched: true };
+        }),
+      }));
+    },
+    [updateActiveProfile],
+  );
+
+  const handleSkipToAdvanced = useCallback(() => {
     updateActiveProfile(profile => ({
       ...profile,
       plans: profile.plans.map(p =>
-        p.id === profile.activePlanId ? { ...p, actuals: newActuals } : p
+        p.id === profile.activePlanId ? { ...p, touched: true } : p,
       ),
     }));
   }, [updateActiveProfile]);
 
-  // --- Export / Import ---
-
+  // Export / Import
   const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(profilesState, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `financial-planner-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `fire-planner-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [profilesState]);
 
+  const handleImport = useCallback(() => {
+    setImportError('');
+    importInputRef.current?.click();
+  }, []);
+
   const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setImportError('');
     const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-importing same filename
+    e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
     reader.onerror = () => setImportError('Could not read the file.');
@@ -457,10 +473,16 @@ export default function App() {
       try {
         const decoded = JSON.parse(reader.result as string) as ProfilesState;
         if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
-          setImportError('That file does not look like an export. Choose a financial-planner-*.json file.');
+          setImportError(
+            'That file does not look like an export. Choose a fire-planner-*.json file.',
+          );
           return;
         }
-        if (!confirm(`Replace all current data with ${decoded.profiles.length} profile(s) from "${file.name}"? Your existing data will be discarded.`)) {
+        if (
+          !confirm(
+            `Replace all current data with ${decoded.profiles.length} profile(s) from "${file.name}"? Your existing data will be discarded.`,
+          )
+        ) {
           return;
         }
         for (const profile of decoded.profiles) {
@@ -475,239 +497,74 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-700 sticky top-0 z-10">
-        <div className="max-w-[120rem] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-y-2">
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <h1 className="text-lg font-bold text-gray-100 tracking-tight">Financial Planner</h1>
-            <span className="text-xs text-amber-400/80 italic">Educational tool &mdash; not financial advice.</span>
-          </div>
-
-          {/* Profile Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Profile:</span>
-            {renamingProfile ? (
-              <input
-                className="bg-gray-800 text-gray-100 text-sm rounded px-2 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none w-36"
-                value={profileRenameValue}
-                onChange={e => setProfileRenameValue(e.target.value)}
-                onBlur={() => {
-                  if (profileRenameValue.trim()) {
-                    renameProfile(activeProfile.id, profileRenameValue.trim());
-                  }
-                  setRenamingProfile(false);
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    if (profileRenameValue.trim()) {
-                      renameProfile(activeProfile.id, profileRenameValue.trim());
-                    }
-                    setRenamingProfile(false);
-                  } else if (e.key === 'Escape') {
-                    setRenamingProfile(false);
-                  }
-                }}
-                autoFocus
-              />
-            ) : (
-              <select
-                className="bg-gray-800 text-gray-100 text-sm rounded px-2 py-1 border border-gray-700 focus:border-blue-500 focus:outline-none cursor-pointer"
-                value={profilesState.activeProfileId}
-                onChange={e => switchProfile(e.target.value)}
-              >
-                {profilesState.profiles.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            )}
-            <button
-              onClick={createProfile}
-              className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
-            >
-              New
-            </button>
-            <button
-              onClick={() => {
-                setProfileRenameValue(activeProfile.name);
-                setRenamingProfile(true);
-              }}
-              className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-            >
-              Rename
-            </button>
-            {profilesState.profiles.length > 1 && (
-              <button
-                onClick={() => deleteProfile(activeProfile.id)}
-                className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-red-600 text-gray-300 hover:text-white transition-colors"
-              >
-                Delete
-              </button>
-            )}
-            <div className="border-l border-gray-700 h-4 mx-1" />
-            <button
-              onClick={handleExport}
-              className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-              title="Download a backup of all your data as a JSON file"
-            >
-              Export
-            </button>
-            <button
-              onClick={() => { setImportError(''); importInputRef.current?.click(); }}
-              className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-              title="Replace all data with a previously exported JSON file"
-            >
-              Import
-            </button>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json,.json"
-              onChange={handleImportFile}
-              className="hidden"
-            />
-          </div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <AppBar
+        profile={activeProfile}
+        scenario={activePlan}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onExport={handleExport}
+        onImport={handleImport}
+        onAbout={() => setAboutOpen(true)}
+        onHistory={() => setRoute('history')}
+        onHome={() => setRoute('plan')}
+      />
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json,.json"
+        onChange={handleImportFile}
+        style={{ display: 'none' }}
+      />
+      {importError && (
+        <div
+          style={{
+            padding: '10px 32px',
+            background: 'var(--negative-soft)',
+            color: 'var(--negative)',
+            fontSize: 13,
+          }}
+        >
+          {importError}
         </div>
-        {importError && (
-          <div className="max-w-[120rem] mx-auto px-4 pb-2 text-xs text-red-400">{importError}</div>
-        )}
-      </header>
+      )}
 
-      {/* Tab Bar */}
-      <div className="bg-gray-900 border-b border-gray-700">
-        <div className="max-w-[120rem] mx-auto px-4 flex gap-0">
-          <button
-            onClick={() => setActiveTab('projections')}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === 'projections'
-                ? 'text-blue-400 border-blue-400'
-                : 'text-gray-400 border-transparent hover:text-gray-200'
-            }`}
-          >
-            Projections
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === 'history'
-                ? 'text-blue-400 border-blue-400'
-                : 'text-gray-400 border-transparent hover:text-gray-200'
-            }`}
-          >
-            History
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'projections' ? (
-        <main className="max-w-[120rem] mx-auto px-4 py-6">
-          <div className="flex flex-wrap gap-6">
-            {/* Input Panel */}
-            <div className="w-full lg:w-[28rem] lg:shrink-0 lg:grow-0">
-              <InputPanel
-                input={input}
-                onChange={handleInputChange}
-                plans={activeProfile.plans}
-                activePlanId={activeProfile.activePlanId}
-                onSwitchPlan={switchPlan}
-                onCreatePlan={createPlan}
-                onRenamePlan={renamePlan}
-                onDeletePlan={deletePlan}
-                onAutoBalance={handleAutoBalance}
-              />
-            </div>
-
-            {/* Results Panel */}
-            <div className="flex-1 min-w-0">
-              <ResultsPanel
-                results={results}
-                onCashFlowClick={setModalYear}
-                penaltyCutoff={penaltyCutoff}
-                inflationRate={input.inflationRate}
-                startYear={input.startYear}
-              />
-            </div>
-          </div>
-        </main>
-      ) : (
-        <ActualsPanel
+      {route === 'history' ? (
+        <HistoryPage
           input={input}
           actuals={actuals}
           results={results}
           onActualsChange={handleActualsChange}
+          onAbout={() => setAboutOpen(true)}
+        />
+      ) : screen === 'welcome' ? (
+        <Welcome
+          onLoadPreset={handleLoadPreset}
+          onBuild={handleBuild}
+          onSkip={handleSkipToAdvanced}
+          onImport={handleImport}
+        />
+      ) : screen === 'partial' ? (
+        <PartialPlan
+          input={input}
+          results={results}
+          onInputChange={handleInputChange}
+          onAutoBalance={handleAutoBalance}
+          onAbout={() => setAboutOpen(true)}
+        />
+      ) : (
+        <PlanForecast
+          input={input}
+          actuals={actuals}
+          results={results}
+          scenarioName={activePlan.name}
+          onInputChange={handleInputChange}
+          onAutoBalance={handleAutoBalance}
+          onAbout={() => setAboutOpen(true)}
         />
       )}
 
-      {/* Cash Flow Modal */}
-      {modalYear && (
-        <CashFlowModal
-          yearResult={modalYear}
-          withdrawals={input.withdrawals}
-          onClose={() => setModalYear(null)}
-          onUpdateWithdrawals={handleUpdateWithdrawals}
-          penaltyCutoff={penaltyCutoff}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      )}
-
-      {/* About Modal */}
-      {aboutOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setAboutOpen(false)}>
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-xl mx-4 text-sm text-gray-300 space-y-3" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-100">About Financial Planner</h2>
-            <p>
-              A long-horizon retirement projection that lets you model income, expenses, investment
-              growth, withdrawals, and the resulting tax over a user-configurable horizon.
-            </p>
-            <h3 className="text-sm font-semibold text-gray-200 pt-2">Your data</h3>
-            <p>
-              Everything stays in this browser&apos;s local storage. There is no account, no server,
-              and nothing is sent anywhere. Use <span className="text-gray-100">Export</span> to download
-              a backup; clearing browser data will erase your work.
-            </p>
-            <h3 className="text-sm font-semibold text-gray-200 pt-2">What this tool models</h3>
-            <ul className="list-disc list-inside text-gray-400 space-y-0.5">
-              <li>US federal income tax (2026 brackets) and long-term capital gains</li>
-              <li>Brokerage, Roth IRA, and Traditional IRA accounts</li>
-              <li>10% early-withdrawal penalty before the year you turn 60</li>
-              <li>Brokerage cost basis (gains taxed, return-of-capital is not)</li>
-              <li>A linear-program optimizer that picks a tax-efficient withdrawal schedule</li>
-            </ul>
-            <h3 className="text-sm font-semibold text-gray-200 pt-2">What it does <em>not</em> model</h3>
-            <ul className="list-disc list-inside text-gray-400 space-y-0.5">
-              <li>State or local income tax</li>
-              <li>Social Security, pensions, RMDs, NIIT, Medicare IRMAA</li>
-              <li>Roth 5-year rule or Roth conversions</li>
-              <li>Inflation on income (only on expenses with the flag enabled)</li>
-              <li>Return variability or sequence-of-returns risk</li>
-            </ul>
-            <p className="text-amber-400/80 italic pt-2">
-              This is an educational tool. It is not financial, tax, or legal advice. For real
-              decisions, consult a qualified professional.
-            </p>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setAboutOpen(false)}
-                className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <footer className="max-w-[120rem] mx-auto px-4 py-3 text-xs text-gray-500 flex items-center justify-between flex-wrap gap-2">
-        <span>Your data stays in your browser &mdash; no account, no tracking, no server.</span>
-        <button
-          onClick={() => setAboutOpen(true)}
-          className="text-gray-400 hover:text-gray-200 underline-offset-2 hover:underline"
-        >
-          About &amp; what this tool does (and doesn&apos;t) cover
-        </button>
-      </footer>
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

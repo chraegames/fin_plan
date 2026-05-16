@@ -1,0 +1,184 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * FIRE Planner — Design tokens (Storyline direction)
+ *
+ * Drop this file into your global stylesheet, then reference the
+ * variables anywhere with var(--token-name). Both light and dark
+ * variants are defined — flip <html data-theme="dark"> to switch.
+ *
+ * The design uses oklch() throughout. All modern browsers support it
+ * (Chrome 111+, Safari 15.4+, Firefox 113+). For older targets, run
+ * through a postcss plugin like postcss-oklab-function.
+ * ─────────────────────────────────────────────────────────────────── */
+
+/* Light is default. Apply `data-theme="dark"` to <html> for dark mode. */
+
+:root,
+:root[data-theme="light"] {
+  /* Surfaces — warm cream paper */
+  --bg:             oklch(0.965 0.013 75);    /* page background */
+  --bg-soft:        oklch(0.945 0.017 75);    /* subtly recessed */
+  --surface:        oklch(0.995 0.005 80);    /* cards */
+  --surface-2:      oklch(0.975 0.010 78);    /* card interior accents */
+  --surface-3:      oklch(0.945 0.017 75);    /* deepest tone */
+  --border:         oklch(0.89 0.018 70);     /* default hairline */
+  --border-soft:    oklch(0.92 0.014 72);     /* very subtle */
+  --border-strong:  oklch(0.78 0.022 65);     /* emphasised */
+
+  /* Ink (text) */
+  --ink:            oklch(0.20 0.018 60);     /* primary text, headlines */
+  --ink-2:          oklch(0.34 0.015 62);     /* secondary text */
+  --ink-3:          oklch(0.50 0.013 65);     /* body copy, labels */
+  --ink-muted:      oklch(0.62 0.012 68);     /* placeholder, hints */
+
+  /* Brand accent — terracotta */
+  --accent:         oklch(0.55 0.14 35);      /* primary brand */
+  --accent-2:       oklch(0.48 0.15 30);      /* hover/active */
+  --accent-soft:    oklch(0.94 0.04 45);      /* tint backgrounds */
+  --accent-tint:    oklch(0.97 0.018 50);     /* lightest wash */
+  --accent-ink:     oklch(0.36 0.13 32);      /* text-on-tint */
+
+  /* Semantic colors */
+  --positive:       oklch(0.46 0.10 152);     /* sage — gains, completed */
+  --positive-soft:  oklch(0.93 0.05 150);
+  --positive-tint:  oklch(0.96 0.025 150);
+  --negative:       oklch(0.48 0.16 28);      /* clay-red — losses, depletion */
+  --negative-soft:  oklch(0.94 0.045 28);
+  --negative-tint:  oklch(0.97 0.02 28);
+  --caution:        oklch(0.62 0.12 70);      /* ochre — warnings */
+  --caution-soft:   oklch(0.94 0.06 80);
+  --info:           oklch(0.50 0.10 245);     /* sober blue — hints, tips */
+  --info-soft:      oklch(0.94 0.04 245);
+
+  /* Chart colors (stacked-area / bar series) */
+  --chart-bg:        oklch(0.995 0.005 80);
+  --chart-cash:      oklch(0.82 0.08 75);     /* warm wheat */
+  --chart-brokerage: oklch(0.62 0.13 38);     /* terracotta */
+  --chart-ira:       oklch(0.58 0.10 152);    /* sage */
+  --chart-roth:      oklch(0.55 0.10 230);    /* slate-blue */
+  --chart-line:      oklch(0.22 0.020 60);    /* net-worth line, deep ink */
+  --chart-line-fill: oklch(0.55 0.14 35 / 0.08);
+  --chart-grid:      oklch(0.90 0.014 70);
+  --chart-label:     oklch(0.52 0.012 65);
+  --chart-marker:    oklch(0.45 0.018 60);    /* timeline annotations */
+  --chart-marker-bg: oklch(0.995 0.005 80);
+
+  /* Elevation */
+  --shadow-card: 0 1px 0 oklch(1 0 0 / 0.4) inset,
+                 0 1px 2px oklch(0.40 0.04 60 / 0.06);
+  --shadow-pop:  0 16px 48px oklch(0.30 0.05 60 / 0.16),
+                 0 2px 8px oklch(0.20 0.05 60 / 0.06);
+}
+
+:root[data-theme="dark"] {
+  --bg:             oklch(0.16 0.008 60);
+  --bg-soft:        oklch(0.19 0.010 62);
+  --surface:        oklch(0.22 0.011 62);
+  --surface-2:      oklch(0.26 0.011 62);
+  --surface-3:      oklch(0.30 0.011 62);
+  --border:         oklch(0.32 0.013 62);
+  --border-soft:    oklch(0.28 0.012 62);
+  --border-strong:  oklch(0.42 0.013 62);
+
+  --ink:            oklch(0.97 0.006 75);
+  --ink-2:          oklch(0.86 0.008 72);
+  --ink-3:          oklch(0.70 0.010 68);
+  --ink-muted:      oklch(0.56 0.012 65);
+
+  --accent:         oklch(0.76 0.15 38);
+  --accent-2:       oklch(0.70 0.16 32);
+  --accent-soft:    oklch(0.30 0.08 35);
+  --accent-tint:    oklch(0.25 0.05 35);
+  --accent-ink:     oklch(0.85 0.13 38);
+
+  --positive:       oklch(0.78 0.13 152);
+  --positive-soft:  oklch(0.30 0.05 150);
+  --positive-tint:  oklch(0.24 0.04 150);
+  --negative:       oklch(0.72 0.16 28);
+  --negative-soft:  oklch(0.30 0.06 28);
+  --negative-tint:  oklch(0.24 0.05 28);
+  --caution:        oklch(0.80 0.13 75);
+  --caution-soft:   oklch(0.30 0.07 75);
+  --info:           oklch(0.75 0.12 240);
+  --info-soft:      oklch(0.30 0.06 240);
+
+  --chart-bg:        oklch(0.22 0.011 62);
+  --chart-cash:      oklch(0.74 0.10 80);
+  --chart-brokerage: oklch(0.74 0.14 38);
+  --chart-ira:       oklch(0.72 0.13 152);
+  --chart-roth:      oklch(0.70 0.13 230);
+  --chart-line:      oklch(0.96 0.008 75);
+  --chart-line-fill: oklch(0.76 0.15 38 / 0.10);
+  --chart-grid:      oklch(0.30 0.011 62);
+  --chart-label:     oklch(0.62 0.011 65);
+  --chart-marker:    oklch(0.86 0.010 70);
+  --chart-marker-bg: oklch(0.22 0.011 62);
+
+  --shadow-card: 0 0 0 1px oklch(0 0 0 / 0.15) inset,
+                 0 6px 20px oklch(0 0 0 / 0.24);
+  --shadow-pop:  0 24px 64px oklch(0 0 0 / 0.5);
+}
+
+/* ─── Spacing scale ───────────────────────────────────────────────── */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 14px;
+  --space-5: 18px;
+  --space-6: 22px;
+  --space-7: 28px;
+  --space-8: 36px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* Radii */
+  --radius-sm:  6px;
+  --radius-md:  8px;
+  --radius-lg:  10px;
+  --radius-xl:  14px;
+  --radius-2xl: 16px;
+  --radius-3xl: 18px;
+  --radius-pill: 99px;
+
+  /* Type scale */
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-sans:    'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* Type sizes — body */
+  --text-xs:    11px;
+  --text-sm:    12.5px;
+  --text-base:  14px;
+  --text-md:    15px;
+  --text-lg:    17px;
+
+  /* Type sizes — display (serif headlines) */
+  --display-xs: 22px;   /* H4 */
+  --display-sm: 26px;   /* card titles, eyebrow + value */
+  --display-md: 30px;   /* page H1 secondary */
+  --display-lg: 42px;   /* H1 medium */
+  --display-xl: 52px;   /* H1 primary */
+  --display-2xl: 64px;  /* welcome hero */
+
+  /* Letter spacing */
+  --tracking-tight:   -0.025em;  /* large display */
+  --tracking-normal:  -0.005em;  /* body */
+  --tracking-wide:     0.08em;   /* eyebrows */
+  --tracking-wider:    0.12em;   /* uppercase callouts */
+}
+
+/* ─── Reusable utility classes ───────────────────────────────────── */
+
+.num,
+.num-mono {
+  font-variant-numeric: tabular-nums;
+}
+.num-mono {
+  font-family: var(--font-mono);
+}
+
+/* ─── Google Font loader ─────────────────────────────────────────────
+ * Paste into <head> if you don't already self-host these:
+ *
+ * <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Geist:wght@300..700&family=Geist+Mono:wght@300..600&display=swap" rel="stylesheet" />
+ * ─────────────────────────────────────────────────────────────────── */

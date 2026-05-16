@@ -44,6 +44,9 @@ export interface Scenario {
   name: string;
   input: PlanInput;
   actuals: ActualsData;
+  /** True once the user has done any editing or loaded a preset.
+   *  Drives the Welcome → Partial → Forecast transition. */
+  touched?: boolean;
 }
 
 export interface PlanInput {
