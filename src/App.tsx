@@ -481,7 +481,6 @@ export default function App() {
         <div className="max-w-[120rem] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-y-2">
           <div className="flex items-baseline gap-3 flex-wrap">
             <h1 className="text-lg font-bold text-gray-100 tracking-tight">Financial Planner</h1>
-            <span className="text-xs text-gray-500">{input.startYear}&ndash;{input.endYear}</span>
             <span className="text-xs text-amber-400/80 italic">Educational tool &mdash; not financial advice.</span>
           </div>
 

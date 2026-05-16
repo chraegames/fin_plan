@@ -1,8 +1,8 @@
 # Financial Planner
 
 A free, browser-only retirement and long-term financial projection tool. Model
-income, expenses, investments, taxes, and withdrawals across a 40-year horizon.
-Everything runs locally; no account, no server, no tracking.
+income, expenses, investments, taxes, and withdrawals across a customizable
+horizon. Everything runs locally; no account, no server, no tracking.
 
 > Educational tool &mdash; not financial, tax, or legal advice.
 
