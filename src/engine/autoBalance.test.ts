@@ -182,4 +182,37 @@ describe('autoBalance honors cash floor', () => {
       `years where cash < 80% of target: ${belowThreshold.map(r => `${r.year}=${Math.round(r.endingCash)}`).join(', ')}`,
     ).toBe(0);
   });
+
+  it('does not drain accounts in early retirement and collapse later', () => {
+    // Regression: prior TARGET_PENALTY=100 made the LP greedily fill target in
+    // the first decade of retirement by draining brokerage/Roth/IRA, then ran
+    // out and let cash spiral to −$3M+ by horizon end. The chosen weight
+    // (TARGET_PENALTY=8) should preserve enough runway for the back half.
+    const input = makeInput({
+      startingCash: 200_000,
+      brokerageBalance: 1_400_000,
+      brokerageBasis: 900_000,
+      rothBalance: 800_000,
+      iraBalance: 1_200_000,
+      returnRate: 0.06,
+      incomes: [{
+        id: 'w', name: 'Wages', type: 'taxable',
+        periods: [{ startYear: START_YEAR, endYear: 2030, amount: 220_000 }],
+      }],
+      expenses: [{
+        id: 'e', name: 'Living', frequency: 'annual', applyInflation: true,
+        periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 130_000 }],
+      }],
+    });
+    const { results } = runAutoAndSim(input, 150_000);
+    const finalNw = results[results.length - 1].totalNetWorth;
+    // The user-reported failure mode left final NW at −$3.6M. Anything past
+    // the floor is acceptable; anything wildly negative means the LP burned
+    // through accounts and ran the plan into bankruptcy.
+    expect(finalNw, `final NW should not be deeply negative (got ${Math.round(finalNw)})`).toBeGreaterThan(-100_000);
+    // No year should be more than $200k below the cash floor either.
+    const worstCash = Math.min(...results.map(r => r.endingCash));
+    const worstYear = results.find(r => r.endingCash === worstCash)?.year ?? -1;
+    expect(worstCash, `min cash at year ${worstYear}`).toBeGreaterThan(-200_000);
+  });
 });
