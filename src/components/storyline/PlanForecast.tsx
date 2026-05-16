@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PlanInput, ActualsData, SimulationResult, WithdrawalSchedule } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
-import { generateInsights } from '../../engine/insights';
 import { deflateResults } from '../../utils/deflate';
 import { formatDollars, formatDollarsCompact } from '../../utils/format';
 import { Page } from '../layout/Page';
@@ -9,7 +8,6 @@ import { SectionHead } from '../layout/SectionHead';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { KPIChip } from './cards/KPIChip';
-import { InsightCard } from './cards/InsightCard';
 import { SummaryCard, type SummaryRow } from './cards/SummaryCard';
 import { NetWorthChart, type ChartMarker } from './charts/NetWorthChart';
 import { WithdrawalsChart } from './charts/WithdrawalsChart';
@@ -62,20 +60,39 @@ export function PlanForecast({
     let peakNetWorth = -Infinity;
     let peakYear = last.year;
     let totalTax = 0;
-    let cashGap: number | null = null;
+    let totalInflow = 0;
+    let minCash = Infinity;
+    let minCashYear = last.year;
+    let yearsBelowTarget = 0;
+    const targetFloor = input.targetCash * 0.95;
     for (const r of displayResults) {
       totalTax += r.totalTax;
+      totalInflow +=
+        r.totalIncome + r.withdrawalsBrokerage + r.withdrawalsIra + r.withdrawalsRoth;
       if (r.totalNetWorth > peakNetWorth) {
         peakNetWorth = r.totalNetWorth;
         peakYear = r.year;
       }
-      if (cashGap == null && r.endingCash < input.targetCash * 0.95) cashGap = r.year;
+      if (r.endingCash < minCash) {
+        minCash = r.endingCash;
+        minCashYear = r.year;
+      }
+      if (r.endingCash < targetFloor) yearsBelowTarget += 1;
     }
     const depletion = displayResults.find(r => r.totalNetWorth < 1);
-    return { last, peakNetWorth, peakYear, totalTax, cashGap, depletion };
+    const effectiveTaxRate = totalInflow > 0 ? totalTax / totalInflow : 0;
+    return {
+      last,
+      peakNetWorth,
+      peakYear,
+      totalTax,
+      minCash,
+      minCashYear,
+      yearsBelowTarget,
+      effectiveTaxRate,
+      depletion,
+    };
   }, [displayResults, input.targetCash]);
-
-  const insights = useMemo(() => generateInsights(input, results), [input, results]);
 
   const markers: ChartMarker[] = useMemo(() => {
     const m: ChartMarker[] = [{ year: input.startYear, label: 'Today', tone: 'neutral' }];
@@ -96,10 +113,18 @@ export function PlanForecast({
     return <Page><div style={{ color: 'var(--ink-muted)' }}>No simulation data yet.</div></Page>;
   }
 
-  const { last, peakNetWorth, peakYear, totalTax, depletion } = summary;
+  const {
+    last,
+    peakNetWorth,
+    peakYear,
+    minCash,
+    minCashYear,
+    yearsBelowTarget,
+    effectiveTaxRate,
+    depletion,
+  } = summary;
   const horizonYears = displayResults.length;
   const yearsFunded = depletion ? depletion.year - input.startYear : horizonYears;
-  const realReturn = ((1 + input.returnRate) / (1 + input.inflationRate) - 1) * 100;
 
   return (
     <Page maxWidth={1280}>
@@ -166,14 +191,24 @@ export function PlanForecast({
           <KPIChip
             label="Final net worth"
             value={formatDollarsCompact(last.totalNetWorth)}
-            sub={`by ${last.year}`}
+            sub={depletion ? `depletes ${depletion.year}` : `by ${last.year}`}
             tone={last.totalNetWorth < 0 ? 'negative' : 'neutral'}
           />
           <KPIChip
-            label="Final cash"
-            value={formatDollarsCompact(last.endingCash)}
-            sub={last.endingCash < input.targetCash ? 'below target' : 'on track'}
-            tone={last.endingCash < input.targetCash ? 'caution' : 'positive'}
+            label="Min cash"
+            value={formatDollarsCompact(minCash)}
+            sub={
+              yearsBelowTarget === 0
+                ? 'always at target'
+                : `${yearsBelowTarget} yr${yearsBelowTarget === 1 ? '' : 's'} below target · ${minCashYear}`
+            }
+            tone={
+              minCash < 0
+                ? 'negative'
+                : yearsBelowTarget > 0
+                  ? 'caution'
+                  : 'positive'
+            }
           />
           <KPIChip
             label="Penalty-free"
@@ -182,15 +217,9 @@ export function PlanForecast({
             tone="positive"
           />
           <KPIChip
-            label="Lifetime tax"
-            value={formatDollarsCompact(totalTax)}
-            sub={`across ${horizonYears} yrs`}
-          />
-          <KPIChip
-            label="Real return"
-            value={`${realReturn.toFixed(1)}%`}
-            sub={`${(input.returnRate * 100).toFixed(1)}% − ${(input.inflationRate * 100).toFixed(1)}%`}
-            tone={realReturn > 0 ? 'positive' : 'caution'}
+            label="Effective tax"
+            value={`${(effectiveTaxRate * 100).toFixed(0)}%`}
+            sub={`${formatDollarsCompact(summary.totalTax)} over ${horizonYears} yrs`}
           />
         </div>
 
@@ -308,34 +337,6 @@ export function PlanForecast({
           {tab === 'cashflow' && <CashFlowChart results={displayResults} />}
         </article>
       </section>
-
-      {insights.length > 0 && (
-        <section>
-          <SectionHead
-            overline="Observations"
-            title="Why the plan looks the way it does"
-            sub="Auto-generated insights from the simulation. They update as you change inputs."
-          />
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${Math.min(insights.length, 4)}, 1fr)`,
-              gap: 14,
-            }}
-          >
-            {insights.map(it => (
-              <InsightCard
-                key={it.id}
-                tone={it.tone}
-                icon={it.icon}
-                title={it.title}
-                detail={it.detail}
-                meta={it.meta}
-              />
-            ))}
-          </div>
-        </section>
-      )}
 
       <section>
         <SectionHead
