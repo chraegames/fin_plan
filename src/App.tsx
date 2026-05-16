@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { defaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
@@ -273,10 +273,9 @@ export default function App() {
   const [renamingProfile, setRenamingProfile] = useState(false);
   const [profileRenameValue, setProfileRenameValue] = useState('');
   const [activeTab, setActiveTab] = useState<'projections' | 'history'>('projections');
-  const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [importModalOpen, setImportModalOpen] = useState(false);
-  const [importValue, setImportValue] = useState('');
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [importError, setImportError] = useState('');
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Persist
   useEffect(() => {
@@ -429,6 +428,48 @@ export default function App() {
     }));
   }, [updateActiveProfile]);
 
+  // --- Export / Import ---
+
+  const handleExport = useCallback(() => {
+    const blob = new Blob([JSON.stringify(profilesState, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financial-planner-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [profilesState]);
+
+  const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError('');
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-importing same filename
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = () => setImportError('Could not read the file.');
+    reader.onload = () => {
+      try {
+        const decoded = JSON.parse(reader.result as string) as ProfilesState;
+        if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
+          setImportError('That file does not look like an export. Choose a financial-planner-*.json file.');
+          return;
+        }
+        if (!confirm(`Replace all current data with ${decoded.profiles.length} profile(s) from "${file.name}"? Your existing data will be discarded.`)) {
+          return;
+        }
+        for (const profile of decoded.profiles) {
+          migratePlans(profile.plans);
+        }
+        setProfilesState(decoded);
+      } catch {
+        setImportError('That file is not valid JSON.');
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Header */}
@@ -502,19 +543,31 @@ export default function App() {
             )}
             <div className="border-l border-gray-700 h-4 mx-1" />
             <button
-              onClick={() => setExportModalOpen(true)}
+              onClick={handleExport}
               className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+              title="Download a backup of all your data as a JSON file"
             >
               Export
             </button>
             <button
-              onClick={() => { setImportValue(''); setImportError(''); setImportModalOpen(true); }}
+              onClick={() => { setImportError(''); importInputRef.current?.click(); }}
               className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+              title="Replace all data with a previously exported JSON file"
             >
               Import
             </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportFile}
+              className="hidden"
+            />
           </div>
         </div>
+        {importError && (
+          <div className="max-w-[120rem] mx-auto px-4 pb-2 text-xs text-red-400">{importError}</div>
+        )}
       </header>
 
       {/* Tab Bar */}
@@ -593,29 +646,44 @@ export default function App() {
         />
       )}
 
-      {/* Export Modal */}
-      {exportModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setExportModalOpen(false)}>
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-100 mb-3">Export Data</h2>
-            <p className="text-sm text-gray-400 mb-3">Copy this string and paste it into the Import dialog on another machine.</p>
-            <textarea
-              className="w-full h-40 bg-gray-900 text-gray-300 text-xs font-mono rounded border border-gray-600 p-3 focus:outline-none focus:border-blue-500 resize-none"
-              readOnly
-              value={btoa(encodeURIComponent(JSON.stringify(profilesState)))}
-              onFocus={e => e.target.select()}
-            />
-            <div className="flex justify-end gap-2 mt-4">
+      {/* About Modal */}
+      {aboutOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setAboutOpen(false)}>
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-xl mx-4 text-sm text-gray-300 space-y-3" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-100">About Financial Planner</h2>
+            <p>
+              A long-horizon retirement projection that lets you model income, expenses, investment
+              growth, withdrawals, and the resulting tax over up to {END_YEAR - START_YEAR + 1} years.
+            </p>
+            <h3 className="text-sm font-semibold text-gray-200 pt-2">Your data</h3>
+            <p>
+              Everything stays in this browser&apos;s local storage. There is no account, no server,
+              and nothing is sent anywhere. Use <span className="text-gray-100">Export</span> to download
+              a backup; clearing browser data will erase your work.
+            </p>
+            <h3 className="text-sm font-semibold text-gray-200 pt-2">What this tool models</h3>
+            <ul className="list-disc list-inside text-gray-400 space-y-0.5">
+              <li>US federal income tax (2026 brackets) and long-term capital gains</li>
+              <li>Brokerage, Roth IRA, and Traditional IRA accounts</li>
+              <li>10% early-withdrawal penalty before the year you turn 60</li>
+              <li>Brokerage cost basis (gains taxed, return-of-capital is not)</li>
+              <li>A linear-program optimizer that picks a tax-efficient withdrawal schedule</li>
+            </ul>
+            <h3 className="text-sm font-semibold text-gray-200 pt-2">What it does <em>not</em> model</h3>
+            <ul className="list-disc list-inside text-gray-400 space-y-0.5">
+              <li>State or local income tax</li>
+              <li>Social Security, pensions, RMDs, NIIT, Medicare IRMAA</li>
+              <li>Roth 5-year rule or Roth conversions</li>
+              <li>Inflation on income (only on expenses with the flag enabled)</li>
+              <li>Return variability or sequence-of-returns risk</li>
+            </ul>
+            <p className="text-amber-400/80 italic pt-2">
+              This is an educational tool. It is not financial, tax, or legal advice. For real
+              decisions, consult a qualified professional.
+            </p>
+            <div className="flex justify-end pt-2">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(btoa(encodeURIComponent(JSON.stringify(profilesState))));
-                }}
-                className="text-sm px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
-              >
-                Copy
-              </button>
-              <button
-                onClick={() => setExportModalOpen(false)}
+                onClick={() => setAboutOpen(false)}
                 className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
               >
                 Close
@@ -625,53 +693,15 @@ export default function App() {
         </div>
       )}
 
-      {/* Import Modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setImportModalOpen(false)}>
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-100 mb-3">Import Data</h2>
-            <p className="text-sm text-gray-400 mb-3">Paste an exported string below. This will replace all your current data.</p>
-            <textarea
-              className="w-full h-40 bg-gray-900 text-gray-300 text-xs font-mono rounded border border-gray-600 p-3 focus:outline-none focus:border-blue-500 resize-none"
-              placeholder="Paste exported string here..."
-              value={importValue}
-              onChange={e => { setImportValue(e.target.value); setImportError(''); }}
-            />
-            {importError && (
-              <p className="text-sm text-red-400 mt-2">{importError}</p>
-            )}
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => {
-                  try {
-                    const decoded = JSON.parse(decodeURIComponent(atob(importValue.trim()))) as ProfilesState;
-                    if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
-                      setImportError('Invalid data format.');
-                      return;
-                    }
-                    for (const profile of decoded.profiles) {
-                      migratePlans(profile.plans);
-                    }
-                    setProfilesState(decoded);
-                    setImportModalOpen(false);
-                  } catch {
-                    setImportError('Failed to decode. Make sure you pasted the full exported string.');
-                  }
-                }}
-                className="text-sm px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
-              >
-                Import
-              </button>
-              <button
-                onClick={() => setImportModalOpen(false)}
-                className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <footer className="max-w-[120rem] mx-auto px-4 py-3 text-xs text-gray-500 flex items-center justify-between flex-wrap gap-2">
+        <span>Your data stays in your browser &mdash; no account, no tracking, no server.</span>
+        <button
+          onClick={() => setAboutOpen(true)}
+          className="text-gray-400 hover:text-gray-200 underline-offset-2 hover:underline"
+        >
+          About &amp; what this tool does (and doesn&apos;t) cover
+        </button>
+      </footer>
     </div>
   );
 }
