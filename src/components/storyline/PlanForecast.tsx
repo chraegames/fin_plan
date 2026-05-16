@@ -238,21 +238,63 @@ export function PlanForecast({
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
               <span style={{ color: 'var(--ink-muted)' }}>Show in</span>
-              <button
-                onClick={() => setRealDollars(false)}
-                style={toggleStyle(!realDollars)}
+              <div
+                role="tablist"
+                aria-label="Dollar basis"
+                style={{
+                  display: 'inline-flex',
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: 2,
+                  gap: 2,
+                }}
               >
-                Nominal $
-              </button>
-              <button
-                onClick={() => setRealDollars(true)}
-                style={toggleStyle(realDollars)}
-                title={`Adjust for ${(input.inflationRate * 100).toFixed(1)}% inflation`}
-              >
-                Today's $
-              </button>
+                <button
+                  role="tab"
+                  aria-selected={!realDollars}
+                  onClick={() => setRealDollars(false)}
+                  style={toggleStyle(!realDollars)}
+                  title="Future-year dollar amounts (what the simulation outputs)"
+                >
+                  Nominal $
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={realDollars}
+                  onClick={() => setRealDollars(true)}
+                  disabled={input.inflationRate === 0}
+                  style={{
+                    ...toggleStyle(realDollars),
+                    opacity: input.inflationRate === 0 ? 0.4 : 1,
+                    cursor: input.inflationRate === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                  title={
+                    input.inflationRate === 0
+                      ? 'Set inflation > 0% to enable this'
+                      : `Deflate by ${(input.inflationRate * 100).toFixed(1)}% / yr — dollar amounts as if all years were at start-year prices`
+                  }
+                >
+                  Today's $
+                </button>
+              </div>
+              {realDollars && input.inflationRate > 0 && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--accent-ink)',
+                    background: 'var(--accent-tint)',
+                    padding: '3px 8px',
+                    borderRadius: 99,
+                    border: '1px solid var(--accent)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ÷ {(input.inflationRate * 100).toFixed(1)}% inflation
+                </span>
+              )}
             </div>
           </div>
 
@@ -393,13 +435,17 @@ export function PlanForecast({
 
 function toggleStyle(active: boolean): React.CSSProperties {
   return {
-    padding: '4px 10px',
+    padding: '5px 12px',
     borderRadius: 6,
     fontSize: 12,
-    fontWeight: 500,
+    fontWeight: active ? 600 : 500,
     background: active ? 'var(--accent)' : 'transparent',
     color: active ? 'oklch(0.995 0.005 80)' : 'var(--ink-3)',
-    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    border: 'none',
+    boxShadow: active
+      ? '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.40 0.04 60 / 0.18)'
+      : 'none',
+    transition: 'background-color 120ms ease, color 120ms ease',
   };
 }
 
@@ -487,12 +533,27 @@ function WithdrawalsCard({
   onEdit: () => void;
   onAutoBalance: () => void;
 }) {
+  const [flashing, setFlashing] = useState(false);
   const anyScheduled = input.withdrawals.some(w => w.periods.some(p => p.amount > 0));
+  const isFirstTime = !anyScheduled || input.targetCash === 0;
+
+  const handleClick = () => {
+    if (isFirstTime) {
+      // First time: route through the drawer so the user can set target cash
+      // and read what the optimizer does before committing.
+      onEdit();
+      return;
+    }
+    onAutoBalance();
+    setFlashing(true);
+    setTimeout(() => setFlashing(false), 1600);
+  };
+
   return (
     <SummaryCard
       eyebrow="Withdrawal strategy"
-      title={anyScheduled ? 'Configured' : 'Empty'}
-      sub={`target cash ${formatDollarsCompact(input.targetCash)}`}
+      title={anyScheduled ? 'Configured' : 'Not set up'}
+      sub={anyScheduled ? `target cash ${formatDollarsCompact(input.targetCash)}` : 'optimizer ready'}
       highlight
       rows={[
         { label: 'Brokerage', value: 'taxable', color: 'var(--chart-brokerage)' },
@@ -501,15 +562,35 @@ function WithdrawalsCard({
       ]}
       onEdit={onEdit}
       cta={
-        <Button
-          variant="primary"
-          size="md"
-          onClick={onAutoBalance}
-          leading={<Icon name="sparkle" />}
-          style={{ width: '100%' }}
-        >
-          Re-generate
-        </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleClick}
+            leading={<Icon name={flashing ? 'check' : 'sparkle'} />}
+            style={{ width: '100%' }}
+            disabled={flashing}
+            title={
+              isFirstTime
+                ? 'Open the editor to set a target cash buffer and run the optimizer.'
+                : 'Re-run the LP optimizer to pick a tax-efficient withdrawal schedule.'
+            }
+          >
+            {flashing ? 'Regenerated' : isFirstTime ? 'Set up withdrawals' : 'Re-generate'}
+          </Button>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-muted)',
+              lineHeight: 1.4,
+              textAlign: 'center',
+            }}
+          >
+            {isFirstTime
+              ? 'Choose a target cash buffer; the optimizer drafts the rest.'
+              : 'Rewrites the schedule for the current plan — keeps the buffer near target.'}
+          </div>
+        </div>
       }
     />
   );

@@ -355,6 +355,126 @@ export default function App() {
     [updateActiveProfile],
   );
 
+  // --- Plan CRUD ---
+
+  const switchPlan = useCallback(
+    (planId: string) =>
+      updateActiveProfile(profile => ({ ...profile, activePlanId: planId })),
+    [updateActiveProfile],
+  );
+
+  const createPlan = useCallback(
+    (name: string) => {
+      const newId = generateId();
+      updateActiveProfile(profile => {
+        const active =
+          profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
+        return {
+          ...profile,
+          plans: [
+            ...profile.plans,
+            {
+              id: newId,
+              name,
+              input: structuredClone(active.input),
+              actuals: structuredClone(active.actuals ?? defaultActuals),
+              touched: active.touched ?? true,
+            },
+          ],
+          activePlanId: newId,
+        };
+      });
+    },
+    [updateActiveProfile],
+  );
+
+  const renamePlan = useCallback(
+    (planId: string, name: string) =>
+      updateActiveProfile(profile => ({
+        ...profile,
+        plans: profile.plans.map(p => (p.id === planId ? { ...p, name } : p)),
+      })),
+    [updateActiveProfile],
+  );
+
+  const deletePlan = useCallback(
+    (planId: string) => {
+      updateActiveProfile(profile => {
+        const remaining = profile.plans.filter(p => p.id !== planId);
+        if (remaining.length === 0) {
+          const id = generateId();
+          const plans: Scenario[] = [
+            {
+              id,
+              name: 'Default',
+              input: buildDefaultInput(),
+              actuals: { ...defaultActuals },
+              touched: false,
+            },
+          ];
+          return { ...profile, plans, activePlanId: id };
+        }
+        const newActive =
+          profile.activePlanId === planId ? remaining[0].id : profile.activePlanId;
+        return { ...profile, plans: remaining, activePlanId: newActive };
+      });
+    },
+    [updateActiveProfile],
+  );
+
+  // --- Profile CRUD ---
+
+  const switchProfile = useCallback(
+    (profileId: string) =>
+      setProfilesState(prev => ({ ...prev, activeProfileId: profileId })),
+    [],
+  );
+
+  const createProfile = useCallback(() => {
+    const profileId = generateId();
+    const planId = generateId();
+    const plans: Scenario[] = [
+      {
+        id: planId,
+        name: 'Default',
+        input: buildDefaultInput(),
+        actuals: { ...defaultActuals },
+        touched: false,
+      },
+    ];
+    setProfilesState(prev => ({
+      profiles: [
+        ...prev.profiles,
+        {
+          id: profileId,
+          name: `Profile ${prev.profiles.length + 1}`,
+          plans,
+          activePlanId: planId,
+        },
+      ],
+      activeProfileId: profileId,
+    }));
+  }, []);
+
+  const renameProfile = useCallback(
+    (profileId: string, name: string) =>
+      setProfilesState(prev => ({
+        ...prev,
+        profiles: prev.profiles.map(p => (p.id === profileId ? { ...p, name } : p)),
+      })),
+    [],
+  );
+
+  const deleteProfile = useCallback((profileId: string) => {
+    setProfilesState(prev => {
+      const remaining = prev.profiles.filter(p => p.id !== profileId);
+      if (remaining.length === 0) return freshStart();
+      const newActive =
+        prev.activeProfileId === profileId ? remaining[0].id : prev.activeProfileId;
+      return { profiles: remaining, activeProfileId: newActive };
+    });
+  }, []);
+
   const handleAutoBalance = useCallback(
     (targetCash: number) => {
       updateActiveProfile(profile => {
@@ -499,15 +619,25 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <AppBar
-        profile={activeProfile}
-        scenario={activePlan}
+        profilesState={profilesState}
+        activeProfile={activeProfile}
+        activeScenario={activePlan}
         theme={theme}
+        route={route}
         onToggleTheme={toggleTheme}
         onExport={handleExport}
         onImport={handleImport}
         onAbout={() => setAboutOpen(true)}
-        onHistory={() => setRoute('history')}
-        onHome={() => setRoute('plan')}
+        onGoHistory={() => setRoute('history')}
+        onGoPlan={() => setRoute('plan')}
+        onSwitchPlan={switchPlan}
+        onCreatePlan={createPlan}
+        onRenamePlan={renamePlan}
+        onDeletePlan={deletePlan}
+        onSwitchProfile={switchProfile}
+        onCreateProfile={createProfile}
+        onRenameProfile={renameProfile}
+        onDeleteProfile={deleteProfile}
       />
       <input
         ref={importInputRef}

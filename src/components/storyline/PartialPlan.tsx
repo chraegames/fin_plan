@@ -84,13 +84,13 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
       {
         num: 6,
         title: 'Choose withdrawal strategy',
-        sub: 'auto-balance for tax efficiency',
+        sub: 'set a target cash buffer, then auto-balance',
         done: hasWithdrawals,
-        cta: hasWithdrawals ? undefined : 'Run optimizer',
-        onClick: () => onAutoBalance(input.targetCash),
+        cta: hasWithdrawals ? undefined : 'Set up withdrawals',
+        onClick: () => setDrawer('withdrawals'),
       },
     ],
-    [total, needsSplit, hasExpenses, hasIncome, hasWithdrawals, input.targetCash, onAutoBalance],
+    [total, needsSplit, hasExpenses, hasIncome, hasWithdrawals],
   );
 
   const stepsDone = steps.filter(s => s.done).length;
@@ -392,12 +392,12 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
           <EmptyCard
             eyebrow="Withdrawal strategy"
             title="We'll suggest one"
-            description="Once you've added expenses, the optimizer can pick a tax-efficient withdrawal schedule across your accounts."
+            description="Once you've added expenses, set a target cash buffer and the optimizer will pick a tax-efficient withdrawal schedule across your accounts."
             examples={['Auto-balanced', 'Tax-efficient', 'Penalty-aware']}
             icon="sparkle"
             locked={!hasExpenses}
-            ctaLabel="Run optimizer"
-            onAdd={() => onAutoBalance(input.targetCash)}
+            ctaLabel="Set up withdrawals"
+            onAdd={() => setDrawer('withdrawals')}
           />
         </div>
       </section>

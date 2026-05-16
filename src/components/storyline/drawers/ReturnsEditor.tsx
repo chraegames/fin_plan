@@ -1,4 +1,4 @@
-import { MoneyInput, PercentInput, YearInput } from '../../primitives/Input';
+import { PercentInput, YearInput } from '../../primitives/Input';
 import type { PlanInput } from '../../../models/types';
 import { MIN_YEAR, MAX_YEAR, earlyWithdrawalCutoff } from '../../../engine/constants';
 
@@ -41,17 +41,6 @@ export function ReturnsEditor({ input, onChange }: ReturnsEditorProps) {
           <PercentInput
             value={input.inflationRate}
             onChange={v => onChange({ inflationRate: v })}
-            width="100%"
-          />
-        }
-      />
-      <Row
-        label="Target cash"
-        hint="Used by the auto-balance optimizer as the cash buffer floor"
-        control={
-          <MoneyInput
-            value={input.targetCash}
-            onChange={v => onChange({ targetCash: v })}
             width="100%"
           />
         }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '../../primitives/Button';
 import { Icon } from '../../primitives/Icon';
 import { MoneyInput } from '../../primitives/Input';
@@ -35,6 +36,13 @@ export function WithdrawalEditor({
   const update = (id: string, updates: Partial<WithdrawalSchedule>) =>
     onChange(items.map(it => (it.id === id ? { ...it, ...updates } : it)));
 
+  const [flashing, setFlashing] = useState(false);
+  const handleAutoBalance = () => {
+    onAutoBalance(targetCash);
+    setFlashing(true);
+    setTimeout(() => setFlashing(false), 1600);
+  };
+
   return (
     <>
       <article
@@ -66,10 +74,12 @@ export function WithdrawalEditor({
           style={{
             fontSize: 13,
             color: 'var(--ink-2)',
-            lineHeight: 1.4,
+            lineHeight: 1.5,
           }}
         >
-          Replace withdrawals with a tax-efficient schedule that keeps cash near your target.
+          The LP optimizer picks a tax-efficient withdrawal schedule across your brokerage, Roth,
+          and IRA accounts — drawing brokerage first, preserving Roth for last, and keeping the
+          ending cash balance close to your <b>target</b> each year.
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Target cash</span>
@@ -77,12 +87,23 @@ export function WithdrawalEditor({
           <Button
             variant="primary"
             size="md"
-            onClick={() => onAutoBalance(targetCash)}
-            leading={<Icon name="sparkle" />}
+            onClick={handleAutoBalance}
+            disabled={flashing || targetCash <= 0}
+            leading={<Icon name={flashing ? 'check' : 'sparkle'} />}
+            title={
+              targetCash <= 0
+                ? 'Set a target cash amount above to enable.'
+                : 'Replace the current withdrawal schedule with an optimized one.'
+            }
           >
-            Re-generate
+            {flashing ? 'Regenerated' : 'Re-generate schedule'}
           </Button>
         </div>
+        {targetCash <= 0 && (
+          <div style={{ fontSize: 11.5, color: 'var(--caution)' }}>
+            Enter a target cash amount to enable Re-generate.
+          </div>
+        )}
       </article>
 
       {(['brokerage', 'roth', 'ira'] as AccountType[]).map(acct => {
