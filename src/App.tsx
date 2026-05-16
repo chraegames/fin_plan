@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { defaultInput, defaultActuals, generateId } from './engine/defaults';
+import { buildDefaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
-import { START_YEAR, END_YEAR, earlyWithdrawalCutoff } from './engine/constants';
+import { earlyWithdrawalCutoff } from './engine/constants';
 import type { PlanInput, ActualsData, YearResult, WithdrawalSchedule, Scenario, Profile, ProfilesState } from './models/types';
 import InputPanel from './components/InputPanel';
 import ResultsPanel from './components/ResultsPanel';
@@ -34,6 +34,9 @@ function migratePlans(plans: Scenario[]): Scenario[] {
   for (const plan of plans) {
     if (plan.input.inflationRate == null) plan.input.inflationRate = 0.03;
     if (plan.input.targetCash == null) plan.input.targetCash = 200000;
+    // Backfill projection horizon. Existing plans assumed 2026-2065.
+    if (plan.input.startYear == null) plan.input.startYear = 2026;
+    if (plan.input.endYear == null) plan.input.endYear = 2065;
     // birthYear default 1985 means the 10% early-withdrawal penalty stops at
     // year 2045 (≈ age 60). Users can edit this in the UI.
     if (plan.input.birthYear == null) plan.input.birthYear = 1985;
@@ -69,13 +72,13 @@ function migratePlans(plans: Scenario[]): Scenario[] {
     // always has all three to render. Was previously a mount-time effect
     // in WithdrawalSection — moved here so the data is consistent at load time.
     const accountTypes: Array<'brokerage' | 'roth' | 'ira'> = ['brokerage', 'roth', 'ira'];
-    const defaultWithdrawalStart = earlyWithdrawalCutoff(plan.input.birthYear);
+    const defaultWithdrawalStart = Math.max(plan.input.startYear, earlyWithdrawalCutoff(plan.input.birthYear));
     for (const accountType of accountTypes) {
       if (!plan.input.withdrawals.some(w => w.accountType === accountType)) {
         plan.input.withdrawals.push({
           id: generateId(),
           accountType,
-          periods: [{ startYear: defaultWithdrawalStart, endYear: END_YEAR, amount: 0 }],
+          periods: [{ startYear: defaultWithdrawalStart, endYear: plan.input.endYear, amount: 0 }],
         });
       }
     }
@@ -105,6 +108,7 @@ function migratePlans(plans: Scenario[]): Scenario[] {
 }
 
 function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
+  const START = input.startYear;
   const clean = (
     items: { id: string; periods: { startYear: number; endYear: number }[] }[],
     data: Record<string, Record<number, number>>,
@@ -136,7 +140,7 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
     const cleaned: Record<number, number> = {};
     for (const [yearStr, val] of Object.entries(yearMap)) {
       const year = Number(yearStr);
-      if (year >= START_YEAR && year <= currentYear) cleaned[year] = val;
+      if (year >= START && year <= currentYear) cleaned[year] = val;
     }
     if (Object.keys(cleaned).length > 0) cleanedWithdrawals[acctType] = cleaned;
   }
@@ -147,14 +151,14 @@ function cleanActuals(input: PlanInput, actuals: ActualsData): ActualsData {
     const cleaned: Record<number, number> = {};
     for (const [yearStr, val] of Object.entries(yearMap)) {
       const year = Number(yearStr);
-      if (year >= START_YEAR && year <= currentYear) cleaned[year] = val;
+      if (year >= START && year <= currentYear) cleaned[year] = val;
     }
     if (Object.keys(cleaned).length > 0) cleanedEndingBalances[acctType] = cleaned;
   }
   const cleanedEndingCash: Record<number, number> = {};
   for (const [yearStr, val] of Object.entries(actuals.endingCash ?? {})) {
     const year = Number(yearStr);
-    if (year >= START_YEAR && year <= currentYear) cleanedEndingCash[year] = val;
+    if (year >= START && year <= currentYear) cleanedEndingCash[year] = val;
   }
   return {
     incomes: clean(input.incomes, actuals.incomes),
@@ -169,7 +173,7 @@ function freshStart(): ProfilesState {
   const planId = generateId();
   const profileId = generateId();
   const plans: Scenario[] = [
-    { id: planId, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
+    { id: planId, name: 'Default', input: buildDefaultInput(), actuals: { ...defaultActuals } },
   ];
   migratePlans(plans);
   return {
@@ -309,7 +313,7 @@ export default function App() {
     const profileId = generateId();
     const planId = generateId();
     const plans: Scenario[] = [
-      { id: planId, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
+      { id: planId, name: 'Default', input: buildDefaultInput(), actuals: { ...defaultActuals } },
     ];
     migratePlans(plans);
     setProfilesState(prev => ({
@@ -386,7 +390,7 @@ export default function App() {
       if (remaining.length === 0) {
         const id = generateId();
         const plans: Scenario[] = [
-          { id, name: 'Default', input: structuredClone(defaultInput), actuals: { ...defaultActuals } },
+          { id, name: 'Default', input: buildDefaultInput(), actuals: { ...defaultActuals } },
         ];
         migratePlans(plans);
         return { ...profile, plans, activePlanId: id };
@@ -477,7 +481,7 @@ export default function App() {
         <div className="max-w-[120rem] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-y-2">
           <div className="flex items-baseline gap-3 flex-wrap">
             <h1 className="text-lg font-bold text-gray-100 tracking-tight">Financial Planner</h1>
-            <span className="text-xs text-gray-500">{START_YEAR}&ndash;{END_YEAR}</span>
+            <span className="text-xs text-gray-500">{input.startYear}&ndash;{input.endYear}</span>
             <span className="text-xs text-amber-400/80 italic">Educational tool &mdash; not financial advice.</span>
           </div>
 
@@ -622,6 +626,7 @@ export default function App() {
                 onCashFlowClick={setModalYear}
                 penaltyCutoff={penaltyCutoff}
                 inflationRate={input.inflationRate}
+                startYear={input.startYear}
               />
             </div>
           </div>
@@ -643,6 +648,8 @@ export default function App() {
           onClose={() => setModalYear(null)}
           onUpdateWithdrawals={handleUpdateWithdrawals}
           penaltyCutoff={penaltyCutoff}
+          startYear={input.startYear}
+          endYear={input.endYear}
         />
       )}
 
@@ -653,7 +660,7 @@ export default function App() {
             <h2 className="text-lg font-semibold text-gray-100">About Financial Planner</h2>
             <p>
               A long-horizon retirement projection that lets you model income, expenses, investment
-              growth, withdrawals, and the resulting tax over up to {END_YEAR - START_YEAR + 1} years.
+              growth, withdrawals, and the resulting tax over a user-configurable horizon.
             </p>
             <h3 className="text-sm font-semibold text-gray-200 pt-2">Your data</h3>
             <p>

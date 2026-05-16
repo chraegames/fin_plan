@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import type { ExpenseItem, ExpenseFrequency } from '../models/types';
 import { generateId } from '../engine/defaults';
-import { START_YEAR, END_YEAR } from '../engine/constants';
 import TimePeriodEditor from './TimePeriodEditor';
 
 interface Props {
   items: ExpenseItem[];
   onChange: (items: ExpenseItem[]) => void;
+  startYear: number;
+  endYear: number;
 }
 
-export default function ExpenseSection({ items, onChange }: Props) {
+export default function ExpenseSection({ items, onChange, startYear, endYear }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
@@ -32,7 +33,7 @@ export default function ExpenseSection({ items, onChange }: Props) {
       name: 'New Expense',
       frequency: 'monthly',
       applyInflation: true,
-      periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 0 }],
+      periods: [{ startYear, endYear, amount: 0 }],
     }]);
   };
 
@@ -101,6 +102,8 @@ export default function ExpenseSection({ items, onChange }: Props) {
                     periods={item.periods}
                     onChange={periods => updateItem(i, { periods })}
                     amountLabel={item.frequency === 'monthly' ? '/mo' : '/yr'}
+                    minYear={startYear}
+                    maxYear={endYear}
                   />
                 </>
               ) : (

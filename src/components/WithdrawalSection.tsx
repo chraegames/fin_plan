@@ -11,9 +11,11 @@ interface Props {
   onTargetCashChange: (value: number) => void;
   onAutoBalance: (targetCash: number) => void;
   penaltyCutoff: number;
+  startYear: number;
+  endYear: number;
 }
 
-export default function WithdrawalSection({ items, onChange, targetCash, onTargetCashChange, onAutoBalance, penaltyCutoff }: Props) {
+export default function WithdrawalSection({ items, onChange, targetCash, onTargetCashChange, onAutoBalance, penaltyCutoff, startYear, endYear }: Props) {
   const [brokerageOpen, setBrokerageOpen] = useState(false);
   const [rothOpen, setRothOpen] = useState(false);
   const [iraOpen, setIraOpen] = useState(false);
@@ -64,7 +66,7 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
               <TimePeriodEditor
                 periods={brokerage.periods}
                 onChange={periods => updateSchedule(brokerage.id, { periods })}
-                amountLabel="/yr"
+                amountLabel="/yr" minYear={startYear} maxYear={endYear}
               />
             </>
           ) : (
@@ -90,7 +92,7 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
               <TimePeriodEditor
                 periods={roth.periods}
                 onChange={periods => updateSchedule(roth.id, { periods })}
-                amountLabel="/yr"
+                amountLabel="/yr" minYear={startYear} maxYear={endYear}
               />
             </>
           ) : (
@@ -116,7 +118,7 @@ export default function WithdrawalSection({ items, onChange, targetCash, onTarge
               <TimePeriodEditor
                 periods={ira.periods}
                 onChange={periods => updateSchedule(ira.id, { periods })}
-                amountLabel="/yr"
+                amountLabel="/yr" minYear={startYear} maxYear={endYear}
               />
             </>
           ) : (

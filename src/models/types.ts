@@ -47,6 +47,10 @@ export interface Scenario {
 }
 
 export interface PlanInput {
+  // Projection horizon, inclusive on both ends. The inflation baseline is
+  // startYear (so "Today's $" means dollars at the start of the projection).
+  startYear: number;
+  endYear: number;
   birthYear: number;
   startingCash: number;
   brokerageBalance: number;

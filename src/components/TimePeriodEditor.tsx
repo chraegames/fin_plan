@@ -1,22 +1,23 @@
 import type { TimePeriodValue } from '../models/types';
-import { START_YEAR, END_YEAR } from '../engine/constants';
 import NumericInput from './NumericInput';
 
 interface Props {
   periods: TimePeriodValue[];
   onChange: (periods: TimePeriodValue[]) => void;
   amountLabel?: string;
+  minYear: number;
+  maxYear: number;
 }
 
-export default function TimePeriodEditor({ periods, onChange, amountLabel = 'Amount' }: Props) {
+export default function TimePeriodEditor({ periods, onChange, amountLabel = 'Amount', minYear, maxYear }: Props) {
   const update = (index: number, field: keyof TimePeriodValue, value: number) => {
     const next = periods.map((p, i) => i === index ? { ...p, [field]: value } : p);
     onChange(next);
   };
 
   const addPeriod = () => {
-    const lastEnd = periods.length > 0 ? periods[periods.length - 1].endYear : START_YEAR - 1;
-    onChange([...periods, { startYear: lastEnd + 1, endYear: END_YEAR, amount: 0 }]);
+    const lastEnd = periods.length > 0 ? periods[periods.length - 1].endYear : minYear - 1;
+    onChange([...periods, { startYear: Math.min(lastEnd + 1, maxYear), endYear: maxYear, amount: 0 }]);
   };
 
   const removePeriod = (index: number) => {
@@ -30,16 +31,16 @@ export default function TimePeriodEditor({ periods, onChange, amountLabel = 'Amo
           <NumericInput
             value={p.startYear}
             onChange={v => update(i, 'startYear', v)}
-            min={String(START_YEAR)}
-            max={String(END_YEAR)}
+            min={String(minYear)}
+            max={String(maxYear)}
             className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
           <span className="text-gray-500">&ndash;</span>
           <NumericInput
             value={p.endYear}
             onChange={v => update(i, 'endYear', v)}
-            min={String(START_YEAR)}
-            max={String(END_YEAR)}
+            min={String(minYear)}
+            max={String(maxYear)}
             className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
           <span className="text-gray-500">$</span>

@@ -1,6 +1,6 @@
 import type { PlanInput } from '../models/types';
 import NumericInput from './NumericInput';
-import { earlyWithdrawalCutoff } from '../engine/constants';
+import { earlyWithdrawalCutoff, MIN_YEAR, MAX_YEAR } from '../engine/constants';
 
 interface Props {
   input: PlanInput;
@@ -9,10 +9,34 @@ interface Props {
 
 export default function InvestmentSection({ input, onChange }: Props) {
   const cutoff = earlyWithdrawalCutoff(input.birthYear);
+  const horizon = input.endYear - input.startYear + 1;
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
       <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">About You &amp; Starting Balances</h3>
       <div className="space-y-3">
+        {/* Projection Horizon */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-gray-300 w-24 shrink-0">Projection</span>
+          <NumericInput
+            value={input.startYear}
+            onChange={v => onChange({ startYear: v, endYear: Math.max(v, input.endYear) })}
+            min={String(MIN_YEAR)}
+            max={String(MAX_YEAR)}
+            className="w-20 border border-gray-600 rounded px-2 py-1.5 text-sm bg-gray-700 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <span className="text-gray-500 text-sm">&ndash;</span>
+          <NumericInput
+            value={input.endYear}
+            onChange={v => onChange({ endYear: Math.max(v, input.startYear) })}
+            min={String(MIN_YEAR)}
+            max={String(MAX_YEAR)}
+            className="w-20 border border-gray-600 rounded px-2 py-1.5 text-sm bg-gray-700 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <span className="text-xs text-gray-500">{horizon > 0 ? `${horizon} years` : 'invalid range'}</span>
+        </div>
+
+        <div className="border-t border-gray-700" />
+
         {/* Birth Year */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-300 w-24 shrink-0">Birth year</span>

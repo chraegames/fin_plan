@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { SimulationResult, YearResult } from '../models/types';
 import { formatDollars as $ } from '../utils/format';
-import { START_YEAR } from '../engine/constants';
 import ResultsChart from './ResultsChart';
 import ResultsTable from './ResultsTable';
 
@@ -10,11 +9,12 @@ interface Props {
   onCashFlowClick: (yearResult: YearResult) => void;
   penaltyCutoff: number;
   inflationRate: number;
+  startYear: number;
 }
 
-function deflateResults(results: SimulationResult, inflationRate: number): SimulationResult {
+function deflateResults(results: SimulationResult, inflationRate: number, startYear: number): SimulationResult {
   return results.map(r => {
-    const factor = Math.pow(1 + inflationRate, r.year - START_YEAR);
+    const factor = Math.pow(1 + inflationRate, r.year - startYear);
     const d = (v: number) => v / factor;
     return {
       ...r,
@@ -42,13 +42,13 @@ function deflateResults(results: SimulationResult, inflationRate: number): Simul
   });
 }
 
-export default function ResultsPanel({ results, onCashFlowClick, penaltyCutoff, inflationRate }: Props) {
+export default function ResultsPanel({ results, onCashFlowClick, penaltyCutoff, inflationRate, startYear }: Props) {
   const [realDollars, setRealDollars] = useState(false);
 
   const displayResults = useMemo(() => {
     if (!results) return null;
-    return realDollars ? deflateResults(results, inflationRate) : results;
-  }, [results, realDollars, inflationRate]);
+    return realDollars ? deflateResults(results, inflationRate, startYear) : results;
+  }, [results, realDollars, inflationRate, startYear]);
 
   const summary = useMemo(() => {
     if (!displayResults || displayResults.length === 0) return null;

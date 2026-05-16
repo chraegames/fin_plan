@@ -107,6 +107,8 @@ export default function InputPanel({
       <IncomeSection
         items={input.incomes}
         onChange={incomes => onChange({ ...input, incomes })}
+        startYear={input.startYear}
+        endYear={input.endYear}
       />
       <WithdrawalSection
         items={input.withdrawals}
@@ -115,10 +117,14 @@ export default function InputPanel({
         onTargetCashChange={targetCash => onChange({ ...input, targetCash })}
         onAutoBalance={onAutoBalance}
         penaltyCutoff={penaltyCutoff}
+        startYear={input.startYear}
+        endYear={input.endYear}
       />
       <ExpenseSection
         items={input.expenses}
         onChange={expenses => onChange({ ...input, expenses })}
+        startYear={input.startYear}
+        endYear={input.endYear}
       />
     </div>
   );

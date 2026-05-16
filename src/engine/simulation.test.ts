@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { runSimulation } from './simulation';
 import type { PlanInput } from '../models/types';
-import { START_YEAR, END_YEAR, earlyWithdrawalCutoff } from './constants';
+import { earlyWithdrawalCutoff } from './constants';
+
+const START_YEAR = 2026;
+const END_YEAR = 2065;
 
 function makeInput(overrides: Partial<PlanInput> = {}): PlanInput {
   return {
+    startYear: START_YEAR,
+    endYear: END_YEAR,
     birthYear: 1980,
     startingCash: 50000,
     brokerageBalance: 100000,

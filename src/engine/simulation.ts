@@ -1,7 +1,7 @@
 import type { PlanInput, ActualsData, NamedAmount, SimulationResult } from '../models/types';
 import { resolveAmount, resolveIncomeAndExpenses } from './resolve';
 import { calculateIncomeTax, calculateCapitalGainsTax } from './tax';
-import { START_YEAR, END_YEAR, EARLY_WITHDRAWAL_PENALTY_RATE, earlyWithdrawalCutoff } from './constants';
+import { EARLY_WITHDRAWAL_PENALTY_RATE, earlyWithdrawalCutoff } from './constants';
 
 export function runSimulation(input: PlanInput, actuals?: ActualsData): SimulationResult {
   const results: SimulationResult = [];
@@ -13,7 +13,7 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
   let rothBalance = input.rothBalance;
   let iraBalance = input.iraBalance;
 
-  for (let year = START_YEAR; year <= END_YEAR; year++) {
+  for (let year = input.startYear; year <= input.endYear; year++) {
     const { totalIncome, taxableIncome, incomeBreakdown, totalExpenses, expenseBreakdown } =
       resolveIncomeAndExpenses(input, year, actuals);
 

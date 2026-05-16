@@ -1,5 +1,4 @@
 import type { PlanInput, TimePeriodValue, NamedAmount, ActualsData } from '../models/types';
-import { START_YEAR } from './constants';
 
 export function resolveAmount(periods: TimePeriodValue[], year: number): number {
   let total = 0;
@@ -34,7 +33,7 @@ export function resolveIncomeAndExpenses(input: PlanInput, year: number, actuals
     }
   }
 
-  const inflationMultiplier = Math.pow(1 + input.inflationRate, year - START_YEAR);
+  const inflationMultiplier = Math.pow(1 + input.inflationRate, year - input.startYear);
   let totalExpenses = 0;
   const expenseBreakdown: NamedAmount[] = [];
   for (const exp of input.expenses) {

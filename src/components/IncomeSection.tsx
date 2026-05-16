@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import type { IncomeItem, IncomeType } from '../models/types';
 import { generateId } from '../engine/defaults';
-import { START_YEAR, END_YEAR } from '../engine/constants';
 import TimePeriodEditor from './TimePeriodEditor';
 
 interface Props {
   items: IncomeItem[];
   onChange: (items: IncomeItem[]) => void;
+  startYear: number;
+  endYear: number;
 }
 
-export default function IncomeSection({ items, onChange }: Props) {
+export default function IncomeSection({ items, onChange, startYear, endYear }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
@@ -31,7 +32,7 @@ export default function IncomeSection({ items, onChange }: Props) {
       id,
       name: 'New Income',
       type: 'taxable',
-      periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 0 }],
+      periods: [{ startYear, endYear, amount: 0 }],
     }]);
   };
 
@@ -89,6 +90,8 @@ export default function IncomeSection({ items, onChange }: Props) {
                     periods={item.periods}
                     onChange={periods => updateItem(i, { periods })}
                     amountLabel="/yr"
+                    minYear={startYear}
+                    maxYear={endYear}
                   />
                 </>
               ) : (

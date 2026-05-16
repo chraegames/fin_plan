@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { PlanInput, ActualsData, AccountType, SimulationResult } from '../models/types';
 import { resolveAmount } from '../engine/resolve';
-import { START_YEAR } from '../engine/constants';
 import { formatDollars as $ } from '../utils/format';
 
 interface Props {
@@ -58,9 +57,9 @@ function ActualInput({ value, projected, onChange, widthClass = 'w-24' }: {
   );
 }
 
-function getYearsForItem(periods: { startYear: number; endYear: number }[]): number[] {
+function getYearsForItem(periods: { startYear: number; endYear: number }[], simStart: number): number[] {
   const years: number[] = [];
-  for (let y = START_YEAR; y <= CURRENT_YEAR; y++) {
+  for (let y = simStart; y <= CURRENT_YEAR; y++) {
     if (periods.some(p => y >= p.startYear && y <= p.endYear)) {
       years.push(y);
     }
@@ -69,7 +68,8 @@ function getYearsForItem(periods: { startYear: number; endYear: number }[]): num
 }
 
 export default function ActualsPanel({ input, actuals, results, onActualsChange }: Props) {
-  const [activeYear, setActiveYear] = useState(CURRENT_YEAR);
+  const simStart = input.startYear;
+  const [activeYear, setActiveYear] = useState(Math.max(simStart, Math.min(CURRENT_YEAR, input.endYear)));
 
   const updateActual = (
     category: 'incomes' | 'expenses',
@@ -176,20 +176,20 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
     return hasAny ? total : undefined;
   };
 
-  const noActualsYears = CURRENT_YEAR < START_YEAR;
+  const noActualsYears = CURRENT_YEAR < simStart;
 
   if (noActualsYears) {
     return (
       <div className="max-w-[120rem] mx-auto px-4 py-6">
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 text-center text-gray-400">
-          History tracking will be available starting in {START_YEAR}.
+          History tracking will be available starting in {simStart}.
         </div>
       </div>
     );
   }
 
   const years: number[] = [];
-  for (let y = START_YEAR; y <= CURRENT_YEAR; y++) years.push(y);
+  for (let y = simStart; y <= Math.min(CURRENT_YEAR, input.endYear); y++) years.push(y);
 
   const projectedCashEnd = results.find(r => r.year === activeYear)?.endingCash ?? 0;
   const projectedAcctEnd = (acctType: AccountType): number => {
@@ -201,8 +201,8 @@ export default function ActualsPanel({ input, actuals, results, onActualsChange 
       .filter(wd => wd.accountType === acctType)
       .reduce((sum, wd) => sum + resolveAmount(wd.periods, activeYear), 0);
 
-  const incomesForYear = input.incomes.filter(inc => getYearsForItem(inc.periods).includes(activeYear));
-  const expensesForYear = input.expenses.filter(exp => getYearsForItem(exp.periods).includes(activeYear));
+  const incomesForYear = input.incomes.filter(inc => getYearsForItem(inc.periods, simStart).includes(activeYear));
+  const expensesForYear = input.expenses.filter(exp => getYearsForItem(exp.periods, simStart).includes(activeYear));
 
   // 14 columns total: Item (1) + months (12) + Total (1).
   const TOTAL_COLS = 14;

@@ -4,8 +4,6 @@ import { resolveIncomeAndExpenses } from './resolve';
 import { generateId } from './defaults';
 import { STANDARD_DEDUCTION, INCOME_BRACKETS, CAPITAL_GAINS_BRACKETS, calculateIncomeTax, calculateCapitalGainsTax } from './tax';
 import {
-  START_YEAR,
-  END_YEAR,
   EARLY_WITHDRAWAL_PENALTY_RATE,
   earlyWithdrawalCutoff,
 } from './constants';
@@ -79,7 +77,7 @@ interface LpSolveResult {
 
 /**
  * Auto-balance solves for the withdrawal schedule that **maximizes ending
- * net worth** (cash + brokerage + Roth + IRA at year END_YEAR), subject to:
+ * net worth** (cash + brokerage + Roth + IRA at input.endYear), subject to:
  *
  *   - hard floor: cash never drops below $10k (enforced via large slack penalty)
  *   - soft target: cash should hit `targetCash` (medium slack penalty)
@@ -102,7 +100,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
   // --- Determine frozen boundary ---
   // Any year with non-zero actual withdrawal data is frozen.
   // The boundary is the last such year — all years up to and including it are frozen.
-  let frozenThrough = START_YEAR - 1;
+  let frozenThrough = input.startYear - 1;
   if (actuals) {
     for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
       const yearMap = actuals.withdrawals[acctType];
@@ -112,7 +110,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
       }
     }
   }
-  const frozenYears = frozenThrough >= START_YEAR ? frozenThrough - START_YEAR + 1 : 0;
+  const frozenYears = frozenThrough >= input.startYear ? frozenThrough - input.startYear + 1 : 0;
 
   // --- Simulate through frozen years to get post-frozen balances ---
   let lpStartCash = input.startingCash;
@@ -123,7 +121,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
 
   const frozenYearly: YearWithdrawal[] = [];
   for (let fy = 0; fy < frozenYears; fy++) {
-    const year = START_YEAR + fy;
+    const year = input.startYear + fy;
     const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year, actuals);
 
     const bw = actuals?.withdrawals.brokerage?.[year] ?? 0;
@@ -166,7 +164,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
   }
 
   // --- Pre-compute baseline per-year data (LP horizon only) ---
-  const Y = END_YEAR - START_YEAR + 1 - frozenYears;
+  const Y = input.endYear - input.startYear + 1 - frozenYears;
   if (Y <= 0) return buildSchedules(frozenYearly);
 
   // Per-year brokerage gain fraction. Approximation: assume *no* prior LP-side
@@ -178,7 +176,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
   // approximation — improving it requires MILP or nested iteration.
   const yd: YD[] = [];
   for (let y = 0; y < Y; y++) {
-    const year = START_YEAR + frozenYears + y;
+    const year = input.startYear + frozenYears + y;
     const { totalIncome, taxableIncome, totalExpenses } = resolveIncomeAndExpenses(input, year, actuals);
     const balY = lpBrkBal * Math.pow(1 + r, y);
     const brkGainFrac = balY > 0 ? Math.max(0, Math.min(1, 1 - lpBrkBasis / balY)) : 0;
@@ -241,7 +239,7 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
     rw = Math.max(0, Math.min(rw, rothBal));
     iw = Math.max(0, Math.min(iw, iraBal));
 
-    lpYearly.push({ year: START_YEAR + frozenYears + y, brokerage: bw, roth: rw, ira: iw });
+    lpYearly.push({ year: input.startYear + frozenYears + y, brokerage: bw, roth: rw, ira: iw });
 
     brkBal = (brkBal - bw) * (1 + r);
     rothBal = (rothBal - rw) * (1 + r);

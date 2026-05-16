@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { YearResult, WithdrawalSchedule, AccountType } from '../models/types';
 import { generateId } from '../engine/defaults';
-import { START_YEAR, END_YEAR } from '../engine/constants';
 import { formatDollars as $ } from '../utils/format';
 import NumericInput from './NumericInput';
 
@@ -11,9 +10,11 @@ interface Props {
   onClose: () => void;
   onUpdateWithdrawals: (withdrawals: WithdrawalSchedule[]) => void;
   penaltyCutoff: number;
+  startYear: number;
+  endYear: number;
 }
 
-export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onUpdateWithdrawals, penaltyCutoff }: Props) {
+export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onUpdateWithdrawals, penaltyCutoff, startYear, endYear }: Props) {
   const [localWithdrawals, setLocalWithdrawals] = useState<WithdrawalSchedule[]>(withdrawals);
   const year = r.year;
 
@@ -29,7 +30,7 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
     setLocalWithdrawals(prev => prev.map(wd => {
       if (wd.id !== wdId) return wd;
       const lastEnd = wd.periods.length > 0 ? wd.periods[wd.periods.length - 1].endYear : year - 1;
-      return { ...wd, periods: [...wd.periods, { startYear: lastEnd + 1, endYear: END_YEAR, amount: 0 }] };
+      return { ...wd, periods: [...wd.periods, { startYear: Math.min(lastEnd + 1, endYear), endYear, amount: 0 }] };
     }));
   };
 
@@ -44,7 +45,7 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
     setLocalWithdrawals(prev => [...prev, {
       id: generateId(),
       accountType,
-      periods: [{ startYear: year, endYear: END_YEAR, amount: 0 }],
+      periods: [{ startYear: year, endYear, amount: 0 }],
     }]);
   };
 
@@ -126,16 +127,16 @@ export default function CashFlowModal({ yearResult: r, withdrawals, onClose, onU
                   <NumericInput
                     value={p.startYear}
                     onChange={v => updatePeriod(schedule.id, pi, 'startYear', v)}
-                    min={String(START_YEAR)}
-                    max={String(END_YEAR)}
+                    min={String(startYear)}
+                    max={String(endYear)}
                     className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
                   <span className="text-gray-500">&ndash;</span>
                   <NumericInput
                     value={p.endYear}
                     onChange={v => updatePeriod(schedule.id, pi, 'endYear', v)}
-                    min={String(START_YEAR)}
-                    max={String(END_YEAR)}
+                    min={String(startYear)}
+                    max={String(endYear)}
                     className="w-20 border border-gray-600 rounded px-1 py-1 text-sm text-center bg-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
                   <span className="text-gray-500">$</span>
