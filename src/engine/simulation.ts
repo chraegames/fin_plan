@@ -17,36 +17,40 @@ export function runSimulation(input: PlanInput, actuals?: ActualsData): Simulati
     const { totalIncome, taxableIncome, incomeBreakdown, totalExpenses, expenseBreakdown } =
       resolveIncomeAndExpenses(input, year, actuals);
 
-    // Resolve withdrawals — actuals are keyed by account type
-    let withdrawalsBrokerage = 0;
-    let withdrawalsRoth = 0;
-    let withdrawalsIra = 0;
-    const withdrawalBreakdown: NamedAmount[] = [];
-
+    // Resolve scheduled withdrawals (actuals override schedule for that year).
+    // We immediately cap each scheduled amount to the available balance and
+    // use the *applied* values everywhere downstream — otherwise an
+    // over-scheduled $1M withdrawal from a $100k account would inflate cash
+    // flow by the full $1M while only $100k actually left the account.
+    let scheduledBrokerage = 0;
+    let scheduledRoth = 0;
+    let scheduledIra = 0;
     for (const acctType of ['brokerage', 'roth', 'ira'] as const) {
       const actual = actuals?.withdrawals[acctType]?.[year];
-      let amount: number;
-      if (actual != null) {
-        amount = actual;
-      } else {
-        amount = input.withdrawals
-          .filter(wd => wd.accountType === acctType)
-          .reduce((sum, wd) => sum + resolveAmount(wd.periods, year), 0);
-      }
-      if (acctType === 'brokerage') withdrawalsBrokerage = amount;
-      else if (acctType === 'roth') withdrawalsRoth = amount;
-      else withdrawalsIra = amount;
+      const amount = actual != null
+        ? actual
+        : input.withdrawals
+            .filter(wd => wd.accountType === acctType)
+            .reduce((sum, wd) => sum + resolveAmount(wd.periods, year), 0);
+      if (acctType === 'brokerage') scheduledBrokerage = amount;
+      else if (acctType === 'roth') scheduledRoth = amount;
+      else scheduledIra = amount;
     }
+
+    const withdrawalsBrokerage = Math.max(0, Math.min(scheduledBrokerage, brokerageBalance));
+    const withdrawalsRoth = Math.max(0, Math.min(scheduledRoth, rothBalance));
+    const withdrawalsIra = Math.max(0, Math.min(scheduledIra, iraBalance));
+
+    const withdrawalBreakdown: NamedAmount[] = [];
     if (withdrawalsBrokerage > 0) withdrawalBreakdown.push({ name: 'Brokerage', amount: withdrawalsBrokerage });
     if (withdrawalsRoth > 0) withdrawalBreakdown.push({ name: 'Roth', amount: withdrawalsRoth });
     if (withdrawalsIra > 0) withdrawalBreakdown.push({ name: 'IRA', amount: withdrawalsIra });
 
     // Brokerage: split each withdrawal into basis (return of capital, untaxed)
     // and gain (LTCG). Basis depletes proportionally to the withdrawn fraction.
-    const brokerageWithdrawalApplied = Math.min(withdrawalsBrokerage, brokerageBalance);
     const basisFraction = brokerageBalance > 0 ? brokerageBasis / brokerageBalance : 0;
-    const basisOfWithdrawal = brokerageWithdrawalApplied * basisFraction;
-    const gainOfWithdrawal = brokerageWithdrawalApplied - basisOfWithdrawal;
+    const basisOfWithdrawal = withdrawalsBrokerage * basisFraction;
+    const gainOfWithdrawal = withdrawalsBrokerage - basisOfWithdrawal;
     brokerageBasis = Math.max(0, brokerageBasis - basisOfWithdrawal);
     brokerageBalance = Math.max(0, brokerageBalance - withdrawalsBrokerage);
     brokerageBalance *= (1 + input.returnRate);

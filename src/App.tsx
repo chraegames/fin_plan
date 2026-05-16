@@ -386,7 +386,10 @@ export default function App() {
               name,
               input: structuredClone(active.input),
               actuals: structuredClone(active.actuals ?? defaultActuals),
-              touched: active.touched ?? true,
+              // Explicit creation always counts as touched, so the user
+              // doesn't get bounced back to the Welcome screen when they
+              // make a new scenario from the popover.
+              touched: true,
             },
           ],
           activePlanId: newId,
@@ -512,25 +515,27 @@ export default function App() {
 
   const handleLoadPreset = useCallback(
     (preset: PresetKey) => {
-      const newInput = buildPresetInput(preset);
-      const newScenario: Scenario = {
-        id: generateId(),
-        name:
-          preset === 'coast' ? 'Coast FIRE' :
-          preset === 'mid' ? 'Mid-career' : 'Approaching retirement',
-        input: newInput,
-        actuals: { ...defaultActuals },
-        touched: true,
-      };
-      migratePlans([newScenario]);
-      newScenario.touched = true;
+      const name =
+        preset === 'coast' ? 'Coast FIRE' :
+        preset === 'mid' ? 'Mid-career' : 'Approaching retirement';
       updateActiveProfile(profile => ({
         ...profile,
-        plans: profile.plans.map(p =>
-          p.id === profile.activePlanId
-            ? { ...newScenario, id: p.id }
-            : p,
-        ),
+        plans: profile.plans.map(p => {
+          if (p.id !== profile.activePlanId) return p;
+          // Replace the active plan in-place — keeps the existing id so
+          // anything keying off it (active selection, popovers) stays
+          // consistent. migratePlans backfills the default withdrawal
+          // schedules that the preset omits.
+          const seeded: Scenario = {
+            id: p.id,
+            name,
+            input: buildPresetInput(preset),
+            actuals: { ...defaultActuals },
+            touched: true,
+          };
+          migratePlans([seeded]);
+          return seeded;
+        }),
       }));
     },
     [updateActiveProfile],

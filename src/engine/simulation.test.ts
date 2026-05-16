@@ -100,6 +100,29 @@ describe('brokerage cost basis', () => {
     expect(y0.capitalGainsTax).toBeCloseTo(7500, 2);
   });
 
+  it('caps an over-scheduled withdrawal to the actual balance', () => {
+    // Regression: previously, scheduling a $1M brokerage withdrawal from a
+    // $100k balance would zero the balance correctly but report
+    // withdrawalsBrokerage = $1M in YearResult — inflating cash flow by
+    // ~$900k of phantom money.
+    const input = makeInput({
+      birthYear: 1960,
+      startingCash: 0,
+      brokerageBalance: 100000,
+      brokerageBasis: 100000,
+      withdrawals: [{
+        id: 'w', accountType: 'brokerage',
+        periods: [{ startYear: START_YEAR, endYear: START_YEAR, amount: 1_000_000 }],
+      }],
+    });
+    const results = runSimulation(input);
+    const y0 = results.find(r => r.year === START_YEAR)!;
+    expect(y0.withdrawalsBrokerage).toBe(100000);
+    // Cash should reflect only what was actually withdrawn (no income, no
+    // expenses, no tax since basis covers the whole withdrawal).
+    expect(y0.endingCash).toBeCloseTo(100000, 2);
+  });
+
   it('splits a withdrawal proportionally when basis < balance', () => {
     // Year-0 balance $100k, basis $40k → gain fraction = 60%.
     // $50k withdrawal → $30k gain (taxable), $20k basis (untaxed).

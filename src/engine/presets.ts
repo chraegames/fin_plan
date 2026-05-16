@@ -42,10 +42,8 @@ export const PRESET_META: PresetMeta[] = [
   },
 ];
 
-const CURRENT_YEAR = 2026;
-
 export function buildPresetInput(preset: PresetKey): PlanInput {
-  const startYear = CURRENT_YEAR;
+  const startYear = new Date().getFullYear();
   switch (preset) {
     case 'coast': {
       const endYear = startYear + 55;

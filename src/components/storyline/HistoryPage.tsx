@@ -433,15 +433,7 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
                   return (
                     <tr key={exp.id}>
                       <NameCell name={exp.name} sub="annual" />
-                      <td colSpan={11} style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>·</td>
-                      <td style={{ padding: '4px 2px' }}>
-                        <CellInput
-                          compact
-                          actual={actuals.expenses[exp.id]?.[activeYear]}
-                          projected={projected}
-                          onChange={v => updateActual('expenses', exp.id, activeYear, v)}
-                        />
-                      </td>
+                      <td colSpan={12} style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>·</td>
                       <td style={{ padding: '4px 8px', textAlign: 'right' }}>
                         <CellInput
                           actual={actuals.expenses[exp.id]?.[activeYear]}

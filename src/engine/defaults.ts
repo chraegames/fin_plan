@@ -67,7 +67,14 @@ export const defaultActuals: ActualsData = {
   endingCash: {},
 };
 
-let nextId = 100;
+// Generate a non-colliding ID. Earlier versions used a module-level
+// counter that reset to 100 on every page load — IDs created after a
+// reload would collide with ones already in localStorage. Use
+// crypto.randomUUID when available; otherwise fall back to a random
+// base-36 string with a timestamp prefix for uniqueness across reloads.
 export function generateId(): string {
-  return `item-${nextId++}`;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `item-${crypto.randomUUID()}`;
+  }
+  return `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
