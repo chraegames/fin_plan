@@ -39,12 +39,13 @@ const CG_BANDS: { cumulative: number; rate: number }[] = (() => {
 //     dropping below CASH_FLOOR. Set very high so the floor is effectively
 //     hard except when truly infeasible.
 //   TARGET_PENALTY: how much NW per $1 of cash falling below targetCash.
-//     A value around 3-5 means the LP fills the target whenever the future
-//     growth penalty of the necessary withdrawal is less than this — i.e.,
-//     in later years it tracks target, in early years it lets cash drift
-//     up toward target via accumulated income surplus.
+//     Set high enough (≥ max future-growth factor across the horizon) so
+//     the LP fills the target in every year where doing so is feasible.
+//     At 40 years × 7% return × IRA mult 0.82, the max growth factor is
+//     ~13×, so 100 leaves comfortable headroom and effectively treats the
+//     target as a hard floor when the income+balances permit.
 const FLOOR_PENALTY = 1000;
-const TARGET_PENALTY = 3;
+const TARGET_PENALTY = 100;
 
 // "Embedded tax" multipliers on ending account balances. A dollar left in
 // an account at horizon end isn't worth a full dollar of net worth — it

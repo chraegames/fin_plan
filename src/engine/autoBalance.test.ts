@@ -150,4 +150,36 @@ describe('autoBalance honors cash floor', () => {
     const { minCash, minCashYear } = runAutoAndSim(input, 120000);
     expect(minCash, `min cash at year ${minCashYear}`).toBeGreaterThan(0);
   });
+
+  it('cash actually tracks target throughout retirement (not just at the floor)', () => {
+    // Stronger guard: with TARGET_PENALTY high enough, the LP should hit
+    // targetCash whenever balances allow it, not just hover above the floor.
+    // This is the user-visible behavior of the "target cash" input — if it
+    // says $100K, the user expects cash near $100K each year, not $10K.
+    const TARGET = 100_000;
+    const input = makeInput({
+      startingCash: 100_000,
+      brokerageBalance: 500_000,
+      brokerageBasis: 300_000,
+      rothBalance: 400_000,
+      iraBalance: 600_000,
+      incomes: [{
+        id: 'w', name: 'Wages', type: 'taxable',
+        periods: [{ startYear: START_YEAR, endYear: 2035, amount: 130000 }],
+      }],
+      expenses: [{
+        id: 'e', name: 'Living', frequency: 'annual', applyInflation: true,
+        periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 65000 }],
+      }],
+    });
+    const { results } = runAutoAndSim(input, TARGET);
+    // After retirement (income ends 2035), the LP should keep cash above
+    // 80% of target in any year where it has account balances to draw on.
+    const postRetirement = results.filter(r => r.year >= 2036 && r.year < 2060);
+    const belowThreshold = postRetirement.filter(r => r.endingCash < TARGET * 0.8);
+    expect(
+      belowThreshold.length,
+      `years where cash < 80% of target: ${belowThreshold.map(r => `${r.year}=${Math.round(r.endingCash)}`).join(', ')}`,
+    ).toBe(0);
+  });
 });

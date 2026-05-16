@@ -78,8 +78,9 @@ export function WithdrawalEditor({
           }}
         >
           The LP optimizer picks a tax-efficient withdrawal schedule across your brokerage, Roth,
-          and IRA accounts — drawing brokerage first, preserving Roth for last, and keeping the
-          ending cash balance close to your <b>target</b> each year.
+          and IRA accounts — drawing brokerage first, preserving Roth for last, and keeping cash
+          at your <b>target buffer</b> each year (it only drops below if your balances literally
+          can't keep up).
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Target cash</span>
