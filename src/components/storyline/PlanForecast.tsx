@@ -351,8 +351,8 @@ export function PlanForecast({
           }}
         >
           <BalancesCard input={input} onEdit={() => setDrawer('balances')} />
-          <IncomeCard input={input} onEdit={() => setDrawer('income')} />
-          <ExpensesCard input={input} onEdit={() => setDrawer('expenses')} />
+          <IncomeCard input={input} results={displayResults} onEdit={() => setDrawer('income')} />
+          <ExpensesCard input={input} results={displayResults} onEdit={() => setDrawer('expenses')} />
           <WithdrawalsCard
             input={input}
             onEdit={() => setDrawer('withdrawals')}
@@ -473,51 +473,106 @@ function BalancesCard({ input, onEdit }: { input: PlanInput; onEdit: () => void 
   );
 }
 
-function IncomeCard({ input, onEdit }: { input: PlanInput; onEdit: () => void }) {
-  const annualAvg = input.incomes.reduce((sum, inc) => {
-    const totalForItem = inc.periods.reduce((s, p) => s + p.amount * (p.endYear - p.startYear + 1), 0);
-    return sum + totalForItem;
-  }, 0) / Math.max(1, input.endYear - input.startYear + 1);
-  const rows: SummaryRow[] = input.incomes.slice(0, 4).map(inc => ({
-    label: inc.name,
-    value: inc.type === 'non-taxable' ? 'non-taxable' : 'taxable',
-    meta: `${inc.periods[0]?.startYear}–${inc.periods[inc.periods.length - 1]?.endYear}`,
-    color: inc.type === 'non-taxable' ? 'var(--positive)' : 'var(--chart-roth)',
-  }));
+function IncomeCard({
+  input,
+  results,
+  onEdit,
+}: {
+  input: PlanInput;
+  results: SimulationResult;
+  onEdit: () => void;
+}) {
+  // Use the first year the simulation actually shows income for. Avoids the
+  // misleading "average over the whole horizon" math and matches what the
+  // chart's first year displays.
+  const firstActive = results.find(r => r.totalIncome > 0);
+  const headlineAmount = firstActive?.totalIncome ?? 0;
+  const headlineYear = firstActive?.year ?? input.startYear;
+
+  const rows: SummaryRow[] = input.incomes.slice(0, 4).map(inc => {
+    const p0 = inc.periods[0];
+    return {
+      label: inc.name,
+      value: p0 ? `${formatDollarsCompact(p0.amount)}/yr` : '—',
+      meta: p0 ? `${p0.startYear}–${inc.periods[inc.periods.length - 1].endYear} · ${inc.type === 'non-taxable' ? 'non-taxable' : 'taxable'}` : inc.type,
+      color: inc.type === 'non-taxable' ? 'var(--positive)' : 'var(--chart-roth)',
+    };
+  });
+
+  const sourceCount = `${input.incomes.length} source${input.incomes.length === 1 ? '' : 's'}`;
   return (
     <SummaryCard
       eyebrow="Income"
-      title={input.incomes.length === 0 ? 'None' : `${formatDollarsCompact(annualAvg)}/yr`}
-      sub={`${input.incomes.length} source${input.incomes.length === 1 ? '' : 's'}`}
+      title={
+        input.incomes.length === 0
+          ? 'None'
+          : headlineAmount > 0
+            ? `${formatDollarsCompact(headlineAmount)}/yr`
+            : 'Starts later'
+      }
+      sub={
+        input.incomes.length === 0
+          ? 'no sources yet'
+          : headlineAmount > 0
+            ? headlineYear === input.startYear
+              ? `${sourceCount} · in ${headlineYear}`
+              : `${sourceCount} · starts ${headlineYear}`
+            : sourceCount
+      }
       rows={rows}
       onEdit={onEdit}
     />
   );
 }
 
-function ExpensesCard({ input, onEdit }: { input: PlanInput; onEdit: () => void }) {
-  const annualAvg =
-    input.expenses.reduce((sum, e) => {
-      const yearly = e.periods.reduce((s, p) => {
-        const mult = e.frequency === 'monthly' ? 12 : 1;
-        return s + p.amount * mult * (p.endYear - p.startYear + 1);
-      }, 0);
-      return sum + yearly;
-    }, 0) / Math.max(1, input.endYear - input.startYear + 1);
+function ExpensesCard({
+  input,
+  results,
+  onEdit,
+}: {
+  input: PlanInput;
+  results: SimulationResult;
+  onEdit: () => void;
+}) {
+  // Headline = year-1 total spend (inflation factor = 1 in year 0, so this
+  // is "what you spend right now"). Expenses defined for a future year only
+  // fall back to that first active year.
+  const firstActive = results.find(r => r.totalExpenses > 0);
+  const headlineAmount = firstActive?.totalExpenses ?? 0;
+  const headlineYear = firstActive?.year ?? input.startYear;
+
   const rows: SummaryRow[] = input.expenses.slice(0, 5).map(e => {
     const p0 = e.periods[0];
+    const annualBase =
+      p0 != null ? (e.frequency === 'monthly' ? p0.amount * 12 : p0.amount) : 0;
     return {
       label: e.name,
-      value: formatDollarsCompact(p0?.amount ?? 0),
+      value: `${formatDollarsCompact(annualBase)}/yr`,
       meta: `${e.frequency === 'monthly' ? 'mo' : 'yr'}${e.applyInflation ? ' · infl' : ''}`,
       color: 'var(--negative)',
     };
   });
+
+  const itemCount = `${input.expenses.length} line item${input.expenses.length === 1 ? '' : 's'}`;
   return (
     <SummaryCard
       eyebrow="Expenses"
-      title={`${formatDollarsCompact(annualAvg)}/yr`}
-      sub={`${input.expenses.length} line item${input.expenses.length === 1 ? '' : 's'} · avg over horizon`}
+      title={
+        input.expenses.length === 0
+          ? 'None'
+          : headlineAmount > 0
+            ? `${formatDollarsCompact(headlineAmount)}/yr`
+            : 'Starts later'
+      }
+      sub={
+        input.expenses.length === 0
+          ? 'no expenses yet'
+          : headlineAmount > 0
+            ? headlineYear === input.startYear
+              ? `${itemCount} · in ${headlineYear}`
+              : `${itemCount} · starts ${headlineYear}`
+            : itemCount
+      }
       rows={rows}
       onEdit={onEdit}
     />
