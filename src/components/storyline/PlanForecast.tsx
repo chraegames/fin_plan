@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { DrawerKind } from '../../App';
-import type { PlanInput, ActualsData, SimulationResult, WithdrawalSchedule } from '../../models/types';
+import type { PlanInput, ActualsData, SimulationResult } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
 import { deflateResults } from '../../utils/deflate';
 import { formatDollars, formatDollarsCompact } from '../../utils/format';
@@ -16,12 +16,7 @@ import { CashFlowChart } from './charts/CashFlowChart';
 import { ChartLegend } from './sections/ChartLegend';
 import { YearByYear } from './sections/YearByYear';
 import { Footer } from './sections/Footer';
-import { EditDrawer } from './drawers/EditDrawer';
-import { ExpenseEditor } from './drawers/ExpenseEditor';
-import { IncomeEditor } from './drawers/IncomeEditor';
-import { WithdrawalEditor } from './drawers/WithdrawalEditor';
-import { BalancesEditor } from './drawers/BalancesEditor';
-import { ReturnsEditor } from './drawers/ReturnsEditor';
+import { DrawerHost } from './drawers/DrawerHost';
 
 type Tab = 'networth' | 'withdrawals' | 'cashflow';
 
@@ -107,10 +102,6 @@ export function PlanForecast({
     }
     return m;
   }, [input.startYear, input.endYear, penaltyCutoff, summary]);
-
-  const handleUpdate = (updates: Partial<PlanInput>) => onInputChange({ ...input, ...updates });
-  const handleUpdateWithdrawals = (withdrawals: WithdrawalSchedule[]) =>
-    onInputChange({ ...input, withdrawals });
 
   if (!summary) {
     return <Page><div style={{ color: 'var(--ink-muted)' }}>No simulation data yet.</div></Page>;
@@ -370,69 +361,13 @@ export function PlanForecast({
 
       <Footer onAbout={onAbout} />
 
-      <EditDrawer
-        open={drawer === 'balances'}
-        onClose={() => setDrawer(null)}
-        title="Starting balances"
-        sub="Split your starting wealth across cash, brokerage, Roth, and IRA"
-      >
-        <BalancesEditor input={input} onChange={handleUpdate} />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'income'}
-        onClose={() => setDrawer(null)}
-        title="Income"
-        sub={`${input.incomes.length} source${input.incomes.length === 1 ? '' : 's'}`}
-      >
-        <IncomeEditor
-          items={input.incomes}
-          onChange={incomes => handleUpdate({ incomes })}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'expenses'}
-        onClose={() => setDrawer(null)}
-        title="Expenses"
-        sub={`${input.expenses.length} line item${input.expenses.length === 1 ? '' : 's'}`}
-      >
-        <ExpenseEditor
-          items={input.expenses}
-          onChange={expenses => handleUpdate({ expenses })}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'withdrawals'}
-        onClose={() => setDrawer(null)}
-        title="Withdrawal strategy"
-        sub="Schedules + auto-balance optimizer"
-      >
-        <WithdrawalEditor
-          items={input.withdrawals}
-          onChange={handleUpdateWithdrawals}
-          targetCash={input.targetCash}
-          onTargetCashChange={v => handleUpdate({ targetCash: v })}
-          onAutoBalance={onAutoBalance}
-          penaltyCutoff={penaltyCutoff}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'returns'}
-        onClose={() => setDrawer(null)}
-        title="Returns & inflation"
-        sub="Return rate, inflation, target cash, projection horizon"
-      >
-        <ReturnsEditor input={input} onChange={handleUpdate} />
-      </EditDrawer>
+      <DrawerHost
+        input={input}
+        drawer={drawer}
+        setDrawer={setDrawer}
+        onInputChange={onInputChange}
+        onAutoBalance={onAutoBalance}
+      />
     </Page>
   );
 }

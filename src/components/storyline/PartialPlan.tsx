@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { DrawerKind } from '../../App';
-import type { PlanInput, SimulationResult, WithdrawalSchedule } from '../../models/types';
+import type { PlanInput, SimulationResult } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
 import { formatDollarsCompact } from '../../utils/format';
 import { Page } from '../layout/Page';
@@ -14,12 +14,7 @@ import { SummaryCard } from './cards/SummaryCard';
 import { NetWorthChart } from './charts/NetWorthChart';
 import { NextSteps, type NextStep } from './sections/NextSteps';
 import { Footer } from './sections/Footer';
-import { EditDrawer } from './drawers/EditDrawer';
-import { ExpenseEditor } from './drawers/ExpenseEditor';
-import { IncomeEditor } from './drawers/IncomeEditor';
-import { WithdrawalEditor } from './drawers/WithdrawalEditor';
-import { BalancesEditor } from './drawers/BalancesEditor';
-import { ReturnsEditor } from './drawers/ReturnsEditor';
+import { DrawerHost } from './drawers/DrawerHost';
 
 interface PartialPlanProps {
   input: PlanInput;
@@ -101,10 +96,6 @@ export function PartialPlan({
   );
 
   const stepsDone = steps.filter(s => s.done).length;
-
-  const handleUpdate = (updates: Partial<PlanInput>) => onInputChange({ ...input, ...updates });
-  const handleUpdateWithdrawals = (withdrawals: WithdrawalSchedule[]) =>
-    onInputChange({ ...input, withdrawals });
 
   return (
     <Page maxWidth={1280}>
@@ -411,72 +402,13 @@ export function PartialPlan({
 
       <Footer onAbout={onAbout} />
 
-      <EditDrawer
-        open={drawer === 'balances'}
-        onClose={() => setDrawer(null)}
-        title="Split starting savings"
-        sub="Distribute your total across the four account types"
-      >
-        <BalancesEditor
-          input={input}
-          onChange={handleUpdate}
-          splitterMode={isLump}
-          splitterTotal={isLump ? total : undefined}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'expenses'}
-        onClose={() => setDrawer(null)}
-        title="Expenses"
-        sub="Tell us what you spend — monthly or annual, with or without inflation"
-      >
-        <ExpenseEditor
-          items={input.expenses}
-          onChange={expenses => handleUpdate({ expenses })}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'income'}
-        onClose={() => setDrawer(null)}
-        title="Income"
-        sub="Salary, pension, windfalls"
-      >
-        <IncomeEditor
-          items={input.incomes}
-          onChange={incomes => handleUpdate({ incomes })}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'withdrawals'}
-        onClose={() => setDrawer(null)}
-        title="Withdrawal strategy"
-      >
-        <WithdrawalEditor
-          items={input.withdrawals}
-          onChange={handleUpdateWithdrawals}
-          targetCash={input.targetCash}
-          onTargetCashChange={v => handleUpdate({ targetCash: v })}
-          onAutoBalance={onAutoBalance}
-          penaltyCutoff={penaltyCutoff}
-          startYear={input.startYear}
-          endYear={input.endYear}
-        />
-      </EditDrawer>
-
-      <EditDrawer
-        open={drawer === 'returns'}
-        onClose={() => setDrawer(null)}
-        title="Returns & inflation"
-      >
-        <ReturnsEditor input={input} onChange={handleUpdate} />
-      </EditDrawer>
+      <DrawerHost
+        input={input}
+        drawer={drawer}
+        setDrawer={setDrawer}
+        onInputChange={onInputChange}
+        onAutoBalance={onAutoBalance}
+      />
     </Page>
   );
 }
