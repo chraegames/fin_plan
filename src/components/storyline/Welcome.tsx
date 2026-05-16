@@ -120,7 +120,6 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
                 insight={p.insight}
                 tone={p.tone}
                 values={p.values}
-                highlight={p.highlight}
                 onClick={() => onLoadPreset(p.key)}
               />
             ))}

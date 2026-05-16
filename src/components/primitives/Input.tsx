@@ -1,4 +1,17 @@
-import { useCallback, type InputHTMLAttributes } from 'react';
+import { useCallback, useState, type InputHTMLAttributes } from 'react';
+
+// ─── Shared focus-buffered input behaviour ──────────────────────────────
+// All three numeric inputs share the same pattern:
+//   - while focused: show the raw text the user is typing, with no
+//     auto-formatting and no clamping (so backspace / mid-edit work)
+//   - while blurred: show a formatted display derived from the canonical
+//     `value` prop
+//   - on every keystroke: try to parse and call `onChange` so the chart /
+//     simulation updates live
+//   - on blur: clamp / canonicalize and call `onChange` once more with
+//     the clean value
+// External value changes (e.g. another field updating it) sync into the
+// raw buffer only when the field isn't focused.
 
 interface MoneyInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> {
@@ -7,6 +20,13 @@ interface MoneyInputProps
   width?: number | string;
   align?: 'left' | 'right';
   showPrefix?: boolean;
+  /** Allow negative values. Defaults to false. */
+  allowNegative?: boolean;
+}
+
+function formatMoney(value: number): string {
+  if (value === 0) return '';
+  return Math.round(value).toLocaleString('en-US');
 }
 
 export function MoneyInput({
@@ -15,17 +35,45 @@ export function MoneyInput({
   width = '100%',
   align = 'right',
   showPrefix = true,
+  allowNegative = false,
   ...rest
 }: MoneyInputProps) {
+  const [focused, setFocused] = useState(false);
+  const [raw, setRaw] = useState(() => (value === 0 ? '' : String(Math.round(value))));
+  const [lastSeenValue, setLastSeenValue] = useState(value);
+
+  // Sync our buffer if the canonical value moves while we're not editing.
+  if (!focused && value !== lastSeenValue) {
+    setLastSeenValue(value);
+    setRaw(value === 0 ? '' : String(Math.round(value)));
+  }
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value.replace(/[^0-9.-]/g, '');
-      const num = raw === '' || raw === '-' ? 0 : Number(raw);
-      onChange(Number.isFinite(num) ? num : 0);
+      const pattern = allowNegative ? /[^0-9.-]/g : /[^0-9.]/g;
+      const next = e.target.value.replace(pattern, '');
+      setRaw(next);
+      // Live-update the canonical value too, so the chart reflects edits
+      // as they happen. Empty / partial strings parse to 0.
+      const parsed = next === '' || next === '-' ? 0 : parseFloat(next);
+      if (Number.isFinite(parsed) && parsed !== value) {
+        onChange(allowNegative ? parsed : Math.max(0, parsed));
+      }
     },
-    [onChange],
+    [onChange, value, allowNegative],
   );
-  const display = value === 0 ? '' : Math.round(value).toLocaleString('en-US');
+
+  const handleBlur = useCallback(() => {
+    setFocused(false);
+    const parsed = raw === '' || raw === '-' ? 0 : parseFloat(raw);
+    const clean = Number.isFinite(parsed) ? (allowNegative ? parsed : Math.max(0, parsed)) : 0;
+    if (clean !== value) onChange(clean);
+    setRaw(clean === 0 ? '' : String(Math.round(clean)));
+    setLastSeenValue(clean);
+  }, [raw, value, onChange, allowNegative]);
+
+  const display = focused ? raw : formatMoney(value);
+
   return (
     <label
       style={{
@@ -52,6 +100,8 @@ export function MoneyInput({
         inputMode="numeric"
         value={display}
         onChange={handleChange}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
         placeholder={rest.placeholder ?? '0'}
         style={{
           flex: 1,
@@ -72,32 +122,59 @@ interface YearInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> {
   value: number;
   onChange: (next: number) => void;
+  /** Inclusive lower bound applied on blur. Doesn't restrict typing. */
   min?: number;
+  /** Inclusive upper bound applied on blur. Doesn't restrict typing. */
   max?: number;
   width?: number | string;
 }
 
 export function YearInput({ value, onChange, min, max, width = 90, ...rest }: YearInputProps) {
+  const [focused, setFocused] = useState(false);
+  const [raw, setRaw] = useState(() => String(value));
+  const [lastSeenValue, setLastSeenValue] = useState(value);
+
+  if (!focused && value !== lastSeenValue) {
+    setLastSeenValue(value);
+    setRaw(String(value));
+  }
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
-      if (raw === '') return onChange(value);
-      const num = Number(raw);
-      if (!Number.isFinite(num)) return;
-      let clamped = num;
-      if (min != null) clamped = Math.max(min, clamped);
-      if (max != null) clamped = Math.min(max, clamped);
-      onChange(clamped);
+      // Allow up to 4 digits while typing; no clamping yet — clamping
+      // mid-keystroke wipes the field, which made backspace unusable.
+      const next = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+      setRaw(next);
+      // Mirror to the canonical value if it's parseable, otherwise leave
+      // the old value alone so the rest of the app isn't seeing NaN.
+      if (next.length > 0) {
+        const parsed = Number(next);
+        if (Number.isFinite(parsed) && parsed !== value) onChange(parsed);
+      }
     },
-    [onChange, value, min, max],
+    [onChange, value],
   );
+
+  const handleBlur = useCallback(() => {
+    setFocused(false);
+    const parsed = raw === '' ? value : Number(raw);
+    let clean = Number.isFinite(parsed) ? parsed : value;
+    if (min != null) clean = Math.max(min, clean);
+    if (max != null) clean = Math.min(max, clean);
+    if (clean !== value) onChange(clean);
+    setRaw(String(clean));
+    setLastSeenValue(clean);
+  }, [raw, value, min, max, onChange]);
+
   return (
     <input
       {...rest}
       type="text"
       inputMode="numeric"
-      value={String(value)}
+      value={focused ? raw : String(value)}
       onChange={handleChange}
+      onFocus={() => setFocused(true)}
+      onBlur={handleBlur}
       style={{
         width,
         height: 32,
@@ -122,19 +199,60 @@ interface PercentInputProps
   value: number;
   onChange: (next: number) => void;
   width?: number | string;
+  /** Allow negative percentages. Defaults to false. */
+  allowNegative?: boolean;
 }
 
-export function PercentInput({ value, onChange, width = 90, ...rest }: PercentInputProps) {
+function formatPercent(value: number): string {
+  // Show enough precision to round-trip 0.075 → "7.5", but drop trailing .0
+  const pct = value * 100;
+  const s = pct.toFixed(2);
+  return s.replace(/\.?0+$/, '');
+}
+
+export function PercentInput({
+  value,
+  onChange,
+  width = 90,
+  allowNegative = false,
+  ...rest
+}: PercentInputProps) {
+  const [focused, setFocused] = useState(false);
+  const [raw, setRaw] = useState(() => formatPercent(value));
+  const [lastSeenValue, setLastSeenValue] = useState(value);
+
+  if (!focused && value !== lastSeenValue) {
+    setLastSeenValue(value);
+    setRaw(formatPercent(value));
+  }
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value.replace(/[^0-9.-]/g, '');
-      const num = raw === '' || raw === '-' ? 0 : Number(raw);
-      if (!Number.isFinite(num)) return;
-      onChange(num / 100);
+      const pattern = allowNegative ? /[^0-9.-]/g : /[^0-9.]/g;
+      const next = e.target.value.replace(pattern, '');
+      setRaw(next);
+      if (next === '' || next === '-' || next === '.') return; // keep value, allow typing
+      const parsed = parseFloat(next);
+      if (Number.isFinite(parsed)) {
+        const fraction = (allowNegative ? parsed : Math.max(0, parsed)) / 100;
+        if (fraction !== value) onChange(fraction);
+      }
     },
-    [onChange],
+    [onChange, value, allowNegative],
   );
-  const display = (value * 100).toFixed(1).replace(/\.0$/, '');
+
+  const handleBlur = useCallback(() => {
+    setFocused(false);
+    const parsed = raw === '' || raw === '-' || raw === '.' ? 0 : parseFloat(raw);
+    const pct = Number.isFinite(parsed) ? (allowNegative ? parsed : Math.max(0, parsed)) : 0;
+    const fraction = pct / 100;
+    if (fraction !== value) onChange(fraction);
+    setRaw(formatPercent(fraction));
+    setLastSeenValue(fraction);
+  }, [raw, value, onChange, allowNegative]);
+
+  const display = focused ? raw : formatPercent(value);
+
   return (
     <label
       style={{
@@ -160,6 +278,8 @@ export function PercentInput({ value, onChange, width = 90, ...rest }: PercentIn
         inputMode="decimal"
         value={display}
         onChange={handleChange}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
         style={{
           flex: 1,
           minWidth: 0,

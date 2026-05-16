@@ -10,7 +10,6 @@ export interface PresetMeta {
   insight: string;
   tone: 'positive' | 'neutral' | 'caution';
   values: number[];
-  highlight?: boolean;
 }
 
 export const PRESET_META: PresetMeta[] = [
@@ -40,7 +39,6 @@ export const PRESET_META: PresetMeta[] = [
     insight: 'Plan depletes in early 80s',
     tone: 'caution',
     values: [2400, 2520, 2620, 2680, 2700, 2660, 2580, 2450, 2270, 2050, 1780, 1450, 1080, 660, 200],
-    highlight: true,
   },
 ];
 

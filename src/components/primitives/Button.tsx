@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 export type ButtonVariant = 'primary' | 'soft' | 'outline' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -16,9 +16,10 @@ const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
   lg: { height: 42, padding: '0 20px', fontSize: 14, gap: 10 },
 };
 
-function variantStyle(variant: ButtonVariant): React.CSSProperties {
+function variantStyle(variant: ButtonVariant, hovered: boolean): React.CSSProperties {
   switch (variant) {
     case 'primary':
+      // Filter handles primary's hover via base.css; just keep base colours.
       return {
         background: 'var(--accent)',
         color: 'oklch(0.995 0.005 80)',
@@ -28,20 +29,20 @@ function variantStyle(variant: ButtonVariant): React.CSSProperties {
       };
     case 'soft':
       return {
-        background: 'var(--accent-soft)',
+        background: hovered ? 'var(--accent-tint)' : 'var(--accent-soft)',
         color: 'var(--accent-ink)',
         border: '1px solid transparent',
       };
     case 'outline':
       return {
-        background: 'var(--surface)',
+        background: hovered ? 'var(--surface-2)' : 'var(--surface)',
         color: 'var(--ink-2)',
-        border: '1px solid var(--border)',
+        border: `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
       };
     case 'ghost':
       return {
-        background: 'transparent',
-        color: 'var(--ink-3)',
+        background: hovered ? 'var(--surface-2)' : 'transparent',
+        color: hovered ? 'var(--ink)' : 'var(--ink-3)',
         border: '1px solid transparent',
       };
   }
@@ -54,8 +55,15 @@ export function Button({
   trailing,
   children,
   style,
+  disabled,
+  onMouseEnter,
+  onMouseLeave,
+  onFocus,
+  onBlur,
   ...rest
 }: ButtonProps) {
+  const [hovered, setHovered] = useState(false);
+  const effectiveHover = hovered && !disabled;
   const base: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -64,15 +72,37 @@ export function Button({
     fontWeight: 500,
     borderRadius: 'var(--radius-md)',
     letterSpacing: 'var(--tracking-normal)',
-    cursor: 'pointer',
-    transition: 'background-color 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    transition:
+      'background-color 140ms ease, color 140ms ease, border-color 140ms ease, opacity 140ms ease, filter 140ms ease',
     whiteSpace: 'nowrap',
+    opacity: disabled ? 0.55 : 1,
     ...sizeStyles[size],
-    ...variantStyle(variant),
+    ...variantStyle(variant, effectiveHover),
     ...style,
   };
   return (
-    <button {...rest} style={base}>
+    <button
+      {...rest}
+      disabled={disabled}
+      onMouseEnter={e => {
+        setHovered(true);
+        onMouseEnter?.(e);
+      }}
+      onMouseLeave={e => {
+        setHovered(false);
+        onMouseLeave?.(e);
+      }}
+      onFocus={e => {
+        setHovered(true);
+        onFocus?.(e);
+      }}
+      onBlur={e => {
+        setHovered(false);
+        onBlur?.(e);
+      }}
+      style={base}
+    >
       {leading}
       {children}
       {trailing}

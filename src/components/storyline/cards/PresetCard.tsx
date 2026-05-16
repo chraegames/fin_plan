@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Sparkline } from '../charts/Sparkline';
 
 type PresetTone = 'positive' | 'neutral' | 'caution';
@@ -9,7 +10,6 @@ interface PresetCardProps {
   insight: string;
   tone: PresetTone;
   values: number[];
-  highlight?: boolean;
   onClick?: () => void;
 }
 
@@ -32,20 +32,24 @@ export function PresetCard({
   insight,
   tone,
   values,
-  highlight,
   onClick,
 }: PresetCardProps) {
+  const [hovered, setHovered] = useState(false);
   return (
     <button
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       style={{
         display: 'grid',
         gridTemplateColumns: '1fr 120px',
         gap: 14,
         alignItems: 'center',
         padding: '12px 14px',
-        background: 'var(--bg-soft)',
-        border: `1px solid ${highlight ? toneColor[tone] : 'var(--border)'}`,
+        background: hovered ? 'var(--surface)' : 'var(--bg-soft)',
+        border: `1px solid ${hovered ? toneColor[tone] : 'var(--border)'}`,
         borderRadius: 11,
         cursor: 'pointer',
         textAlign: 'left',
@@ -53,27 +57,12 @@ export function PresetCard({
         color: 'inherit',
         position: 'relative',
         width: '100%',
+        boxShadow: hovered ? 'var(--shadow-pop)' : 'none',
+        transform: hovered ? 'translateY(-1px)' : 'none',
+        transition:
+          'background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease',
       }}
     >
-      {highlight && (
-        <span
-          style={{
-            position: 'absolute',
-            top: -8,
-            right: 12,
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            padding: '2px 8px',
-            borderRadius: 99,
-            background: toneColor[tone],
-            color: 'oklch(0.995 0.005 80)',
-          }}
-        >
-          Closest to your case
-        </span>
-      )}
       <div>
         <div
           style={{

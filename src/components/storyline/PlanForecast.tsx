@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { DrawerKind } from '../../App';
 import type { PlanInput, ActualsData, SimulationResult, WithdrawalSchedule } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
 import { deflateResults } from '../../utils/deflate';
@@ -23,13 +24,14 @@ import { BalancesEditor } from './drawers/BalancesEditor';
 import { ReturnsEditor } from './drawers/ReturnsEditor';
 
 type Tab = 'networth' | 'withdrawals' | 'cashflow';
-type DrawerKind = null | 'balances' | 'income' | 'expenses' | 'withdrawals' | 'returns';
 
 interface PlanForecastProps {
   input: PlanInput;
   actuals: ActualsData;
   results: SimulationResult;
   scenarioName: string;
+  drawer: DrawerKind;
+  setDrawer: (kind: DrawerKind) => void;
   onInputChange: (next: PlanInput) => void;
   onAutoBalance: (targetCash: number) => void;
   onAbout: () => void;
@@ -39,13 +41,14 @@ export function PlanForecast({
   input,
   results,
   scenarioName,
+  drawer,
+  setDrawer,
   onInputChange,
   onAutoBalance,
   onAbout,
 }: PlanForecastProps) {
   const [tab, setTab] = useState<Tab>('networth');
   const [realDollars, setRealDollars] = useState(false);
-  const [drawer, setDrawer] = useState<DrawerKind>(null);
 
   const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
 

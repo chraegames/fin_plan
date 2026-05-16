@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+function useHover(): [boolean, { onMouseEnter: () => void; onMouseLeave: () => void }] {
+  const [hovered, setHovered] = useState(false);
+  return [
+    hovered,
+    {
+      onMouseEnter: () => setHovered(true),
+      onMouseLeave: () => setHovered(false),
+    },
+  ];
+}
+
 interface PopoverProps {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
   children: (props: { close: () => void }) => ReactNode;
@@ -76,10 +87,17 @@ export function PopoverItem({
   children,
   disabled,
 }: PopoverItemProps) {
+  const [hovered, hoverBind] = useHover();
+  const bg = active
+    ? 'var(--accent-tint)'
+    : hovered && !disabled
+      ? 'var(--surface-2)'
+      : 'transparent';
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      {...hoverBind}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -96,7 +114,7 @@ export function PopoverItem({
             : active
               ? 'var(--accent-ink)'
               : 'var(--ink)',
-        background: active ? 'var(--accent-tint)' : 'transparent',
+        background: bg,
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
       }}

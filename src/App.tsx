@@ -290,10 +290,18 @@ function loadProfiles(): ProfilesState {
 }
 
 type Route = 'plan' | 'history';
+export type DrawerKind =
+  | null
+  | 'balances'
+  | 'income'
+  | 'expenses'
+  | 'withdrawals'
+  | 'returns';
 
 export default function App() {
   const [profilesState, setProfilesState] = useState<ProfilesState>(loadProfiles);
   const [route, setRoute] = useState<Route>('plan');
+  const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [importError, setImportError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -678,6 +686,8 @@ export default function App() {
         <PartialPlan
           input={input}
           results={results}
+          drawer={drawer}
+          setDrawer={setDrawer}
           onInputChange={handleInputChange}
           onAutoBalance={handleAutoBalance}
           onAbout={() => setAboutOpen(true)}
@@ -688,6 +698,8 @@ export default function App() {
           actuals={actuals}
           results={results}
           scenarioName={activePlan.name}
+          drawer={drawer}
+          setDrawer={setDrawer}
           onInputChange={handleInputChange}
           onAutoBalance={handleAutoBalance}
           onAbout={() => setAboutOpen(true)}

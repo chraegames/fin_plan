@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import type { DrawerKind } from '../../App';
 import type { PlanInput, SimulationResult, WithdrawalSchedule } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
 import { formatDollarsCompact } from '../../utils/format';
@@ -20,19 +21,25 @@ import { WithdrawalEditor } from './drawers/WithdrawalEditor';
 import { BalancesEditor } from './drawers/BalancesEditor';
 import { ReturnsEditor } from './drawers/ReturnsEditor';
 
-type DrawerKind = null | 'splitter' | 'expenses' | 'income' | 'withdrawals' | 'returns';
-
 interface PartialPlanProps {
   input: PlanInput;
   results: SimulationResult;
+  drawer: DrawerKind;
+  setDrawer: (kind: DrawerKind) => void;
   onInputChange: (next: PlanInput) => void;
   onAutoBalance: (targetCash: number) => void;
   onAbout: () => void;
 }
 
-export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAbout }: PartialPlanProps) {
-  const [drawer, setDrawer] = useState<DrawerKind>(null);
-
+export function PartialPlan({
+  input,
+  results,
+  drawer,
+  setDrawer,
+  onInputChange,
+  onAutoBalance,
+  onAbout,
+}: PartialPlanProps) {
   const total =
     input.startingCash + input.brokerageBalance + input.rothBalance + input.iraBalance;
   const isLump =
@@ -62,7 +69,7 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
         sub: 'cash, brokerage, IRA, Roth — affects tax',
         done: !needsSplit,
         cta: needsSplit ? 'Open splitter' : undefined,
-        onClick: () => setDrawer('splitter'),
+        onClick: () => setDrawer('balances'),
       },
       {
         num: 4,
@@ -90,7 +97,7 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
         onClick: () => setDrawer('withdrawals'),
       },
     ],
-    [total, needsSplit, hasExpenses, hasIncome, hasWithdrawals],
+    [total, needsSplit, hasExpenses, hasIncome, hasWithdrawals, setDrawer],
   );
 
   const stepsDone = steps.filter(s => s.done).length;
@@ -276,7 +283,7 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
               rows={[
                 { label: 'Total entered', value: formatDollarsCompact(total), color: 'var(--accent)' },
               ]}
-              onEdit={() => setDrawer('splitter')}
+              onEdit={() => setDrawer('balances')}
             >
               <div
                 style={{
@@ -294,7 +301,7 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => setDrawer('splitter')}
+                onClick={() => setDrawer('balances')}
                 leading={<Icon name="edit" />}
                 style={{ width: '100%' }}
               >
@@ -316,7 +323,7 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
                 { label: 'Roth IRA', value: formatDollarsCompact(input.rothBalance), color: 'var(--chart-roth)' },
                 { label: 'Trad IRA', value: formatDollarsCompact(input.iraBalance), color: 'var(--chart-ira)' },
               ]}
-              onEdit={() => setDrawer('splitter')}
+              onEdit={() => setDrawer('balances')}
             />
           )}
 
@@ -405,7 +412,7 @@ export function PartialPlan({ input, results, onInputChange, onAutoBalance, onAb
       <Footer onAbout={onAbout} />
 
       <EditDrawer
-        open={drawer === 'splitter'}
+        open={drawer === 'balances'}
         onClose={() => setDrawer(null)}
         title="Split starting savings"
         sub="Distribute your total across the four account types"
