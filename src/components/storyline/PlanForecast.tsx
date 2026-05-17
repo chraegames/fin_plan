@@ -237,47 +237,49 @@ export function PlanForecast({
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
-              <span style={{ color: 'var(--ink-muted)' }}>Amounts in</span>
-              <div
-                role="tablist"
-                aria-label="Dollar basis"
-                style={{
-                  display: 'inline-flex',
-                  background: 'var(--surface-2)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: 2,
-                  gap: 2,
-                }}
-              >
-                <button
-                  role="tab"
-                  aria-selected={!realDollars}
-                  onClick={() => setRealDollars(false)}
-                  style={toggleStyle(!realDollars)}
-                  title={`What each future year's bank statement would say. Inflation makes the numbers grow over time${input.inflationRate > 0 ? ` (≈ ${(input.inflationRate * 100).toFixed(1)}%/yr in this plan)` : ''}.`}
-                >
-                  Future $
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={realDollars}
-                  onClick={() => setRealDollars(true)}
-                  disabled={input.inflationRate === 0}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: 'var(--ink-muted)' }}>Amounts in</span>
+                <div
+                  role="tablist"
+                  aria-label="Dollar basis"
                   style={{
-                    ...toggleStyle(realDollars),
-                    opacity: input.inflationRate === 0 ? 0.4 : 1,
-                    cursor: input.inflationRate === 0 ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: 2,
+                    gap: 2,
                   }}
-                  title={
-                    input.inflationRate === 0
-                      ? 'Set inflation > 0% to enable — with no inflation, both views are identical.'
-                      : `Future amounts shown in today's purchasing power (divided by ${(input.inflationRate * 100).toFixed(1)}%/yr inflation). Easier to compare years on the same ruler.`
-                  }
                 >
-                  Today's $
-                </button>
+                  <button
+                    role="tab"
+                    aria-selected={!realDollars}
+                    onClick={() => setRealDollars(false)}
+                    style={toggleStyle(!realDollars)}
+                    title={`What each future year's bank statement would say. Inflation makes the numbers grow over time${input.inflationRate > 0 ? ` (≈ ${(input.inflationRate * 100).toFixed(1)}%/yr in this plan)` : ''}.`}
+                  >
+                    Future $
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={realDollars}
+                    onClick={() => setRealDollars(true)}
+                    disabled={input.inflationRate === 0}
+                    style={{
+                      ...toggleStyle(realDollars),
+                      opacity: input.inflationRate === 0 ? 0.4 : 1,
+                      cursor: input.inflationRate === 0 ? 'not-allowed' : 'pointer',
+                    }}
+                    title={
+                      input.inflationRate === 0
+                        ? 'Set inflation > 0% to enable — with no inflation, both views are identical.'
+                        : `Future amounts shown in today's purchasing power (divided by ${(input.inflationRate * 100).toFixed(1)}%/yr inflation). Easier to compare years on the same ruler.`
+                    }
+                  >
+                    Today's $
+                  </button>
+                </div>
               </div>
               <span
                 style={{
