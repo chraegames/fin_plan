@@ -320,17 +320,19 @@ export function PlanForecast({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
-              fontSize: 12,
-              color: 'var(--ink-3)',
-              background: 'transparent',
-              border: 'none',
+              gap: 6,
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: 'var(--accent-ink)',
+              background: 'var(--accent-soft)',
+              border: '1px solid var(--accent)',
               cursor: 'pointer',
-              padding: '4px 6px',
-              borderRadius: 6,
+              padding: '5px 10px',
+              borderRadius: 7,
+              transition: 'background-color 140ms ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-tint)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent-soft)')}
           >
             Jump to year-by-year table
             <Icon name="arrowDown" size={11} />
