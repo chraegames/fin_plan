@@ -323,7 +323,8 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `fire-planner-${new Date().toISOString().slice(0, 10)}.json`;
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    a.download = `fire-planner-${stamp}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
