@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { buildDefaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
@@ -25,6 +25,8 @@ import { PartialPlan } from './components/storyline/PartialPlan';
 import { PlanForecast } from './components/storyline/PlanForecast';
 import { HistoryPage } from './components/storyline/HistoryPage';
 import { AboutModal } from './components/storyline/AboutModal';
+import { ExportModal } from './components/storyline/ExportModal';
+import { ImportModal } from './components/storyline/ImportModal';
 import { useTheme } from './hooks/useTheme';
 
 type Route = 'plan' | 'history';
@@ -41,8 +43,8 @@ export default function App() {
   const [route, setRoute] = useState<Route>('plan');
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [importError, setImportError] = useState('');
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
 
   useEffect(() => {
@@ -316,7 +318,7 @@ export default function App() {
   }, [updateActiveProfile]);
 
   // Export / Import
-  const handleExport = useCallback(() => {
+  const downloadExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(profilesState, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -328,43 +330,11 @@ export default function App() {
     URL.revokeObjectURL(url);
   }, [profilesState]);
 
-  const handleImport = useCallback(() => {
-    setImportError('');
-    importInputRef.current?.click();
-  }, []);
-
-  const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setImportError('');
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onerror = () => setImportError('Could not read the file.');
-    reader.onload = () => {
-      try {
-        const decoded = JSON.parse(reader.result as string) as ProfilesState;
-        if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
-          setImportError(
-            'That file does not look like an export. Choose a fire-planner-*.json file.',
-          );
-          return;
-        }
-        if (
-          !confirm(
-            `Replace all current data with ${decoded.profiles.length} profile(s) from "${file.name}"? Your existing data will be discarded.`,
-          )
-        ) {
-          return;
-        }
-        for (const profile of decoded.profiles) {
-          migratePlans(profile.plans);
-        }
-        setProfilesState(decoded);
-      } catch {
-        setImportError('That file is not valid JSON.');
-      }
-    };
-    reader.readAsText(file);
+  const applyImport = useCallback((decoded: ProfilesState) => {
+    for (const profile of decoded.profiles) {
+      migratePlans(profile.plans);
+    }
+    setProfilesState(decoded);
   }, []);
 
   return (
@@ -375,8 +345,8 @@ export default function App() {
         theme={theme}
         route={route}
         onToggleTheme={toggleTheme}
-        onExport={handleExport}
-        onImport={handleImport}
+        onExport={() => setExportOpen(true)}
+        onImport={() => setImportOpen(true)}
         onAbout={() => setAboutOpen(true)}
         onGoHistory={() => setRoute('history')}
         onGoPlan={() => setRoute('plan')}
@@ -393,26 +363,6 @@ export default function App() {
         onRename={renamePlan}
         onDelete={deletePlan}
       />
-      <input
-        ref={importInputRef}
-        type="file"
-        accept="application/json,.json"
-        onChange={handleImportFile}
-        style={{ display: 'none' }}
-      />
-      {importError && (
-        <div
-          style={{
-            padding: '10px 32px',
-            background: 'var(--negative-soft)',
-            color: 'var(--negative)',
-            fontSize: 13,
-          }}
-        >
-          {importError}
-        </div>
-      )}
-
       {route === 'history' ? (
         <HistoryPage
           input={input}
@@ -426,7 +376,7 @@ export default function App() {
           onLoadPreset={handleLoadPreset}
           onBuild={handleBuild}
           onSkip={handleSkipToAdvanced}
-          onImport={handleImport}
+          onImport={() => setImportOpen(true)}
         />
       ) : screen === 'partial' ? (
         <PartialPlan
@@ -452,6 +402,19 @@ export default function App() {
       )}
 
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <ExportModal
+        open={exportOpen}
+        profilesState={profilesState}
+        onClose={() => setExportOpen(false)}
+        onDownload={downloadExport}
+      />
+      <ImportModal
+        open={importOpen}
+        profilesState={profilesState}
+        onClose={() => setImportOpen(false)}
+        onApply={applyImport}
+        onDownloadBackup={downloadExport}
+      />
     </div>
   );
 }
