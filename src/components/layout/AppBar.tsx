@@ -4,6 +4,7 @@ import { Icon } from '../primitives/Icon';
 import { Popover, PopoverItem, PopoverDivider, PopoverLabel } from '../primitives/Popover';
 import { NameForm } from './NameForm';
 import { Logo } from './Logo';
+import { ConfirmDialog } from '../storyline/ConfirmDialog';
 import type { Profile, ProfilesState } from '../../models/types';
 
 interface AppBarProps {
@@ -156,8 +157,11 @@ function ProfileChip({
   onDelete,
 }: ProfileChipProps) {
   const [mode, setMode] = useState<'menu' | 'rename'>('menu');
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const canDelete = profilesState.profiles.length > 1;
+  const scenarioCount = activeProfile.plans.length;
   return (
+    <>
     <Popover
       width={280}
       align="right"
@@ -283,10 +287,8 @@ function ProfileChip({
                 leading={<Icon name="close" size={12} />}
                 tone="danger"
                 onClick={() => {
-                  if (confirm(`Delete profile "${activeProfile.name}" and all its scenarios?`)) {
-                    onDelete(activeProfile.id);
-                    close();
-                  }
+                  close();
+                  setConfirmOpen(true);
                 }}
               >
                 Delete this profile
@@ -296,5 +298,23 @@ function ProfileChip({
         );
       }}
     </Popover>
+    <ConfirmDialog
+      open={confirmOpen}
+      title="Delete profile?"
+      message={
+        <>
+          This permanently deletes the profile <strong>"{activeProfile.name}"</strong> and all{' '}
+          {scenarioCount} of its {scenarioCount === 1 ? 'scenario' : 'scenarios'} — including every
+          input, history entry, and withdrawal schedule.
+        </>
+      }
+      confirmLabel="Delete profile"
+      onClose={() => setConfirmOpen(false)}
+      onConfirm={() => {
+        onDelete(activeProfile.id);
+        setConfirmOpen(false);
+      }}
+    />
+    </>
   );
 }

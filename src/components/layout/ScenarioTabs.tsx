@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../primitives/Icon';
 import { Popover, PopoverItem, PopoverDivider, PopoverLabel } from '../primitives/Popover';
 import { NameForm } from './NameForm';
+import { ConfirmDialog } from '../storyline/ConfirmDialog';
 import type { Profile, Scenario } from '../../models/types';
 
 interface ScenarioTabsProps {
@@ -217,8 +218,10 @@ function ScenarioTabMenu({
   onDelete,
 }: ScenarioTabMenuProps) {
   const [mode, setMode] = useState<'menu' | 'rename'>('menu');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
+    <>
     <Popover
       width={200}
       align="left"
@@ -282,10 +285,8 @@ function ScenarioTabMenu({
                   leading={<Icon name="close" size={12} />}
                   tone="danger"
                   onClick={() => {
-                    if (confirm(`Delete scenario "${scenarioName}"?`)) {
-                      onDelete();
-                      close();
-                    }
+                    close();
+                    setConfirmOpen(true);
                   }}
                 >
                   Delete scenario
@@ -296,6 +297,23 @@ function ScenarioTabMenu({
         );
       }}
     </Popover>
+    <ConfirmDialog
+      open={confirmOpen}
+      title="Delete scenario?"
+      message={
+        <>
+          This permanently deletes <strong>"{scenarioName}"</strong> — including its inputs, history,
+          and withdrawal schedule.
+        </>
+      }
+      confirmLabel="Delete scenario"
+      onClose={() => setConfirmOpen(false)}
+      onConfirm={() => {
+        onDelete();
+        setConfirmOpen(false);
+      }}
+    />
+    </>
   );
 }
 

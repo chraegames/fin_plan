@@ -391,7 +391,14 @@ function ConfirmStep({
           <Button variant="ghost" size="md" onClick={onClose}>
             Cancel
           </Button>
-          <DangerButton onClick={onOverwrite}>Overwrite all data</DangerButton>
+          <Button
+            variant="danger"
+            size="md"
+            onClick={onOverwrite}
+            leading={<Icon name="warning" size={12} />}
+          >
+            Overwrite all data
+          </Button>
         </div>
       </footer>
     </>
@@ -533,32 +540,3 @@ function CalloutBlock({ tone, children }: { tone: 'caution'; children: React.Rea
   );
 }
 
-function DangerButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        height: 34,
-        padding: '0 14px',
-        fontSize: 13,
-        fontWeight: 600,
-        borderRadius: 8,
-        background: hovered ? 'oklch(0.50 0.18 25)' : 'var(--negative)',
-        color: 'oklch(0.995 0.005 80)',
-        border: '1px solid var(--negative)',
-        cursor: 'pointer',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        boxShadow:
-          '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.20 0.04 260 / 0.18)',
-      }}
-    >
-      <Icon name="warning" size={12} />
-      {children}
-    </button>
-  );
-}

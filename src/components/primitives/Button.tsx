@@ -1,6 +1,6 @@
 import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'soft' | 'outline' | 'ghost';
+export type ButtonVariant = 'primary' | 'soft' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -44,6 +44,14 @@ function variantStyle(variant: ButtonVariant, hovered: boolean): React.CSSProper
         background: hovered ? 'var(--surface-2)' : 'transparent',
         color: hovered ? 'var(--ink)' : 'var(--ink-3)',
         border: '1px solid transparent',
+      };
+    case 'danger':
+      return {
+        background: hovered ? 'oklch(0.50 0.18 25)' : 'var(--negative)',
+        color: 'oklch(0.995 0.005 80)',
+        border: '1px solid var(--negative)',
+        boxShadow:
+          '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.20 0.04 260 / 0.18)',
       };
   }
 }
