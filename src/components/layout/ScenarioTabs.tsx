@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../primitives/Icon';
 import { Popover, PopoverItem, PopoverDivider, PopoverLabel } from '../primitives/Popover';
 import { NameForm } from './NameForm';
@@ -57,24 +58,7 @@ export function ScenarioTabs({
         zIndex: 25,
       }}
     >
-      <span
-        title={`What-if variants within ${profile.name}'s plan. Switching tabs swaps every input and assumption.`}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          fontSize: 10.5,
-          fontWeight: 700,
-          letterSpacing: '0.10em',
-          textTransform: 'uppercase',
-          color: 'var(--ink-muted)',
-          cursor: 'help',
-          flexShrink: 0,
-        }}
-      >
-        Scenarios
-        <Icon name="info" size={11} />
-      </span>
+      <ScenariosLabel profileName={profile.name} />
 
       <div
         style={{
@@ -366,5 +350,72 @@ function NewScenarioTrigger({ onCreate }: NewScenarioTriggerProps) {
         )}
       </Popover>
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Leading "Scenarios ⓘ" label with a custom hover tooltip
+// ────────────────────────────────────────────────────────────────────────
+
+function ScenariosLabel({ profileName }: { profileName: string }) {
+  const [hovered, setHovered] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!hovered || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 8, left: r.left });
+  }, [hovered]);
+
+  return (
+    <>
+      <span
+        ref={ref}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: '0.10em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-muted)',
+          cursor: 'help',
+          flexShrink: 0,
+        }}
+      >
+        Scenarios
+        <Icon name="info" size={11} />
+      </span>
+      {hovered && pos &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              width: 280,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              fontSize: 12,
+              color: 'var(--ink-2)',
+              lineHeight: 1.5,
+              boxShadow: 'var(--shadow-pop)',
+              zIndex: 1000,
+              pointerEvents: 'none',
+            }}
+          >
+            What-if variants within <strong>{profileName}'s</strong> plan.
+            Switching tabs swaps every input and assumption below.
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

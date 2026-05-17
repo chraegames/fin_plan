@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 function useHover(): [boolean, { onMouseEnter: () => void; onMouseLeave: () => void }] {
   const [hovered, setHovered] = useState(false);
@@ -18,15 +19,25 @@ interface PopoverProps {
   width?: number;
 }
 
+interface PopoverPosition {
+  top: number;
+  left?: number;
+  right?: number;
+}
+
 export function Popover({ trigger, children, align = 'left', width = 240 }: PopoverProps) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<PopoverPosition | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (wrapperRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
@@ -39,31 +50,56 @@ export function Popover({ trigger, children, align = 'left', width = 240 }: Popo
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = wrapperRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (align === 'left') {
+        setPos({ top: r.bottom + 6, left: r.left });
+      } else {
+        setPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+      }
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open, align]);
+
   return (
     <div ref={wrapperRef} style={{ position: 'relative' }}>
       {trigger({ open, toggle: () => setOpen(o => !o) })}
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            [align]: 0,
-            zIndex: 40,
-            width,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            boxShadow: 'var(--shadow-pop)',
-            padding: 6,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          {children({ close: () => setOpen(false) })}
-        </div>
-      )}
+      {open && pos &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              right: pos.right,
+              zIndex: 1000,
+              width,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              boxShadow: 'var(--shadow-pop)',
+              padding: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {children({ close: () => setOpen(false) })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
