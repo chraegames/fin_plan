@@ -93,7 +93,7 @@ export function AppBar({
           </Button>
         ) : (
           <Button
-            variant="ghost"
+            variant="outline"
             size="md"
             onClick={onGoHistory}
             leading={<Icon name="calendar" />}

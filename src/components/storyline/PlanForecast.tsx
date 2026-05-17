@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { DrawerKind } from '../../App';
 import type { PlanInput, ActualsData, SimulationResult } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
@@ -11,12 +11,14 @@ import { Icon } from '../primitives/Icon';
 import { KPIChip } from './cards/KPIChip';
 import { SummaryCard, type SummaryRow } from './cards/SummaryCard';
 import { WithdrawalNudge } from './cards/WithdrawalNudge';
+import { HistoryCard } from './cards/HistoryCard';
 import { NetWorthChart, type ChartMarker } from './charts/NetWorthChart';
 import { WithdrawalsChart } from './charts/WithdrawalsChart';
 import { CashFlowChart } from './charts/CashFlowChart';
 import { ChartLegend } from './sections/ChartLegend';
 import { YearByYear } from './sections/YearByYear';
 import { Footer } from './sections/Footer';
+import { InputGroup } from './sections/InputGroup';
 import { DrawerHost } from './drawers/DrawerHost';
 
 type Tab = 'networth' | 'withdrawals' | 'cashflow';
@@ -30,19 +32,23 @@ interface PlanForecastProps {
   onInputChange: (next: PlanInput) => void;
   onAutoBalance: (targetCash: number) => void;
   onAbout: () => void;
+  onGoHistory: () => void;
 }
 
 export function PlanForecast({
   input,
+  actuals,
   results,
   drawer,
   setDrawer,
   onInputChange,
   onAutoBalance,
   onAbout,
+  onGoHistory,
 }: PlanForecastProps) {
   const [tab, setTab] = useState<Tab>('networth');
   const [realDollars, setRealDollars] = useState(false);
+  const yearTableRef = useRef<HTMLElement>(null);
 
   const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
   const hasWithdrawals = input.withdrawals.some(w => w.periods.some(p => p.amount > 0));
@@ -308,6 +314,28 @@ export function PlanForecast({
           {tab === 'withdrawals' && <WithdrawalsChart results={displayResults} />}
           {tab === 'cashflow' && <CashFlowChart results={displayResults} />}
         </article>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          <button
+            onClick={() => yearTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 12,
+              color: 'var(--ink-3)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 6px',
+              borderRadius: 6,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
+          >
+            Jump to year-by-year table
+            <Icon name="arrowDown" size={11} />
+          </button>
+        </div>
       </section>
 
       <section>
@@ -316,26 +344,27 @@ export function PlanForecast({
           title="Adjust your plan"
           sub="Each card is a live summary of one input group. Click Edit to refine in a drawer."
         />
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 14,
-          }}
-        >
+        <InputGroup label="Basics">
           <BalancesCard input={input} onEdit={() => setDrawer('balances')} />
+          <ReturnsCard input={input} onEdit={() => setDrawer('returns')} />
+        </InputGroup>
+        <InputGroup label="Cash flow">
           <IncomeCard input={input} results={displayResults} onEdit={() => setDrawer('income')} />
           <ExpensesCard input={input} results={displayResults} onEdit={() => setDrawer('expenses')} />
+        </InputGroup>
+        <InputGroup label="Schedules & actuals">
           <WithdrawalsCard
             input={input}
             onEdit={() => setDrawer('withdrawals')}
             onAutoBalance={() => onAutoBalance(input.targetCash)}
           />
-          <ReturnsCard input={input} onEdit={() => setDrawer('returns')} />
-        </div>
+          <HistoryCard actuals={actuals} onGoHistory={onGoHistory} />
+        </InputGroup>
       </section>
 
-      <YearByYear results={displayResults} birthYear={input.birthYear} penaltyCutoff={penaltyCutoff} />
+      <section ref={yearTableRef}>
+        <YearByYear results={displayResults} birthYear={input.birthYear} penaltyCutoff={penaltyCutoff} />
+      </section>
 
       <Footer onAbout={onAbout} />
 

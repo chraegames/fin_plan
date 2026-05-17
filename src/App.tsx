@@ -399,6 +399,7 @@ export default function App() {
           onInputChange={handleInputChange}
           onAutoBalance={handleAutoBalance}
           onAbout={() => setAboutOpen(true)}
+          onGoHistory={() => setRoute('history')}
         />
       )}
 

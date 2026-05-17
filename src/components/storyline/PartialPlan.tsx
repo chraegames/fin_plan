@@ -14,6 +14,7 @@ import { SummaryCard } from './cards/SummaryCard';
 import { NetWorthChart } from './charts/NetWorthChart';
 import { NextSteps, type NextStep } from './sections/NextSteps';
 import { Footer } from './sections/Footer';
+import { InputGroup } from './sections/InputGroup';
 import { DrawerHost } from './drawers/DrawerHost';
 
 interface PartialPlanProps {
@@ -256,13 +257,7 @@ export function PartialPlan({
           title="Your plan, so far"
           sub="Click any card to refine. Empty cards are ready when you are."
         />
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 14,
-          }}
-        >
+        <InputGroup label="Basics">
           {needsSplit ? (
             <SummaryCard
               eyebrow="Starting balances"
@@ -337,7 +332,9 @@ export function PartialPlan({
             ]}
             onEdit={() => setDrawer('returns')}
           />
+        </InputGroup>
 
+        <InputGroup label="Cash flow">
           {hasIncome ? (
             <SummaryCard
               eyebrow="Income"
@@ -383,7 +380,9 @@ export function PartialPlan({
               onAdd={() => setDrawer('expenses')}
             />
           )}
+        </InputGroup>
 
+        <InputGroup label="Schedules & actuals">
           <EmptyCard
             eyebrow="Withdrawal strategy"
             title="Not configured"
@@ -394,7 +393,7 @@ export function PartialPlan({
             ctaLabel="Set up withdrawals"
             onAdd={() => setDrawer('withdrawals')}
           />
-        </div>
+        </InputGroup>
       </section>
 
       <Footer onAbout={onAbout} />
