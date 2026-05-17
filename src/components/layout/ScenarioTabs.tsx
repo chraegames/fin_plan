@@ -417,8 +417,8 @@ function ScenariosLabel({ profileName }: { profileName: string }) {
               pointerEvents: 'none',
             }}
           >
-            What-if variants within <strong>{profileName}'s</strong> plan.
-            Switching tabs swaps every input and assumption below.
+            Each scenario under <strong>{profileName}'s</strong> profile keeps its own inputs and
+            history. Switching tabs replaces every number on the page.
           </div>,
           document.body,
         )}

@@ -7,7 +7,6 @@ export interface PresetMeta {
   name: string;
   meta: string;
   horizon: string;
-  insight: string;
   tone: 'positive' | 'neutral' | 'caution';
   values: number[];
 }
@@ -18,7 +17,6 @@ export const PRESET_META: PresetMeta[] = [
     name: 'Coast FIRE',
     meta: 'Age 35 · $400K · 55 years',
     horizon: '2026 → 2081',
-    insight: 'Compounds enough to coast',
     tone: 'positive',
     values: [400, 480, 590, 720, 880, 1080, 1330, 1640, 2020, 2470, 3010, 3680, 4470, 5410, 6500],
   },
@@ -27,7 +25,6 @@ export const PRESET_META: PresetMeta[] = [
     name: 'Mid-career',
     meta: 'Age 45 · $1.2M · 45 years',
     horizon: '2026 → 2071',
-    insight: 'On track if savings continue',
     tone: 'neutral',
     values: [1200, 1320, 1450, 1590, 1740, 1900, 2070, 2240, 2410, 2570, 2700, 2790, 2800, 2750, 2620],
   },
@@ -36,7 +33,6 @@ export const PRESET_META: PresetMeta[] = [
     name: 'Approaching retirement',
     meta: 'Age 58 · $2.4M · 32 years',
     horizon: '2026 → 2058',
-    insight: 'Plan depletes in early 80s',
     tone: 'caution',
     values: [2400, 2520, 2620, 2680, 2700, 2660, 2580, 2450, 2270, 2050, 1780, 1450, 1080, 660, 200],
   },

@@ -154,14 +154,12 @@ export function PartialPlan({
             marginBottom: 12,
           }}
         >
-          Your plan is{' '}
-          <em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>taking shape</em>. Add
-          expenses to see the depletion year.
+          Setup in progress
         </h1>
         <p style={{ fontSize: 14, color: 'var(--ink-3)', lineHeight: 1.55, maxWidth: 720, marginBottom: 24 }}>
           {hasExpenses
-            ? 'Withdrawals haven\'t been scheduled yet, so the chart can\'t draw drawdown — run the optimizer when you\'re ready.'
-            : 'Without expenses, the chart can only show savings sitting and growing. The interesting story starts with how you spend.'}
+            ? 'Add a withdrawal strategy to draw money out of your accounts each year.'
+            : 'Add expenses to enable the forecast.'}
         </p>
 
         <div
@@ -230,11 +228,10 @@ export function PartialPlan({
                   gap: 6,
                 }}
               >
-                <Icon name="sparkle" size={12} /> Add expenses to draw the real curve
+                <Icon name="sparkle" size={12} /> Add expenses to enable the forecast
               </div>
               <p style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-                Right now your savings would just sit and grow. The interesting story starts with
-                how you spend.
+                Without expenses the simulation has nothing to spend, so balances just compound.
               </p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                 <Button
@@ -389,9 +386,9 @@ export function PartialPlan({
 
           <EmptyCard
             eyebrow="Withdrawal strategy"
-            title="We'll suggest one"
-            description="Once you've added expenses, set a target cash buffer and the optimizer will pick a tax-efficient withdrawal schedule across your accounts."
-            examples={['Auto-balanced', 'Tax-efficient', 'Penalty-aware']}
+            title="Not configured"
+            description="After adding expenses, set a target cash buffer and the LP optimizer will generate a withdrawal schedule across your brokerage, Roth, and IRA accounts."
+            examples={['Target cash buffer', 'LP-optimized', 'Penalty-aware']}
             icon="sparkle"
             locked={!hasExpenses}
             ctaLabel="Set up withdrawals"

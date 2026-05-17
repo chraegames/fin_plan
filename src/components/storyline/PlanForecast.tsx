@@ -3,7 +3,7 @@ import type { DrawerKind } from '../../App';
 import type { PlanInput, ActualsData, SimulationResult } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
 import { deflateResults } from '../../utils/deflate';
-import { formatDollars, formatDollarsCompact } from '../../utils/format';
+import { formatDollarsCompact } from '../../utils/format';
 import { Page } from '../layout/Page';
 import { SectionHead } from '../layout/SectionHead';
 import { Button } from '../primitives/Button';
@@ -122,44 +122,27 @@ export function PlanForecast({
     depletion,
   } = summary;
   const horizonYears = displayResults.length;
-  const yearsFunded = depletion ? depletion.year - input.startYear : horizonYears;
 
   return (
     <Page maxWidth={1280}>
       {!hasWithdrawals && <WithdrawalNudge onSetUp={() => setDrawer('withdrawals')} />}
       <section>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
-            gap: 36,
-            alignItems: 'baseline',
-            marginBottom: 28,
-          }}
-        >
+        <div style={{ marginBottom: 24 }}>
           <h1
             style={{
               fontFamily: 'var(--font-display)',
               fontWeight: 400,
-              fontSize: 52,
+              fontSize: 44,
               letterSpacing: '-0.025em',
-              lineHeight: 1.08,
+              lineHeight: 1.1,
               color: 'var(--ink)',
             }}
           >
-            Your plan funds{' '}
-            <em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>
-              {yearsFunded} {yearsFunded === 1 ? 'year' : 'years'}
-            </em>
-            {depletion
-              ? <>, then depletes in <em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>{depletion.year}</em>.</>
-              : <>, all the way to {input.endYear}.</>}
+            Forecast
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--ink-3)', lineHeight: 1.55, marginTop: 6 }}>
-            {depletion
-              ? `Your savings sustain spending through ${depletion.year - 1}. After that, balances reach zero — adjust expenses or income below to extend the horizon.`
-              : `Across ${horizonYears} years, your plan stays solvent. Net worth peaks at ${formatDollars(peakNetWorth)} in ${peakYear}.`}
-          </p>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 6 }}>
+            {input.startYear} → {input.endYear} · {horizonYears} {horizonYears === 1 ? 'year' : 'years'}
+          </div>
         </div>
 
         <div
@@ -574,7 +557,7 @@ function WithdrawalsCard({
             }}
           >
             {isFirstTime
-              ? 'Choose a target cash buffer; the optimizer drafts the rest.'
+              ? 'Choose a target cash buffer; the optimizer creates a schedule that keeps it near target.'
               : 'Rewrites the schedule for the current plan — keeps the buffer near target.'}
           </div>
         </div>

@@ -7,7 +7,6 @@ interface PresetCardProps {
   name: string;
   meta: string;
   horizon: string;
-  insight: string;
   tone: PresetTone;
   values: number[];
   onClick?: () => void;
@@ -29,7 +28,6 @@ export function PresetCard({
   name,
   meta,
   horizon,
-  insight,
   tone,
   values,
   onClick,
@@ -77,17 +75,6 @@ export function PresetCard({
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>{meta}</div>
         <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>{horizon}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-          <span
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: 99,
-              background: toneColor[tone],
-            }}
-          />
-          <span style={{ fontSize: 11.5, color: toneColor[tone], fontWeight: 500 }}>{insight}</span>
-        </div>
       </div>
       <div style={{ color: toneColor[tone] }}>
         <Sparkline

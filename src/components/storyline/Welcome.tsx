@@ -79,8 +79,8 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
             maxWidth: 660,
           }}
         >
-          See exactly when your savings run out — and what changes the answer the most. Free,
-          educational, and entirely private to your browser.
+          Project when your savings run out under your own income, expenses, and withdrawal
+          schedule. Free, educational, and entirely private to your browser.
         </p>
       </header>
 
@@ -134,7 +134,6 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
                 name={p.name}
                 meta={p.meta}
                 horizon={p.horizon}
-                insight={p.insight}
                 tone={p.tone}
                 values={p.values}
                 onClick={() => onLoadPreset(p.key)}
@@ -255,8 +254,8 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
           boxShadow: 'var(--shadow-card)',
         }}
       >
-        <ValueProp icon="spark" title="Annotated forecast" sub="Inflection years marked on the chart" />
-        <ValueProp icon="sparkle" title="Auto-generated insights" sub="Plain-language explanations" />
+        <ValueProp icon="spark" title="Key years marked" sub="Today, 59½, cash-depleted, plan-depleted" />
+        <ValueProp icon="sparkle" title="LP-optimized withdrawals" sub="Tax-efficient schedule across accounts" />
         <ValueProp icon="calendar" title="Year-by-year ledger" sub="Full simulation transparency" />
         <span style={{ width: 1, height: 36, background: 'var(--border)' }} />
         <ValueProp icon="bank" title="Private to your browser" sub="No account, no tracking" />
