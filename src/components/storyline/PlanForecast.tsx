@@ -10,6 +10,7 @@ import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { KPIChip } from './cards/KPIChip';
 import { SummaryCard, type SummaryRow } from './cards/SummaryCard';
+import { WithdrawalNudge } from './cards/WithdrawalNudge';
 import { NetWorthChart, type ChartMarker } from './charts/NetWorthChart';
 import { WithdrawalsChart } from './charts/WithdrawalsChart';
 import { CashFlowChart } from './charts/CashFlowChart';
@@ -44,6 +45,7 @@ export function PlanForecast({
   const [realDollars, setRealDollars] = useState(false);
 
   const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
+  const hasWithdrawals = input.withdrawals.some(w => w.periods.some(p => p.amount > 0));
 
   const displayResults = useMemo(
     () => (realDollars ? deflateResults(results, input.inflationRate, input.startYear) : results),
@@ -95,11 +97,15 @@ export function PlanForecast({
     if (penaltyCutoff >= input.startYear && penaltyCutoff <= input.endYear) {
       m.push({ year: penaltyCutoff, label: '59½ · penalty-free', tone: 'positive' });
     }
+    const cashGone = displayResults.find(r => r.endingCash < 0);
+    if (cashGone && cashGone.year !== summary?.depletion?.year) {
+      m.push({ year: cashGone.year, label: 'Cash depleted', tone: 'negative' });
+    }
     if (summary?.depletion) {
       m.push({ year: summary.depletion.year, label: 'Plan depletes', tone: 'negative' });
     }
     return m;
-  }, [input.startYear, input.endYear, penaltyCutoff, summary]);
+  }, [input.startYear, input.endYear, penaltyCutoff, summary, displayResults]);
 
   if (!summary) {
     return <Page><div style={{ color: 'var(--ink-muted)' }}>No simulation data yet.</div></Page>;
@@ -120,6 +126,7 @@ export function PlanForecast({
 
   return (
     <Page maxWidth={1280}>
+      {!hasWithdrawals && <WithdrawalNudge onSetUp={() => setDrawer('withdrawals')} />}
       <section>
         <div
           style={{

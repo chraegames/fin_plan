@@ -21,6 +21,23 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
   const [birthYear, setBirthYear] = useState(DEFAULT_BIRTH_YEAR);
   const [endYear, setEndYear] = useState(DEFAULT_END_YEAR);
   const [total, setTotal] = useState(0);
+  const [showErrors, setShowErrors] = useState(false);
+
+  const totalMissing = total <= 0;
+  const showTotalError = showErrors && totalMissing;
+
+  const handleBuild = () => {
+    if (totalMissing) {
+      setShowErrors(true);
+      return;
+    }
+    onBuild({ birthYear, endYear, total });
+  };
+
+  const handleTotalChange = (next: number) => {
+    setTotal(next);
+    if (next > 0 && showErrors) setShowErrors(false);
+  };
 
   return (
     <Page maxWidth={1080} gap={48}>
@@ -174,8 +191,20 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
             <ScratchField step={2} prompt="Plan through which year?" hint="Default is age 85.">
               <YearInput value={endYear} onChange={setEndYear} min={CURRENT_YEAR + 1} max={2200} width={160} />
             </ScratchField>
-            <ScratchField step={3} prompt="Total savings across all accounts" hint="We'll split it across cash, brokerage, and retirement next.">
-              <MoneyInput value={total} onChange={setTotal} width={200} placeholder="e.g. 1,500,000" />
+            <ScratchField
+              step={3}
+              prompt="Total savings across all accounts"
+              hint="We'll split it across cash, brokerage, and retirement next."
+              required
+              errorMessage={showTotalError ? 'Enter your total savings to continue.' : undefined}
+            >
+              <MoneyInput
+                value={total}
+                onChange={handleTotalChange}
+                width={200}
+                placeholder="e.g. 1,500,000"
+                error={showTotalError}
+              />
             </ScratchField>
           </div>
 
@@ -203,9 +232,8 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
             <Button
               variant="primary"
               size="lg"
-              onClick={() => onBuild({ birthYear, endYear, total })}
+              onClick={handleBuild}
               trailing={<Icon name="arrow" />}
-              disabled={total <= 0}
             >
               Build my plan
             </Button>
@@ -248,11 +276,15 @@ function ScratchField({
   step,
   prompt,
   hint,
+  required,
+  errorMessage,
   children,
 }: {
   step: number;
   prompt: string;
   hint?: string;
+  required?: boolean;
+  errorMessage?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -289,20 +321,41 @@ function ScratchField({
           }}
         >
           {prompt}
+          {required && (
+            <span
+              aria-label="required"
+              style={{ color: 'var(--negative)', marginLeft: 4, fontWeight: 600 }}
+            >
+              *
+            </span>
+          )}
         </label>
         {children}
-        {hint && (
+        {errorMessage ? (
           <div
             style={{
               fontSize: 11.5,
-              color: 'var(--ink-muted)',
+              color: 'var(--negative)',
               marginTop: 6,
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
+              fontWeight: 500,
             }}
           >
-            {hint}
+            {errorMessage}
           </div>
+        ) : (
+          hint && (
+            <div
+              style={{
+                fontSize: 11.5,
+                color: 'var(--ink-muted)',
+                marginTop: 6,
+                fontFamily: 'var(--font-display)',
+                fontStyle: 'italic',
+              }}
+            >
+              {hint}
+            </div>
+          )
         )}
       </div>
     </div>

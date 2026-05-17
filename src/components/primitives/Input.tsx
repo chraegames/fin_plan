@@ -22,6 +22,8 @@ interface MoneyInputProps
   showPrefix?: boolean;
   /** Allow negative values. Defaults to false. */
   allowNegative?: boolean;
+  /** Render with a red border to flag a missing or invalid value. */
+  error?: boolean;
 }
 
 function formatMoney(value: number): string {
@@ -36,6 +38,7 @@ export function MoneyInput({
   align = 'right',
   showPrefix = true,
   allowNegative = false,
+  error = false,
   ...rest
 }: MoneyInputProps) {
   const [focused, setFocused] = useState(false);
@@ -82,8 +85,8 @@ export function MoneyInput({
         gap: 4,
         height: 32,
         padding: '0 10px',
-        background: 'var(--surface-2)',
-        border: '1px solid var(--border-soft)',
+        background: error ? 'var(--negative-soft)' : 'var(--surface-2)',
+        border: `1px solid ${error ? 'var(--negative)' : 'var(--border-soft)'}`,
         borderRadius: 'var(--radius-md)',
         fontFamily: 'var(--font-mono)',
         fontVariantNumeric: 'tabular-nums',
@@ -127,9 +130,11 @@ interface YearInputProps
   /** Inclusive upper bound applied on blur. Doesn't restrict typing. */
   max?: number;
   width?: number | string;
+  /** Render with a red border to flag a missing or invalid value. */
+  error?: boolean;
 }
 
-export function YearInput({ value, onChange, min, max, width = 90, ...rest }: YearInputProps) {
+export function YearInput({ value, onChange, min, max, width = 90, error = false, ...rest }: YearInputProps) {
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState(() => String(value));
   const [lastSeenValue, setLastSeenValue] = useState(value);
@@ -180,8 +185,8 @@ export function YearInput({ value, onChange, min, max, width = 90, ...rest }: Ye
         height: 32,
         padding: '0 8px',
         textAlign: 'center',
-        background: 'var(--surface-2)',
-        border: '1px solid var(--border-soft)',
+        background: error ? 'var(--negative-soft)' : 'var(--surface-2)',
+        border: `1px solid ${error ? 'var(--negative)' : 'var(--border-soft)'}`,
         borderRadius: 'var(--radius-md)',
         fontFamily: 'var(--font-mono)',
         fontVariantNumeric: 'tabular-nums',

@@ -48,7 +48,7 @@ export function ScenarioTabs({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 14,
+        gap: 10,
         padding: '0 32px',
         height: 40,
         background: 'var(--bg)',
@@ -59,6 +59,13 @@ export function ScenarioTabs({
       }}
     >
       <ScenariosLabel profileName={profile.name} />
+
+      <NewScenarioTrigger onCreate={onCreate} />
+
+      <div
+        aria-hidden
+        style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0 }}
+      />
 
       <div
         style={{
@@ -107,8 +114,6 @@ export function ScenarioTabs({
           />
         )}
       </div>
-
-      <NewScenarioTrigger onCreate={onCreate} />
     </div>
   );
 }
@@ -295,7 +300,8 @@ function ScenarioTabMenu({
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// "+ New" trigger (stays outside the scroll area)
+// "+ New" trigger — sits to the left of the tab scroller, styled as a
+// sibling of a tab so it reads as part of the strip's chrome.
 // ────────────────────────────────────────────────────────────────────────
 
 interface NewScenarioTriggerProps {
@@ -308,7 +314,7 @@ function NewScenarioTrigger({ onCreate }: NewScenarioTriggerProps) {
     <div style={{ flexShrink: 0 }}>
       <Popover
         width={240}
-        align="right"
+        align="left"
         trigger={({ toggle }) => (
           <button
             onClick={toggle}
@@ -319,11 +325,11 @@ function NewScenarioTrigger({ onCreate }: NewScenarioTriggerProps) {
               alignItems: 'center',
               gap: 5,
               height: 28,
-              padding: '0 10px',
+              padding: '0 10px 0 8px',
               borderRadius: 7,
-              border: '1px dashed var(--border)',
+              border: 'none',
               background: hovered ? 'var(--surface-2)' : 'transparent',
-              color: hovered ? 'var(--ink)' : 'var(--ink-3)',
+              color: hovered ? 'var(--ink)' : 'var(--ink-muted)',
               cursor: 'pointer',
               fontSize: 12.5,
               fontWeight: 500,
