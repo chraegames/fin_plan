@@ -238,7 +238,7 @@ export function PlanForecast({
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
-              <span style={{ color: 'var(--ink-muted)' }}>Show in</span>
+              <span style={{ color: 'var(--ink-muted)' }}>Amounts in</span>
               <div
                 role="tablist"
                 aria-label="Dollar basis"
@@ -256,9 +256,9 @@ export function PlanForecast({
                   aria-selected={!realDollars}
                   onClick={() => setRealDollars(false)}
                   style={toggleStyle(!realDollars)}
-                  title="Future-year dollar amounts (what the simulation outputs)"
+                  title={`What each future year's bank statement would say. Inflation makes the numbers grow over time${input.inflationRate > 0 ? ` (≈ ${(input.inflationRate * 100).toFixed(1)}%/yr in this plan)` : ''}.`}
                 >
-                  Nominal $
+                  Future $
                 </button>
                 <button
                   role="tab"
@@ -272,28 +272,28 @@ export function PlanForecast({
                   }}
                   title={
                     input.inflationRate === 0
-                      ? 'Set inflation > 0% to enable this'
-                      : `Deflate by ${(input.inflationRate * 100).toFixed(1)}% / yr — dollar amounts as if all years were at start-year prices`
+                      ? 'Set inflation > 0% to enable — with no inflation, both views are identical.'
+                      : `Future amounts shown in today's purchasing power (divided by ${(input.inflationRate * 100).toFixed(1)}%/yr inflation). Easier to compare years on the same ruler.`
                   }
                 >
                   Today's $
                 </button>
               </div>
-              {realDollars && input.inflationRate > 0 && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--accent-ink)',
-                    background: 'var(--accent-tint)',
-                    padding: '3px 8px',
-                    borderRadius: 99,
-                    border: '1px solid var(--accent)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  ÷ {(input.inflationRate * 100).toFixed(1)}% inflation
-                </span>
-              )}
+              <span
+                style={{
+                  fontSize: 11,
+                  color: 'var(--ink-muted)',
+                  fontStyle: 'italic',
+                  fontFamily: 'var(--font-display)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {realDollars && input.inflationRate > 0
+                  ? `future amounts ÷ ${(input.inflationRate * 100).toFixed(1)}%/yr inflation → today's prices`
+                  : input.inflationRate > 0
+                    ? `each year's actual dollars (grows ${(input.inflationRate * 100).toFixed(1)}%/yr with inflation)`
+                    : "each year's actual dollars"}
+              </span>
             </div>
           </div>
 
