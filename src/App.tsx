@@ -19,6 +19,7 @@ import {
   migratePlans,
 } from './utils/persistence';
 import { AppBar } from './components/layout/AppBar';
+import { ScenarioTabs } from './components/layout/ScenarioTabs';
 import { Welcome } from './components/storyline/Welcome';
 import { PartialPlan } from './components/storyline/PartialPlan';
 import { PlanForecast } from './components/storyline/PlanForecast';
@@ -371,7 +372,6 @@ export default function App() {
       <AppBar
         profilesState={profilesState}
         activeProfile={activeProfile}
-        activeScenario={activePlan}
         theme={theme}
         route={route}
         onToggleTheme={toggleTheme}
@@ -380,14 +380,18 @@ export default function App() {
         onAbout={() => setAboutOpen(true)}
         onGoHistory={() => setRoute('history')}
         onGoPlan={() => setRoute('plan')}
-        onSwitchPlan={switchPlan}
-        onCreatePlan={createPlan}
-        onRenamePlan={renamePlan}
-        onDeletePlan={deletePlan}
         onSwitchProfile={switchProfile}
         onCreateProfile={createProfile}
         onRenameProfile={renameProfile}
         onDeleteProfile={deleteProfile}
+      />
+      <ScenarioTabs
+        profile={activeProfile}
+        activeScenario={activePlan}
+        onSwitch={switchPlan}
+        onCreate={createPlan}
+        onRename={renamePlan}
+        onDelete={deletePlan}
       />
       <input
         ref={importInputRef}
@@ -439,7 +443,6 @@ export default function App() {
           input={input}
           actuals={actuals}
           results={results}
-          scenarioName={activePlan.name}
           drawer={drawer}
           setDrawer={setDrawer}
           onInputChange={handleInputChange}

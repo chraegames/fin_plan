@@ -24,7 +24,6 @@ interface PlanForecastProps {
   input: PlanInput;
   actuals: ActualsData;
   results: SimulationResult;
-  scenarioName: string;
   drawer: DrawerKind;
   setDrawer: (kind: DrawerKind) => void;
   onInputChange: (next: PlanInput) => void;
@@ -35,7 +34,6 @@ interface PlanForecastProps {
 export function PlanForecast({
   input,
   results,
-  scenarioName,
   drawer,
   setDrawer,
   onInputChange,
@@ -123,18 +121,6 @@ export function PlanForecast({
   return (
     <Page maxWidth={1280}>
       <section>
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--ink-muted)',
-            fontWeight: 600,
-            letterSpacing: '0.10em',
-            textTransform: 'uppercase',
-            marginBottom: 14,
-          }}
-        >
-          Plan summary · {scenarioName} · {input.startYear} → {input.endYear}
-        </div>
         <div
           style={{
             display: 'grid',

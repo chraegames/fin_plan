@@ -2,14 +2,13 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { Popover, PopoverItem, PopoverDivider, PopoverLabel } from '../primitives/Popover';
-import { TextInput } from '../primitives/Input';
+import { NameForm } from './NameForm';
 import { Logo } from './Logo';
-import type { Profile, ProfilesState, Scenario } from '../../models/types';
+import type { Profile, ProfilesState } from '../../models/types';
 
 interface AppBarProps {
   profilesState: ProfilesState;
   activeProfile: Profile;
-  activeScenario: Scenario;
   theme: 'light' | 'dark';
   route: 'plan' | 'history';
   onToggleTheme: () => void;
@@ -18,10 +17,6 @@ interface AppBarProps {
   onAbout: () => void;
   onGoHistory: () => void;
   onGoPlan: () => void;
-  onSwitchPlan: (planId: string) => void;
-  onCreatePlan: (name: string) => void;
-  onRenamePlan: (planId: string, name: string) => void;
-  onDeletePlan: (planId: string) => void;
   onSwitchProfile: (profileId: string) => void;
   onCreateProfile: () => void;
   onRenameProfile: (profileId: string, name: string) => void;
@@ -32,7 +27,6 @@ interface AppBarProps {
 export function AppBar({
   profilesState,
   activeProfile,
-  activeScenario,
   theme,
   route,
   onToggleTheme,
@@ -41,10 +35,6 @@ export function AppBar({
   onAbout,
   onGoHistory,
   onGoPlan,
-  onSwitchPlan,
-  onCreatePlan,
-  onRenamePlan,
-  onDeletePlan,
   onSwitchProfile,
   onCreateProfile,
   onRenameProfile,
@@ -87,16 +77,6 @@ export function AppBar({
             FIRE Planner
           </span>
         </button>
-
-        {/* Scenario chip with switch / new / rename / delete */}
-        <ScenarioChip
-          profile={activeProfile}
-          activeScenario={activeScenario}
-          onSwitch={onSwitchPlan}
-          onCreate={onCreatePlan}
-          onRename={onRenamePlan}
-          onDelete={onDeletePlan}
-        />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -153,142 +133,6 @@ export function AppBar({
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Scenario chip
-// ────────────────────────────────────────────────────────────────────────
-
-interface ScenarioChipProps {
-  profile: Profile;
-  activeScenario: Scenario;
-  onSwitch: (planId: string) => void;
-  onCreate: (name: string) => void;
-  onRename: (planId: string, name: string) => void;
-  onDelete: (planId: string) => void;
-}
-
-function ScenarioChip({
-  profile,
-  activeScenario,
-  onSwitch,
-  onCreate,
-  onRename,
-  onDelete,
-}: ScenarioChipProps) {
-  const [mode, setMode] = useState<'menu' | 'rename' | 'create'>('menu');
-  const [draft, setDraft] = useState('');
-  const canDelete = profile.plans.length > 1;
-
-  return (
-    <Popover
-      width={260}
-      align="left"
-      trigger={({ toggle }) => (
-        <button
-          onClick={() => {
-            setMode('menu');
-            toggle();
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            height: 30,
-            padding: '0 10px 0 12px',
-            gap: 8,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            color: 'var(--ink)',
-            cursor: 'pointer',
-          }}
-        >
-          <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Scenario</span>
-          <span style={{ fontWeight: 500, fontSize: 13, color: 'var(--ink)' }}>
-            {activeScenario.name}
-          </span>
-          <Icon name="chevron" size={11} />
-        </button>
-      )}
-    >
-      {({ close }) => {
-        if (mode === 'rename') {
-          return (
-            <RenameForm
-              initial={activeScenario.name}
-              label="Rename scenario"
-              onCancel={() => setMode('menu')}
-              onSubmit={name => {
-                onRename(activeScenario.id, name);
-                setMode('menu');
-                close();
-              }}
-            />
-          );
-        }
-        if (mode === 'create') {
-          return (
-            <RenameForm
-              initial={draft || 'New scenario'}
-              label="Create scenario"
-              onCancel={() => setMode('menu')}
-              onSubmit={name => {
-                onCreate(name);
-                setMode('menu');
-                setDraft('');
-                close();
-              }}
-            />
-          );
-        }
-        return (
-          <>
-            <PopoverLabel>Switch to</PopoverLabel>
-            {profile.plans.map(p => (
-              <PopoverItem
-                key={p.id}
-                active={p.id === activeScenario.id}
-                onClick={() => {
-                  onSwitch(p.id);
-                  close();
-                }}
-                trailing={p.id === activeScenario.id ? <Icon name="check" size={12} /> : null}
-              >
-                {p.name}
-              </PopoverItem>
-            ))}
-            <PopoverDivider />
-            <PopoverItem
-              leading={<Icon name="edit" size={12} />}
-              onClick={() => setMode('rename')}
-            >
-              Rename
-            </PopoverItem>
-            <PopoverItem
-              leading={<Icon name="plus" size={12} />}
-              onClick={() => setMode('create')}
-            >
-              New scenario
-            </PopoverItem>
-            {canDelete && (
-              <PopoverItem
-                leading={<Icon name="close" size={12} />}
-                tone="danger"
-                onClick={() => {
-                  if (confirm(`Delete scenario "${activeScenario.name}"?`)) {
-                    onDelete(activeScenario.id);
-                    close();
-                  }
-                }}
-              >
-                Delete this scenario
-              </PopoverItem>
-            )}
-          </>
-        );
-      }}
-    </Popover>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
 // Profile chip
 // ────────────────────────────────────────────────────────────────────────
 
@@ -315,7 +159,7 @@ function ProfileChip({
   const canDelete = profilesState.profiles.length > 1;
   return (
     <Popover
-      width={260}
+      width={280}
       align="right"
       trigger={({ toggle }) => (
         <button
@@ -361,7 +205,7 @@ function ProfileChip({
       {({ close }) => {
         if (mode === 'rename') {
           return (
-            <RenameForm
+            <NameForm
               initial={activeProfile.name}
               label="Rename profile"
               onCancel={() => setMode('menu')}
@@ -375,20 +219,49 @@ function ProfileChip({
         }
         return (
           <>
+            <div
+              style={{
+                padding: '8px 10px 6px',
+                fontSize: 11.5,
+                lineHeight: 1.45,
+                color: 'var(--ink-muted)',
+              }}
+            >
+              Profiles separate plans for different people. Each profile has its own scenarios and inputs.
+            </div>
+            <PopoverDivider />
             <PopoverLabel>Switch profile</PopoverLabel>
-            {profilesState.profiles.map(p => (
-              <PopoverItem
-                key={p.id}
-                active={p.id === activeProfile.id}
-                onClick={() => {
-                  onSwitch(p.id);
-                  close();
-                }}
-                trailing={p.id === activeProfile.id ? <Icon name="check" size={12} /> : null}
-              >
-                {p.name}
-              </PopoverItem>
-            ))}
+            {profilesState.profiles.map(p => {
+              const count = p.plans.length;
+              const countLabel = `${count} ${count === 1 ? 'scenario' : 'scenarios'}`;
+              return (
+                <PopoverItem
+                  key={p.id}
+                  active={p.id === activeProfile.id}
+                  onClick={() => {
+                    onSwitch(p.id);
+                    close();
+                  }}
+                  trailing={
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 11,
+                        color: 'var(--ink-muted)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {countLabel}
+                      {p.id === activeProfile.id && <Icon name="check" size={12} />}
+                    </span>
+                  }
+                >
+                  {p.name}
+                </PopoverItem>
+              );
+            })}
             <PopoverDivider />
             <PopoverItem
               leading={<Icon name="edit" size={12} />}
@@ -423,47 +296,5 @@ function ProfileChip({
         );
       }}
     </Popover>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Shared rename / create form
-// ────────────────────────────────────────────────────────────────────────
-
-interface RenameFormProps {
-  initial: string;
-  label: string;
-  onCancel: () => void;
-  onSubmit: (name: string) => void;
-}
-
-function RenameForm({ initial, label, onCancel, onSubmit }: RenameFormProps) {
-  const [value, setValue] = useState(initial);
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 6 }}>
-      <PopoverLabel>{label}</PopoverLabel>
-      <TextInput
-        value={value}
-        onChange={setValue}
-        autoFocus
-        onKeyDown={e => {
-          if (e.key === 'Enter' && value.trim()) onSubmit(value.trim());
-          else if (e.key === 'Escape') onCancel();
-        }}
-      />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!value.trim()}
-          onClick={() => onSubmit(value.trim())}
-        >
-          Save
-        </Button>
-      </div>
-    </div>
   );
 }
