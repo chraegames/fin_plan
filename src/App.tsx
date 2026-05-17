@@ -409,13 +409,14 @@ export default function App() {
         onClose={() => setExportOpen(false)}
         onDownload={downloadExport}
       />
-      <ImportModal
-        open={importOpen}
-        profilesState={profilesState}
-        onClose={() => setImportOpen(false)}
-        onApply={applyImport}
-        onDownloadBackup={downloadExport}
-      />
+      {importOpen && (
+        <ImportModal
+          profilesState={profilesState}
+          onClose={() => setImportOpen(false)}
+          onApply={applyImport}
+          onDownloadBackup={downloadExport}
+        />
+      )}
     </div>
   );
 }

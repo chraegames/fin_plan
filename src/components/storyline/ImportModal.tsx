@@ -4,7 +4,6 @@ import { Icon, type IconName } from '../primitives/Icon';
 import type { ProfilesState } from '../../models/types';
 
 interface ImportModalProps {
-  open: boolean;
   profilesState: ProfilesState;
   onClose: () => void;
   onApply: (decoded: ProfilesState) => void;
@@ -17,7 +16,6 @@ interface ParsedFile {
 }
 
 export function ImportModal({
-  open,
   profilesState,
   onClose,
   onApply,
@@ -28,19 +26,12 @@ export function ImportModal({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) {
-      setParsed(null);
-      setError('');
-      return;
-    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [onClose]);
 
   const currentProfileCount = profilesState.profiles.length;
   const currentScenarioCount = profilesState.profiles.reduce(
