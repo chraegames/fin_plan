@@ -34,6 +34,17 @@
     />
 
     <meta name="robots" content="index, follow" />
+
+    <!--
+      Umami analytics (self-hosted, cookie-less). Replace STATS_DOMAIN and
+      WEBSITE_ID after standing up the Umami container (see DEPLOY.md Part D).
+      If the script fails to load, src/utils/analytics.ts no-ops gracefully.
+    -->
+    <script
+      defer
+      src="https://STATS_DOMAIN/script.js"
+      data-website-id="WEBSITE_ID"
+    ></script>
   </head>
   <body>
     <div id="root"></div>

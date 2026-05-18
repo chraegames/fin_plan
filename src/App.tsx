@@ -28,6 +28,7 @@ import { AboutModal } from './components/storyline/AboutModal';
 import { ExportModal } from './components/storyline/ExportModal';
 import { ImportModal } from './components/storyline/ImportModal';
 import { useTheme } from './hooks/useTheme';
+import { track } from './utils/analytics';
 
 type Route = 'plan' | 'history';
 export type DrawerKind =
@@ -41,7 +42,11 @@ export type DrawerKind =
 export default function App() {
   const [profilesState, setProfilesState] = useState<ProfilesState>(loadProfiles);
   const [route, setRoute] = useState<Route>('plan');
-  const [drawer, setDrawer] = useState<DrawerKind>(null);
+  const [drawer, setDrawerState] = useState<DrawerKind>(null);
+  const setDrawer = useCallback((kind: DrawerKind) => {
+    if (kind !== null) track('drawer_opened', { kind });
+    setDrawerState(kind);
+  }, []);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -113,6 +118,7 @@ export default function App() {
 
   const createPlan = useCallback(
     (name: string) => {
+      track('plan_created');
       const newId = generateId();
       updateActiveProfile(profile => {
         const active =
@@ -182,6 +188,7 @@ export default function App() {
   );
 
   const createProfile = useCallback(() => {
+    track('profile_created');
     const profileId = generateId();
     const planId = generateId();
     const plans: Scenario[] = [
@@ -228,6 +235,7 @@ export default function App() {
 
   const handleAutoBalance = useCallback(
     (targetCash: number) => {
+      track('auto_balance_run');
       updateActiveProfile(profile => {
         const active =
           profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
@@ -255,6 +263,7 @@ export default function App() {
 
   const handleLoadPreset = useCallback(
     (preset: PresetKey) => {
+      track('preset_loaded', { preset });
       const name =
         preset === 'coast' ? 'Coast FIRE' :
         preset === 'mid' ? 'Mid-career' : 'Approaching retirement';
@@ -283,6 +292,7 @@ export default function App() {
 
   const handleBuild = useCallback(
     ({ birthYear, endYear, total }: { birthYear: number; endYear: number; total: number }) => {
+      track('plan_built');
       updateActiveProfile(profile => ({
         ...profile,
         plans: profile.plans.map(p => {
@@ -309,6 +319,7 @@ export default function App() {
   );
 
   const handleSkipToAdvanced = useCallback(() => {
+    track('skip_to_advanced');
     updateActiveProfile(profile => ({
       ...profile,
       plans: profile.plans.map(p =>
@@ -319,6 +330,7 @@ export default function App() {
 
   // Export / Import
   const downloadExport = useCallback(() => {
+    track('export_downloaded');
     const blob = new Blob([JSON.stringify(profilesState, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -332,6 +344,7 @@ export default function App() {
   }, [profilesState]);
 
   const applyImport = useCallback((decoded: ProfilesState) => {
+    track('import_applied');
     for (const profile of decoded.profiles) {
       migratePlans(profile.plans);
     }
@@ -349,7 +362,10 @@ export default function App() {
         onExport={() => setExportOpen(true)}
         onImport={() => setImportOpen(true)}
         onAbout={() => setAboutOpen(true)}
-        onGoHistory={() => setRoute('history')}
+        onGoHistory={() => {
+          track('history_opened');
+          setRoute('history');
+        }}
         onGoPlan={() => setRoute('plan')}
         onSwitchProfile={switchProfile}
         onCreateProfile={createProfile}
@@ -399,7 +415,10 @@ export default function App() {
           onInputChange={handleInputChange}
           onAutoBalance={handleAutoBalance}
           onAbout={() => setAboutOpen(true)}
-          onGoHistory={() => setRoute('history')}
+          onGoHistory={() => {
+          track('history_opened');
+          setRoute('history');
+        }}
         />
       )}
 

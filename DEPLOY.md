@@ -189,6 +189,112 @@ This is industry-standard for SPAs. Reading minified Vite output is annoying but
 
 ---
 
+## Part D — Analytics (self-hosted Umami)
+
+[Umami](https://umami.is/) is open source, cookie-less, and runs as two containers (Umami + Postgres) on the same VPS, fronted by Traefik on a `stats.<your-domain>` subdomain. No tracking script ever leaves your VPS, no third party sees visitors, no consent banner needed.
+
+### D.1 DNS — add a subdomain
+Add another `A` record pointing at the VPS:
+
+| Type | Name  | Value      |
+|------|-------|------------|
+| A    | stats | <VPS_IP>   |
+
+Wait for `dig stats.your-domain.com +short` to return the VPS IP before continuing (Traefik needs DNS to resolve to request the cert).
+
+### D.2 Project directory
+```bash
+mkdir -p /opt/umami
+cd /opt/umami
+```
+
+### D.3 `docker-compose.yml`
+Create `/opt/umami/docker-compose.yml`. **Before starting**, generate two strong secrets and substitute them below (`openssl rand -hex 32` is fine for both):
+
+```yaml
+services:
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: umami
+    restart: unless-stopped
+    network_mode: bridge
+    environment:
+      DATABASE_URL: postgresql://umami:REPLACE_DB_PASSWORD@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: REPLACE_APP_SECRET
+    depends_on:
+      - umami-db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.umami.rule=Host(`stats.your-domain.com`)"
+      - "traefik.http.routers.umami.entrypoints=websecure"
+      - "traefik.http.routers.umami.tls=true"
+      - "traefik.http.routers.umami.tls.certresolver=letsencrypt"
+      - "traefik.http.services.umami.loadbalancer.server.port=3000"
+
+  umami-db:
+    image: postgres:16-alpine
+    container_name: umami-db
+    restart: unless-stopped
+    network_mode: bridge
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: REPLACE_DB_PASSWORD
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+```
+
+Both services use `network_mode: bridge` so Traefik (also on `bridge`) can reach `umami:3000` via Docker DNS, matching the existing `fin_plan` pattern.
+
+### D.4 First start
+```bash
+cd /opt/umami
+docker compose up -d
+docker compose logs -f umami      # wait for "Listening on port 3000"
+```
+
+### D.5 Initial admin login
+1. Open `https://stats.your-domain.com`.
+2. Log in with `admin` / `umami`.
+3. **Immediately change the password** under "Profile → Change password" — this account is internet-reachable.
+4. Settings → Websites → **Add website** → name "fin_plan", domain "your-domain.com" → Save.
+5. Click the website's **"Edit"** → copy the **Website ID** (a UUID).
+
+### D.6 Wire the tracking script
+Edit `index.html` in the repo and replace the placeholders inside the Umami `<script>` tag near the top:
+
+- `STATS_DOMAIN` → `stats.your-domain.com`
+- `WEBSITE_ID` → the UUID from D.5
+
+Then rebuild and redeploy (Part B).
+
+### D.7 Verify
+- Load `https://your-domain.com` → in Umami's **Realtime** view, you should appear within ~30 seconds.
+- DevTools → Network: `https://stats.your-domain.com/api/send` returns 200 on page load and on each tracked action (preset loaded, plan created, theme toggled, drawer opened, export, import, auto-balance, history opened).
+- DevTools → Application → Cookies: empty for both `your-domain.com` and `stats.your-domain.com` — Umami is cookie-less by design.
+
+### D.8 Custom events at a glance
+The app sends these events (see `src/utils/analytics.ts` for the wrapper and `src/App.tsx` for the call sites):
+
+| Event              | Where it fires                              |
+|--------------------|---------------------------------------------|
+| `preset_loaded`    | Welcome screen → preset chosen (Coast/Mid/Approaching) |
+| `plan_built`       | Welcome screen → "Build" button             |
+| `skip_to_advanced` | Welcome → "Skip to advanced"                |
+| `plan_created`     | New scenario tab                            |
+| `profile_created`  | New profile                                 |
+| `auto_balance_run` | Auto-balance button                         |
+| `drawer_opened`    | Any of the editor drawers (with `{ kind }`) |
+| `history_opened`   | Switching to the History page               |
+| `export_downloaded`| Export modal → Download                     |
+| `import_applied`   | Import modal → Apply                        |
+| `theme_toggled`    | Theme switch (with `{ theme }`)             |
+
+All `track()` calls no-op if `window.umami` isn't loaded (script blocked, dev server, network failure), so analytics can never break the app.
+
+---
+
 ## Verification
 
 1. **Build smoke test (local)**:

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { track } from '../utils/analytics';
 
 export type Theme = 'light' | 'dark';
 
@@ -19,7 +20,15 @@ export function useTheme(): { theme: Theme; toggle: () => void; setTheme: (t: Th
   }, [theme]);
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
-  const toggle = useCallback(() => setThemeState(prev => (prev === 'dark' ? 'light' : 'dark')), []);
+  const toggle = useCallback(
+    () =>
+      setThemeState(prev => {
+        const next = prev === 'dark' ? 'light' : 'dark';
+        track('theme_toggled', { theme: next });
+        return next;
+      }),
+    [],
+  );
 
   return { theme, toggle, setTheme };
 }
