@@ -215,4 +215,35 @@ describe('autoBalance honors cash floor', () => {
     const worstYear = results.find(r => r.endingCash === worstCash)?.year ?? -1;
     expect(worstCash, `min cash at year ${worstYear}`).toBeGreaterThan(-200_000);
   });
+
+  it('always withdraws when cash sits below target and accounts have balance', () => {
+    // The user-reported bug: the LP would return zero withdrawals for many
+    // early years, letting cash spiral hundreds of thousands of dollars
+    // below the target while accounts sat untouched. Repro: low starting
+    // cash, no income, modest expenses, accounts that *could* cover the gap.
+    const input = makeInput({
+      startingCash: 10_000,
+      brokerageBalance: 200_000,
+      rothBalance: 100_000,
+      iraBalance: 500_000,
+      incomes: [],
+      expenses: [{
+        id: 'e', name: 'Living', frequency: 'annual', applyInflation: true,
+        periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 50_000 }],
+      }],
+    });
+    const { results } = runAutoAndSim(input, 100_000);
+    // For every year where cash is materially below target AND any account
+    // has spendable balance left, the engine must have withdrawn *something*.
+    // (Once accounts are truly empty the engine has nothing to do.)
+    const stuckYears = results.filter(r => {
+      const wd = r.withdrawalsBrokerage + r.withdrawalsRoth + r.withdrawalsIra;
+      const accounts = r.brokerageBalance + r.rothBalance + r.iraBalance;
+      return r.endingCash < 0 && wd < 100 && accounts > 1_000;
+    });
+    expect(
+      stuckYears.length,
+      `years cash<0 with accounts>$1k and ~zero withdrawal: ${stuckYears.map(r => r.year).join(', ')}`,
+    ).toBe(0);
+  });
 });
