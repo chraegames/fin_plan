@@ -1,6 +1,8 @@
-# Deploying fin_plan to a Hostinger VPS
+# Deploying fin_plan to a Hostinger VPS (Traefik + Docker)
 
-A pure client-side React/Vite SPA — no backend, no env vars, no secrets, all state in `localStorage`. `npm run build` outputs static files to `dist/`; serve them with nginx.
+A pure client-side React/Vite SPA — no backend, no env vars, no secrets, all state in `localStorage`. `npm run build` outputs static files to `dist/`.
+
+This VPS was provisioned from Hostinger's **Traefik** application template, so it already has Docker running and Traefik handling :80/:443 + automatic Let's Encrypt. We deploy by running a tiny `nginx:alpine` container alongside Traefik, with the built `dist/` directory bind-mounted in. Per-deploy work is just `npm run build` + `rsync`.
 
 This guide covers (a) one-time VPS setup, (b) per-deploy workflow, (c) what's realistic for "hiding" the code.
 
@@ -8,21 +10,27 @@ This guide covers (a) one-time VPS setup, (b) per-deploy workflow, (c) what's re
 
 ## Part A — One-time VPS setup
 
-### A.1 Provision the box
-In Hostinger's hPanel, ensure the VPS is running a recent Ubuntu LTS (24.04 is current) with SSH enabled. Note the public IPv4 address.
+### A.1 Confirm the environment
+```bash
+sudo docker ps                              # should show traefik-traefik-1
+sudo docker network ls                      # bridge / host / none
+sudo docker inspect traefik-traefik-1 \
+  --format '{{json .Config.Cmd}}'           # entrypoints + cert resolver
+```
+Expected: Traefik on the default `bridge` network, entrypoints `web` (:80) and `websecure` (:443), cert resolver named `letsencrypt`.
 
-### A.2 Harden SSH (from local machine)
+### A.2 Harden SSH and create a deploy user (from local machine)
 ```bash
 # Generate a key if you don't have one
 ssh-keygen -t ed25519 -C "fin_plan-deploy"
 
-# Copy public key to the VPS (use root or whatever default user Hostinger gave you)
+# Copy public key to the VPS
 ssh-copy-id root@<VPS_IP>
 
-# SSH in and create a non-root deploy user
+# SSH in and create a non-root deploy user that can run docker
 ssh root@<VPS_IP>
 adduser deploy
-usermod -aG sudo deploy
+usermod -aG sudo,docker deploy
 mkdir -p /home/deploy/.ssh
 cp ~/.ssh/authorized_keys /home/deploy/.ssh/
 chown -R deploy:deploy /home/deploy/.ssh
@@ -34,30 +42,64 @@ Then edit `/etc/ssh/sshd_config` and set:
 PasswordAuthentication no
 PermitRootLogin no
 ```
-Apply: `sudo systemctl restart ssh`. (Keep the original root session open while you verify the new `deploy` user can SSH in — don't lock yourself out.)
+Apply: `sudo systemctl restart ssh`. **Keep the original root session open while you verify the new `deploy` user can SSH in** — don't lock yourself out.
 
-### A.3 Install nginx
+### A.3 DNS first (before starting the container)
+Traefik will request a Let's Encrypt cert on first start, which only works if your domain already resolves to the VPS. Add an `A` record:
+
+| Type | Name | Value      |
+|------|------|------------|
+| A    | @    | <VPS_IP>   |
+| A    | www  | <VPS_IP>   |
+
+(Or use Hostinger's default hostname `srv1479830.hstgr.cloud` if you don't have your own domain yet — it should already resolve.)
+
+Wait for propagation: `dig your-domain.com +short` should return the VPS IP.
+
+### A.4 Project directory on the VPS
+As the `deploy` user:
 ```bash
-sudo apt update && sudo apt install -y nginx
-sudo systemctl enable --now nginx
+mkdir -p /opt/fin_plan/dist
+cd /opt/fin_plan
 ```
 
-### A.4 Create site directory
-```bash
-sudo mkdir -p /var/www/fin_plan
-sudo chown -R deploy:deploy /var/www/fin_plan
+### A.5 `docker-compose.yml`
+Create `/opt/fin_plan/docker-compose.yml`:
+
+```yaml
+services:
+  fin_plan:
+    image: nginx:alpine
+    container_name: fin_plan
+    restart: unless-stopped
+    network_mode: bridge          # same network as Traefik
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fin_plan.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.fin_plan.entrypoints=websecure"
+      - "traefik.http.routers.fin_plan.tls=true"
+      - "traefik.http.routers.fin_plan.tls.certresolver=letsencrypt"
+      - "traefik.http.services.fin_plan.loadbalancer.server.port=80"
 ```
 
-### A.5 nginx server block
-Create `/etc/nginx/sites-available/fin_plan`:
+If you want both apex and `www`, change the rule to:
+```
+Host(`your-domain.com`) || Host(`www.your-domain.com`)
+```
+
+Traefik's existing config auto-redirects HTTP→HTTPS, so you don't need a separate router for :80.
+
+### A.6 `nginx.conf`
+Create `/opt/fin_plan/nginx.conf`:
 
 ```nginx
 server {
     listen 80;
-    listen [::]:80;
-    server_name your-domain.com www.your-domain.com;   # or _ for IP-only access
-
-    root /var/www/fin_plan;
+    server_name _;
+    root /usr/share/nginx/html;
     index index.html;
 
     # Vite hashes asset filenames → cache them forever
@@ -73,38 +115,35 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # Compression
     gzip on;
     gzip_types text/plain text/css application/javascript application/json image/svg+xml;
     gzip_min_length 1024;
-
-    # Sensible security headers
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 }
 ```
 
-Then enable and reload:
+### A.7 Initial build + first start
+From local:
 ```bash
-sudo ln -s /etc/nginx/sites-available/fin_plan /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+cd /Users/hsung/Projects/fin_plan
+npm run build
+rsync -avz --delete dist/ deploy@<VPS_IP>:/opt/fin_plan/dist/
 ```
 
-### A.6 DNS + HTTPS
-1. In your DNS provider (Hostinger or wherever), add an `A` record for `your-domain.com` → VPS IP. Wait for propagation (`dig your-domain.com`).
-2. Install certbot and get a cert:
-   ```bash
-   sudo apt install -y certbot python3-certbot-nginx
-   sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-   ```
-   Certbot will edit the nginx block to add HTTPS and HTTP→HTTPS redirect, and set up auto-renewal.
+On the VPS:
+```bash
+cd /opt/fin_plan
+docker compose up -d
+docker compose logs -f fin_plan        # confirm it boots
+docker logs traefik-traefik-1 --tail 50 # watch for cert issuance
+```
 
-### A.7 Firewall
+Traefik should detect the new container via Docker labels within a few seconds and request a Let's Encrypt cert. First request can take 30–60 seconds.
+
+### A.8 Firewall (if not already configured)
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw enable
 ```
 
@@ -112,26 +151,22 @@ sudo ufw enable
 
 ## Part B — Per-deploy workflow (from local)
 
-Two-step ritual:
-
 ```bash
 cd /Users/hsung/Projects/fin_plan
 npm run build
-rsync -avz --delete dist/ deploy@<VPS_IP>:/var/www/fin_plan/
+rsync -avz --delete dist/ deploy@<VPS_IP>:/opt/fin_plan/dist/
 ```
 
-That's it. nginx serves the new files immediately. The long-cache headers on `/assets/*` are safe because Vite hashes every filename, and `index.html`'s `no-cache` header ensures browsers always pick up the new hashes.
+That's it. The `dist/` is bind-mounted read-only into nginx, so the new files are served immediately — no container restart needed. The long-cache `/assets/*` headers are safe because Vite hashes every filename, and `index.html`'s `no-cache` header ensures browsers always pick up the new hashes.
 
-**Optional convenience**: an `~/.ssh/config` alias means you can type a short name instead of the IP:
-
+**Optional convenience** — add an `~/.ssh/config` alias so you can type a short name instead of the IP:
 ```
 Host fin_plan-vps
     HostName <VPS_IP>
     User deploy
     IdentityFile ~/.ssh/id_ed25519
 ```
-
-After which: `rsync -avz --delete dist/ fin_plan-vps:/var/www/fin_plan/`.
+Then: `rsync -avz --delete dist/ fin_plan-vps:/opt/fin_plan/dist/`.
 
 ---
 
@@ -150,7 +185,7 @@ This is industry-standard for SPAs. Reading minified Vite output is annoying but
 - The "secret sauce" is `src/engine/*` — tax brackets (public IRS data), withdrawal math (published finance literature). There's nothing proprietary an obfuscator can hide that a competent reader couldn't reproduce from a textbook.
 - Obfuscation costs: 2–3× bundle size, measurable runtime slowdown, harder for *you* to debug production issues, and occasionally introduces bugs of its own.
 
-**If you ever want real protection**: move the engine to a backend API (server runs the math, browser sends inputs and receives a result). That requires a Node/Python process on the VPS, an endpoint behind nginx as a reverse proxy, network round-trips per simulation, backend secrets, monitoring, etc. For a personal finance planner, the trade-off doesn't pencil out.
+**If you ever want real protection**: move the engine to a backend API (server runs the math, browser sends inputs and receives a result). Easy to add later given the Traefik setup — you'd just run a second container with a label `traefik.http.routers.api.rule=Host(`api.your-domain.com`)` and proxy traffic to it. For a personal finance planner, the trade-off doesn't pencil out.
 
 ---
 
@@ -159,27 +194,47 @@ This is industry-standard for SPAs. Reading minified Vite output is annoying but
 1. **Build smoke test (local)**:
    ```bash
    npm run build
-   npx vite preview   # serves dist/ on http://localhost:4173
+   npx vite preview        # serves dist/ on http://localhost:4173
    ```
-   Open the URL, click around (add a profile, run a simulation, toggle history).
+   Click around (add a profile, run a simulation, toggle history).
 
-2. **Initial deploy**:
+2. **First deploy + cert**:
+   - `docker compose up -d` on the VPS should produce no errors.
+   - `docker logs traefik-traefik-1 | grep -i acme` should show successful certificate issuance.
+   - `https://your-domain.com` loads with a valid cert (no browser warning).
+   - `http://your-domain.com` redirects to HTTPS (Traefik's built-in redirect).
+
+3. **Headers + caching**:
+   - DevTools → Network: assets in `/assets/` show `Cache-Control: public, immutable`.
+   - `index.html` shows `Cache-Control: no-cache, must-revalidate`.
+   - Response includes `Content-Encoding: gzip` for text resources.
+
+4. **State persistence**:
+   - DevTools → Application → Local Storage: confirm app state survives a hard refresh.
+
+5. **Re-deploy smoke test**:
+   - Make a trivial UI change (e.g., a label), rebuild, rsync, hard-refresh. New bundle hash, new content visible. Old asset files in `/opt/fin_plan/dist/assets/` cleaned up by `rsync --delete`.
+
+6. **Container health**:
    ```bash
-   rsync -avz --delete dist/ deploy@<VPS_IP>:/var/www/fin_plan/
+   docker compose ps                # fin_plan should be "running"
+   docker compose logs --tail 50 fin_plan
    ```
-   Visit `http://<VPS_IP>/` (before DNS) — should load the app.
 
-3. **Post-DNS / TLS**:
-   - `dig your-domain.com` resolves to the VPS IP.
-   - `https://your-domain.com` loads with a valid Let's Encrypt cert.
-   - DevTools → Network: assets served with `Cache-Control: public, immutable`, `index.html` with `no-cache`.
-   - DevTools → Application → Local Storage: confirm app state persists across reloads.
+---
 
-4. **Re-deploy smoke test**:
-   - Make a trivial UI change (e.g., a label), rebuild, rsync, hard-refresh. New bundle hash, new content visible. Old assets in `/assets/` are cleaned up by `rsync --delete`.
+## Troubleshooting
 
-5. **Cert renewal**:
-   ```bash
-   sudo certbot renew --dry-run
-   ```
-   Should report success without prompting.
+**Cert doesn't issue / 404 from Traefik**:
+- `dig your-domain.com +short` returns the VPS IP? If not, DNS hasn't propagated.
+- `docker logs traefik-traefik-1 --tail 100` — look for ACME errors. The most common cause is the domain not resolving yet.
+- The label `Host()` value must match exactly what's in the browser URL bar (including/excluding `www`).
+
+**`docker compose` not found**:
+- Older Docker installs use `docker-compose` (with hyphen). Both work; if neither is installed, `sudo apt install docker-compose-plugin`.
+
+**Permission denied on rsync target**:
+- The `/opt/fin_plan` directory must be owned by `deploy` (`sudo chown -R deploy:deploy /opt/fin_plan`).
+
+**Need to restart the container**:
+- You almost never need to. `rsync` updates the bind-mounted files in place and nginx picks them up. Only restart if you edit `nginx.conf` or `docker-compose.yml`: `docker compose up -d` (re-creates only what changed).
