@@ -262,12 +262,18 @@ docker compose logs -f umami      # wait for "Listening on port 3000"
 5. Click the website's **"Edit"** → copy the **Website ID** (a UUID).
 
 ### D.6 Wire the tracking script
-Edit `index.html` in the repo and replace the placeholders inside the Umami `<script>` tag near the top:
+The tracking script is injected by `src/utils/analytics.ts` at runtime, only when the page is **not** running on localhost AND both env vars are set. This means `npm run dev` and `vite preview` never pollute the production stats.
 
-- `STATS_DOMAIN` → `stats.your-domain.com`
-- `WEBSITE_ID` → the UUID from D.5
+Edit `.env.production` in the repo root:
 
-Then rebuild and redeploy (Part B).
+```
+VITE_UMAMI_HOST=stats.your-domain.com
+VITE_UMAMI_WEBSITE_ID=<UUID from D.5>
+```
+
+Then rebuild and redeploy (Part B). Vite bakes these values into the production bundle at build time.
+
+**To disable analytics**: leave either var blank in `.env.production` and rebuild — the script is never injected and `track()` calls no-op.
 
 ### D.7 Verify
 - Load `https://your-domain.com` → in Umami's **Realtime** view, you should appear within ~30 seconds.
