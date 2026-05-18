@@ -1,3 +1,5 @@
+import { isLocalHost } from './env';
+
 declare global {
   interface Window {
     umami?: {
@@ -14,8 +16,7 @@ const WEBSITE_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as string | undefined;
 function isEnabled(): boolean {
   if (typeof window === 'undefined') return false;
   if (!HOST || !WEBSITE_ID) return false;
-  const h = window.location.hostname;
-  if (h === 'localhost' || h === '127.0.0.1' || h === '') return false;
+  if (isLocalHost()) return false;
   return true;
 }
 

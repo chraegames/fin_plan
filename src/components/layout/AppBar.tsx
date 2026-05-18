@@ -6,6 +6,7 @@ import { NameForm } from './NameForm';
 import { Logo } from './Logo';
 import { ConfirmDialog } from '../storyline/ConfirmDialog';
 import type { Profile, ProfilesState } from '../../models/types';
+import { isLocalHost } from '../../utils/env';
 
 interface AppBarProps {
   profilesState: ProfilesState;
@@ -43,6 +44,7 @@ export function AppBar({
   rightSlot,
 }: AppBarProps) {
   const profileInitial = activeProfile.name.trim().charAt(0).toUpperCase() || '·';
+  const local = isLocalHost();
 
   return (
     <header
@@ -52,8 +54,8 @@ export function AppBar({
         justifyContent: 'space-between',
         padding: '0 32px',
         height: 56,
-        background: 'var(--bg)',
-        borderBottom: '1px solid var(--border-soft)',
+        background: local ? '#f59e0b' : 'var(--bg)',
+        borderBottom: local ? '1px solid #b45309' : '1px solid var(--border-soft)',
         position: 'sticky',
         top: 0,
         zIndex: 30,
@@ -72,12 +74,29 @@ export function AppBar({
               fontWeight: 500,
               fontSize: 17,
               letterSpacing: '-0.015em',
-              color: 'var(--ink)',
+              color: local ? '#1c1917' : 'var(--ink)',
             }}
           >
             FIRE Planner
           </span>
         </button>
+        {local && (
+          <span
+            title={`Running on ${window.location.hostname || 'file://'} — not production`}
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              padding: '3px 8px',
+              borderRadius: 4,
+              background: '#1c1917',
+              color: '#fbbf24',
+            }}
+          >
+            LOCAL
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
