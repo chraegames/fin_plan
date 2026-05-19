@@ -217,15 +217,18 @@ services:
     image: ghcr.io/umami-software/umami:postgresql-latest
     container_name: umami
     restart: unless-stopped
-    network_mode: bridge
+    networks:
+      - umami_net
     environment:
       DATABASE_URL: postgresql://umami:REPLACE_DB_PASSWORD@umami-db:5432/umami
       DATABASE_TYPE: postgresql
       APP_SECRET: REPLACE_APP_SECRET
     depends_on:
-      - umami-db
+      umami-db:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=umami_umami_net"
       - "traefik.http.routers.umami.rule=Host(`stats.your-domain.com`)"
       - "traefik.http.routers.umami.entrypoints=websecure"
       - "traefik.http.routers.umami.tls=true"
@@ -236,23 +239,54 @@ services:
     image: postgres:16-alpine
     container_name: umami-db
     restart: unless-stopped
-    network_mode: bridge
+    networks:
+      - umami_net
     environment:
       POSTGRES_DB: umami
       POSTGRES_USER: umami
       POSTGRES_PASSWORD: REPLACE_DB_PASSWORD
     volumes:
       - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  umami_net:
 ```
 
-Both services use `network_mode: bridge` so Traefik (also on `bridge`) can reach `umami:3000` via Docker DNS, matching the existing `fin_plan` pattern.
+**Why not `network_mode: bridge`?** The literal Docker default bridge doesn't provide DNS resolution between containers — `umami` would fail to resolve `umami-db`. A user-defined network (`umami_net`) gives the two services name-based DNS while still letting Traefik route to Umami once it's attached to the same network (see D.4 step 2).
 
 ### D.4 First start
+
+Compose will create `umami_net` automatically (named `umami_umami_net` since the project directory is `umami`). Traefik isn't on that network yet, so we attach it manually — this is a one-time step.
+
 ```bash
 cd /opt/umami
+
+# 1. Bring up Umami + Postgres
 docker compose up -d
-docker compose logs -f umami      # wait for "Listening on port 3000"
+docker compose logs -f umami-db    # wait for "database system is ready to accept connections"
+docker compose logs -f umami       # wait for "Listening on port 3000"
+
+# 2. Attach Traefik to the umami network so it can route to the container
+docker network connect umami_umami_net traefik-traefik-1
+
+# 3. Verify Traefik discovered the router
+docker logs traefik-traefik-1 --tail 50 | grep -i umami
 ```
+
+The `docker network connect` only needs to be done once. After a reboot, Docker remembers the attachment.
+
+**If you already ran `docker compose up -d` and saw the DB connection error**, run:
+```bash
+docker compose down
+docker compose up -d
+docker network connect umami_umami_net traefik-traefik-1
+```
+The healthcheck-gated `depends_on` ensures Umami waits for Postgres to be ready this time around.
 
 ### D.5 Initial admin login
 1. Open `https://stats.your-domain.com`.
