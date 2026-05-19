@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
 import type { ProfilesState } from '../../models/types';
+import { migratePlans } from '../../utils/persistence';
 
 interface ImportModalProps {
   profilesState: ProfilesState;
@@ -54,14 +55,21 @@ export function ImportModal({
     reader.onerror = () => setError('Could not read the file.');
     reader.onload = () => {
       try {
-        const decoded = JSON.parse(reader.result as string) as ProfilesState;
-        if (!Array.isArray(decoded.profiles) || !decoded.activeProfileId) {
+        const raw = JSON.parse(reader.result as string) as ProfilesState;
+        if (!Array.isArray(raw.profiles) || !raw.activeProfileId) {
           setError('That file does not look like an export. Choose a fire-planner-*.json file.');
           return;
         }
+        // Clone before migrating: migratePlans mutates in place, and we don't
+        // want a half-migrated object handed to setParsed if a later profile
+        // fails. structuredClone also surfaces unserializable shapes early.
+        const decoded = structuredClone(raw);
+        for (const profile of decoded.profiles) {
+          migratePlans(profile.plans);
+        }
         setParsed({ fileName: file.name, decoded });
       } catch {
-        setError('That file is not valid JSON.');
+        setError('That file is not a valid export.');
       }
     };
     reader.readAsText(file);

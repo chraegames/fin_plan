@@ -17,6 +17,19 @@ const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
 const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';
 
+// Safe wrapper around localStorage.setItem. Returns false if the write
+// throws (quota exceeded, storage disabled, Safari private mode in some
+// configs) so callers can degrade gracefully instead of crashing the tree.
+export function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    console.warn('localStorage write failed', err);
+    return false;
+  }
+}
+
 interface OldScenariosState {
   plans: Scenario[];
   activePlanId: string;

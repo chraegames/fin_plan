@@ -17,6 +17,7 @@ import {
   freshStart,
   loadProfiles,
   migratePlans,
+  safeSetItem,
 } from './utils/persistence';
 import { AppBar } from './components/layout/AppBar';
 import { ScenarioTabs } from './components/layout/ScenarioTabs';
@@ -50,10 +51,13 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [saveErrorDismissed, setSaveErrorDismissed] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
 
   useEffect(() => {
-    localStorage.setItem(PROFILES_KEY, JSON.stringify(profilesState));
+    const ok = safeSetItem(PROFILES_KEY, JSON.stringify(profilesState));
+    if (!ok) setSaveError(true);
   }, [profilesState]);
 
   const activeProfile =
@@ -372,6 +376,42 @@ export default function App() {
         onRenameProfile={renameProfile}
         onDeleteProfile={deleteProfile}
       />
+      {saveError && !saveErrorDismissed && (
+        <div
+          role="status"
+          style={{
+            background: 'var(--negative-tint)',
+            borderBottom: '1px solid var(--negative-soft)',
+            color: 'var(--ink-2)',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            fontSize: 14,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            Changes won't be saved to this browser — your storage is full or
+            disabled. Export your plan to keep it.
+          </span>
+          <button
+            type="button"
+            onClick={() => setSaveErrorDismissed(true)}
+            aria-label="Dismiss save warning"
+            style={{
+              background: 'transparent',
+              border: 0,
+              color: 'var(--ink-2)',
+              cursor: 'pointer',
+              fontSize: 18,
+              lineHeight: 1,
+              padding: '0 4px',
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <ScenarioTabs
         profile={activeProfile}
         activeScenario={activePlan}

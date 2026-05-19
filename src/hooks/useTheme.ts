@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { track } from '../utils/analytics';
+import { safeSetItem } from '../utils/persistence';
 
 export type Theme = 'light' | 'dark';
 
@@ -16,7 +17,7 @@ export function useTheme(): { theme: Theme; toggle: () => void; setTheme: (t: Th
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    window.localStorage.setItem(THEME_KEY, theme);
+    safeSetItem(THEME_KEY, theme);
   }, [theme]);
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
