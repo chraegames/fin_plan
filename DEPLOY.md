@@ -261,32 +261,48 @@ networks:
 
 ### D.4 First start
 
-Compose will create `umami_net` automatically (named `umami_umami_net` since the project directory is `umami`). Traefik isn't on that network yet, so we attach it manually — this is a one-time step.
+Compose will create `umami_net` automatically (named `umami_umami_net` since the project directory is `umami`).
 
 ```bash
 cd /opt/umami
-
-# 1. Bring up Umami + Postgres
 docker compose up -d
 docker compose logs -f umami-db    # wait for "database system is ready to accept connections"
 docker compose logs -f umami       # wait for "Listening on port 3000"
-
-# 2. Attach Traefik to the umami network so it can route to the container
-docker network connect umami_umami_net traefik-traefik-1
-
-# 3. Verify Traefik discovered the router
-docker logs traefik-traefik-1 --tail 50 | grep -i umami
 ```
 
-The `docker network connect` only needs to be done once. After a reboot, Docker remembers the attachment.
+Now the question of how Traefik reaches Umami depends on which network mode Traefik is using. Check with:
 
-**If you already ran `docker compose up -d` and saw the DB connection error**, run:
 ```bash
-docker compose down
-docker compose up -d
+docker inspect traefik-traefik-1 --format '{{.HostConfig.NetworkMode}}'
+```
+
+**If it prints `host`** (Hostinger Traefik template default): nothing else to do. Traefik runs in the host's network namespace and can reach any Docker bridge IP directly. The `traefik.docker.network=umami_umami_net` label in the compose file tells Traefik which of Umami's IPs to use. ✅
+
+**If it prints `bridge` or a named network**: Traefik needs to be on the same network as Umami so it can talk to it. Run once:
+```bash
 docker network connect umami_umami_net traefik-traefik-1
 ```
-The healthcheck-gated `depends_on` ensures Umami waits for Postgres to be ready this time around.
+Docker persists this across reboots.
+
+Verify Traefik discovered the router either way:
+```bash
+docker logs traefik-traefik-1 --tail 100 | grep -i umami
+```
+
+**Sanity check** — hit the Umami container directly from the host:
+```bash
+UMAMI_IP=$(docker inspect umami --format '{{(index .NetworkSettings.Networks "umami_umami_net").IPAddress}}')
+curl -I http://$UMAMI_IP:3000      # expect 200 or 3xx
+```
+
+**If you already ran `docker compose up -d` with the old `network_mode: bridge` config and saw the DB connection error**:
+```bash
+cd /opt/umami
+docker compose down
+# (replace docker-compose.yml with the version in D.3)
+docker compose up -d
+```
+The healthcheck-gated `depends_on` ensures Umami waits for Postgres on this attempt.
 
 ### D.5 Initial admin login
 1. Open `https://stats.your-domain.com`.
