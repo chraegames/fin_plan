@@ -116,8 +116,17 @@ server {
     }
 
     gzip on;
-    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+    gzip_vary on;
     gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        application/javascript
+        application/json
+        application/manifest+json
+        application/xml+rss
+        image/svg+xml;
 }
 ```
 

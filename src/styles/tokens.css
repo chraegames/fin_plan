@@ -15,9 +15,9 @@
 :root,
 :root[data-theme="light"] {
   /* Fonts */
-  --font-display:  'Space Grotesk', system-ui, sans-serif;
-  --font-sans:     'DM Sans', system-ui, -apple-system, sans-serif;
-  --font-mono:     'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-display:  'Space Grotesk Variable', 'Space Grotesk', system-ui, sans-serif;
+  --font-sans:     'DM Sans Variable', 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
   /* Surfaces — cool near-white */
   --bg:             oklch(0.985 0.004 250);     /* page background */
@@ -177,8 +177,3 @@
   font-family: var(--font-mono);
 }
 
-/* ─── Google Font loader ─────────────────────────────────────────────
- * Paste into <head> if you don't already self-host these:
- *
- * <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@300..600&display=swap" rel="stylesheet" />
- * ─────────────────────────────────────────────────────────────────── */
