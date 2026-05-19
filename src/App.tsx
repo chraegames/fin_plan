@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { buildDefaultInput, defaultActuals, generateId } from './engine/defaults';
 import { runSimulation } from './engine/simulation';
 import { autoBalance } from './engine/autoBalance';
@@ -41,7 +41,7 @@ export type DrawerKind =
   | 'returns';
 
 export default function App() {
-  const [profilesState, setProfilesState] = useState<ProfilesState>(loadProfiles);
+  const [profilesState, setProfilesStateRaw] = useState<ProfilesState>(loadProfiles);
   const [route, setRoute] = useState<Route>('plan');
   const [drawer, setDrawerState] = useState<DrawerKind>(null);
   const setDrawer = useCallback((kind: DrawerKind) => {
@@ -55,10 +55,23 @@ export default function App() {
   const [saveErrorDismissed, setSaveErrorDismissed] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
 
-  useEffect(() => {
-    const ok = safeSetItem(PROFILES_KEY, JSON.stringify(profilesState));
-    if (!ok) setSaveError(true);
-  }, [profilesState]);
+  // Persist on every update from the event-handler path rather than in an
+  // effect — keeps the localStorage write paired with the state change and
+  // avoids setState-in-effect cascades.
+  const setProfilesState = useCallback(
+    (updater: ProfilesState | ((prev: ProfilesState) => ProfilesState)) => {
+      setProfilesStateRaw(prev => {
+        const next =
+          typeof updater === 'function'
+            ? (updater as (p: ProfilesState) => ProfilesState)(prev)
+            : updater;
+        const ok = safeSetItem(PROFILES_KEY, JSON.stringify(next));
+        if (!ok) setSaveError(true);
+        return next;
+      });
+    },
+    [],
+  );
 
   const activeProfile =
     profilesState.profiles.find(p => p.id === profilesState.activeProfileId) ??
@@ -84,7 +97,7 @@ export default function App() {
           p.id === prev.activeProfileId ? updater(p) : p,
         ),
       })),
-    [],
+    [setProfilesState],
   );
 
   const handleInputChange = useCallback(
@@ -188,7 +201,7 @@ export default function App() {
   const switchProfile = useCallback(
     (profileId: string) =>
       setProfilesState(prev => ({ ...prev, activeProfileId: profileId })),
-    [],
+    [setProfilesState],
   );
 
   const createProfile = useCallback(() => {
@@ -216,7 +229,7 @@ export default function App() {
       ],
       activeProfileId: profileId,
     }));
-  }, []);
+  }, [setProfilesState]);
 
   const renameProfile = useCallback(
     (profileId: string, name: string) =>
@@ -224,7 +237,7 @@ export default function App() {
         ...prev,
         profiles: prev.profiles.map(p => (p.id === profileId ? { ...p, name } : p)),
       })),
-    [],
+    [setProfilesState],
   );
 
   const deleteProfile = useCallback((profileId: string) => {
@@ -235,7 +248,7 @@ export default function App() {
         prev.activeProfileId === profileId ? remaining[0].id : prev.activeProfileId;
       return { profiles: remaining, activeProfileId: newActive };
     });
-  }, []);
+  }, [setProfilesState]);
 
   const handleAutoBalance = useCallback(
     (targetCash: number) => {
@@ -353,7 +366,7 @@ export default function App() {
       migratePlans(profile.plans);
     }
     setProfilesState(decoded);
-  }, []);
+  }, [setProfilesState]);
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
