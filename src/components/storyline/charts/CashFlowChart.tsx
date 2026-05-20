@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import type { SimulationResult } from '../../../models/types';
 import { formatDollars, formatDollarsCompact } from '../../../utils/format';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface CashFlowChartProps {
   results: SimulationResult;
@@ -140,7 +141,9 @@ function Row({
   );
 }
 
-export function CashFlowChart({ results, height = 360 }: CashFlowChartProps) {
+export function CashFlowChart({ results, height }: CashFlowChartProps) {
+  const isMobile = useIsMobile();
+  const effectiveHeight = height ?? (isMobile ? 260 : 360);
   const data: Datum[] = useMemo(
     () =>
       results.map(r => ({
@@ -155,9 +158,9 @@ export function CashFlowChart({ results, height = 360 }: CashFlowChartProps) {
   );
 
   return (
-    <div style={{ width: '100%', height }}>
+    <div style={{ width: '100%', height: effectiveHeight }}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 24, right: 16, left: 0, bottom: 12 }}>
+        <ComposedChart data={data} margin={{ top: 24, right: 16, left: isMobile ? 12 : 0, bottom: 12 }}>
           <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="2 4" vertical={false} />
           <XAxis
             dataKey="year"

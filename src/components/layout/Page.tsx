@@ -13,7 +13,7 @@ export function Page({ children, maxWidth = 1280, gap = 56, style }: PageProps) 
       style={{
         maxWidth,
         margin: '0 auto',
-        padding: '32px 40px 64px',
+        padding: 'var(--page-pad-top) var(--page-pad-x) var(--page-pad-bot)',
         display: 'flex',
         flexDirection: 'column',
         gap,

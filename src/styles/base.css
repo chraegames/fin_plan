@@ -25,6 +25,18 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (max-width: 720px) {
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@keyframes slideup {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 
 body {

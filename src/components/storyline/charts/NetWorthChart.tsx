@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import type { SimulationResult } from '../../../models/types';
 import { formatDollars, formatDollarsCompact } from '../../../utils/format';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 export interface ChartMarker {
   year: number;
@@ -162,9 +163,11 @@ function CustomTooltip({ active, label, payload, showAreas }: CustomTooltipProps
 export function NetWorthChart({
   results,
   markers = [],
-  height = 360,
+  height,
   lineOnly = false,
 }: NetWorthChartProps) {
+  const isMobile = useIsMobile();
+  const effectiveHeight = height ?? (isMobile ? 260 : 360);
   const data: ChartDatum[] = useMemo(
     () =>
       results.map(r => ({
@@ -182,7 +185,7 @@ export function NetWorthChart({
     return (
       <div
         style={{
-          height,
+          height: effectiveHeight,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -197,7 +200,7 @@ export function NetWorthChart({
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 24, right: 16, left: 0, bottom: 12 }}>
+        <AreaChart data={data} margin={{ top: isMobile ? 40 : 24, right: 16, left: isMobile ? 12 : 0, bottom: 12 }}>
           <defs>
             <linearGradient id="nw-line-fill" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.10} />
@@ -286,7 +289,7 @@ export function NetWorthChart({
             isAnimationActive={false}
             name="Net worth"
           />
-          {markers.map(m => (
+          {markers.map((m, i) => (
             <ReferenceLine
               key={`${m.year}-${m.label}`}
               x={m.year}
@@ -296,8 +299,9 @@ export function NetWorthChart({
               <Label
                 value={m.label}
                 position="top"
+                dy={isMobile ? -i * 12 : 0}
                 fill={toneColor[m.tone ?? 'neutral']}
-                fontSize={10}
+                fontSize={isMobile ? 9 : 10}
                 fontFamily="var(--font-sans)"
               />
             </ReferenceLine>

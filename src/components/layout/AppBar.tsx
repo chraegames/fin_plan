@@ -7,6 +7,7 @@ import { Logo } from './Logo';
 import { ConfirmDialog } from '../storyline/ConfirmDialog';
 import type { Profile, ProfilesState } from '../../models/types';
 import { isLocalHost } from '../../utils/env';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface AppBarProps {
   profilesState: ProfilesState;
@@ -45,6 +46,7 @@ export function AppBar({
 }: AppBarProps) {
   const profileInitial = activeProfile.name.trim().charAt(0).toUpperCase() || '·';
   const local = isLocalHost();
+  const isMobile = useIsMobile();
 
   return (
     <header
@@ -52,7 +54,7 @@ export function AppBar({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 32px',
+        padding: '0 clamp(12px, 3vw, 32px)',
         height: 56,
         background: local ? '#f59e0b' : 'var(--bg)',
         borderBottom: local ? '1px solid #b45309' : '1px solid var(--border-soft)',
@@ -61,7 +63,7 @@ export function AppBar({
         zIndex: 30,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 20, minWidth: 0 }}>
         <button
           onClick={onGoPlan}
           style={{ display: 'flex', alignItems: 'center', gap: 9 }}
@@ -75,12 +77,13 @@ export function AppBar({
               fontSize: 17,
               letterSpacing: '-0.015em',
               color: local ? '#1c1917' : 'var(--ink)',
+              whiteSpace: 'nowrap',
             }}
           >
             FIRE Planner
           </span>
         </button>
-        {local && (
+        {local && !isMobile && (
           <span
             title={`Running on ${window.location.hostname || 'file://'} — not production`}
             style={{
@@ -101,54 +104,165 @@ export function AppBar({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {rightSlot}
-        {route === 'history' ? (
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={onGoPlan}
-            leading={<Icon name="arrowUp" size={12} />}
-          >
-            Back to plan
-          </Button>
+        {isMobile ? (
+          <>
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={onToggleTheme}
+              leading={<Icon name={theme === 'dark' ? 'sun' : 'moon'} />}
+              title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+              aria-label="Toggle theme"
+            />
+            <AppBarMobileMenu
+              route={route}
+              onExport={onExport}
+              onImport={onImport}
+              onAbout={onAbout}
+              onGoHistory={onGoHistory}
+              onGoPlan={onGoPlan}
+            />
+            <ProfileChip
+              profilesState={profilesState}
+              activeProfile={activeProfile}
+              initial={profileInitial}
+              onSwitch={onSwitchProfile}
+              onCreate={onCreateProfile}
+              onRename={onRenameProfile}
+              onDelete={onDeleteProfile}
+              compact
+            />
+          </>
         ) : (
-          <Button
-            variant="outline"
-            size="md"
-            onClick={onGoHistory}
-            leading={<Icon name="calendar" />}
-          >
-            History
-          </Button>
+          <>
+            {route === 'history' ? (
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={onGoPlan}
+                leading={<Icon name="arrowUp" size={12} />}
+              >
+                Back to plan
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={onGoHistory}
+                leading={<Icon name="calendar" />}
+              >
+                History
+              </Button>
+            )}
+            <Button variant="ghost" size="md" onClick={onExport} leading={<Icon name="download" />}>
+              Export
+            </Button>
+            <Button variant="ghost" size="md" onClick={onImport} leading={<Icon name="upload" />}>
+              Import
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={onToggleTheme}
+              leading={<Icon name={theme === 'dark' ? 'sun' : 'moon'} />}
+              title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+              aria-label="Toggle theme"
+            />
+            <Button variant="ghost" size="md" onClick={onAbout} leading={<Icon name="info" />}>
+              About
+            </Button>
+            <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
+            <ProfileChip
+              profilesState={profilesState}
+              activeProfile={activeProfile}
+              initial={profileInitial}
+              onSwitch={onSwitchProfile}
+              onCreate={onCreateProfile}
+              onRename={onRenameProfile}
+              onDelete={onDeleteProfile}
+            />
+          </>
         )}
-        <Button variant="ghost" size="md" onClick={onExport} leading={<Icon name="download" />}>
-          Export
-        </Button>
-        <Button variant="ghost" size="md" onClick={onImport} leading={<Icon name="upload" />}>
-          Import
-        </Button>
+      </div>
+    </header>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Mobile overflow menu (hamburger)
+// ────────────────────────────────────────────────────────────────────────
+
+interface AppBarMobileMenuProps {
+  route: 'plan' | 'history';
+  onExport: () => void;
+  onImport: () => void;
+  onAbout: () => void;
+  onGoHistory: () => void;
+  onGoPlan: () => void;
+}
+
+function AppBarMobileMenu({
+  route,
+  onExport,
+  onImport,
+  onAbout,
+  onGoHistory,
+  onGoPlan,
+}: AppBarMobileMenuProps) {
+  return (
+    <Popover
+      width={220}
+      align="right"
+      trigger={({ toggle }) => (
         <Button
           variant="ghost"
           size="md"
-          onClick={onToggleTheme}
-          leading={<Icon name={theme === 'dark' ? 'sun' : 'moon'} />}
-          title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-          aria-label="Toggle theme"
+          onClick={toggle}
+          leading={<Icon name="menu" />}
+          aria-label="Menu"
+          title="Menu"
         />
-        <Button variant="ghost" size="md" onClick={onAbout} leading={<Icon name="info" />}>
-          About
-        </Button>
-        <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
-        <ProfileChip
-          profilesState={profilesState}
-          activeProfile={activeProfile}
-          initial={profileInitial}
-          onSwitch={onSwitchProfile}
-          onCreate={onCreateProfile}
-          onRename={onRenameProfile}
-          onDelete={onDeleteProfile}
-        />
-      </div>
-    </header>
+      )}
+    >
+      {({ close }) => (
+        <>
+          {route === 'history' ? (
+            <PopoverItem
+              leading={<Icon name="arrowUp" size={12} />}
+              onClick={() => { onGoPlan(); close(); }}
+            >
+              Back to plan
+            </PopoverItem>
+          ) : (
+            <PopoverItem
+              leading={<Icon name="calendar" size={12} />}
+              onClick={() => { onGoHistory(); close(); }}
+            >
+              History
+            </PopoverItem>
+          )}
+          <PopoverItem
+            leading={<Icon name="download" size={12} />}
+            onClick={() => { onExport(); close(); }}
+          >
+            Export
+          </PopoverItem>
+          <PopoverItem
+            leading={<Icon name="upload" size={12} />}
+            onClick={() => { onImport(); close(); }}
+          >
+            Import
+          </PopoverItem>
+          <PopoverDivider />
+          <PopoverItem
+            leading={<Icon name="info" size={12} />}
+            onClick={() => { onAbout(); close(); }}
+          >
+            About
+          </PopoverItem>
+        </>
+      )}
+    </Popover>
   );
 }
 
@@ -164,6 +278,7 @@ interface ProfileChipProps {
   onCreate: () => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  compact?: boolean;
 }
 
 function ProfileChip({
@@ -174,6 +289,7 @@ function ProfileChip({
   onCreate,
   onRename,
   onDelete,
+  compact = false,
 }: ProfileChipProps) {
   const [mode, setMode] = useState<'menu' | 'rename'>('menu');
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -193,14 +309,15 @@ function ProfileChip({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            padding: '0 12px 0 8px',
+            gap: compact ? 4 : 8,
+            padding: compact ? '0 6px 0 4px' : '0 12px 0 8px',
             background: 'var(--surface)',
             border: '1px solid var(--border)',
             borderRadius: 8,
             height: 32,
             cursor: 'pointer',
           }}
+          aria-label={compact ? `Profile: ${activeProfile.name}` : undefined}
         >
           <div
             style={{
@@ -218,9 +335,11 @@ function ProfileChip({
           >
             {initial}
           </div>
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-            {activeProfile.name}
-          </span>
+          {!compact && (
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+              {activeProfile.name}
+            </span>
+          )}
           <Icon name="chevron" size={11} />
         </button>
       )}

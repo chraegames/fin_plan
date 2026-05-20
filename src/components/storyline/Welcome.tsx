@@ -5,6 +5,7 @@ import { Icon, type IconName } from '../primitives/Icon';
 import { MoneyInput, YearInput } from '../primitives/Input';
 import { PresetCard } from './cards/PresetCard';
 import { PRESET_META, type PresetKey } from '../../engine/presets';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface WelcomeProps {
   onLoadPreset: (preset: PresetKey) => void;
@@ -22,6 +23,7 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
   const [endYear, setEndYear] = useState(DEFAULT_END_YEAR);
   const [total, setTotal] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
+  const isMobile = useIsMobile();
 
   const totalMissing = total <= 0;
   const showTotalError = showErrors && totalMissing;
@@ -59,9 +61,9 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
           style={{
             fontFamily: 'var(--font-display)',
             fontWeight: 400,
-            fontSize: 64,
+            fontSize: 'clamp(34px, 7.5vw, 64px)',
             letterSpacing: '-0.03em',
-            lineHeight: 1.04,
+            lineHeight: 1.1,
             color: 'var(--ink)',
             margin: '0 auto',
             maxWidth: 900,
@@ -72,7 +74,7 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
         </h1>
         <p
           style={{
-            fontSize: 16,
+            fontSize: 'clamp(14px, 2.5vw, 16px)',
             color: 'var(--ink-3)',
             lineHeight: 1.55,
             margin: '18px auto 0',
@@ -85,7 +87,7 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
       </header>
 
       {/* Two-path band */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
         {/* Try an example */}
         <article
           style={{
@@ -246,10 +248,10 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 14,
-          padding: '18px 22px',
+          padding: isMobile ? '14px 16px' : '18px 22px',
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr auto 1fr',
-          gap: 22,
+          gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr auto 1fr',
+          gap: isMobile ? 14 : 22,
           alignItems: 'center',
           boxShadow: 'var(--shadow-card)',
         }}
@@ -257,7 +259,7 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
         <ValueProp icon="spark" title="Key years marked" sub="Today, 59½, cash-depleted, plan-depleted" />
         <ValueProp icon="sparkle" title="LP-optimized withdrawals" sub="Tax-efficient schedule across accounts" />
         <ValueProp icon="calendar" title="Year-by-year ledger" sub="Full simulation transparency" />
-        <span style={{ width: 1, height: 36, background: 'var(--border)' }} />
+        {!isMobile && <span style={{ width: 1, height: 36, background: 'var(--border)' }} />}
         <ValueProp icon="bank" title="Private to your browser" sub="No account, no tracking" />
       </section>
 

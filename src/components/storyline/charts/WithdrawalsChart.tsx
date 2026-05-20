@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import type { SimulationResult } from '../../../models/types';
 import { formatDollars, formatDollarsCompact } from '../../../utils/format';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface WithdrawalsChartProps {
   results: SimulationResult;
@@ -115,7 +116,9 @@ function CustomTooltip({ active, label, payload }: TooltipProps) {
   );
 }
 
-export function WithdrawalsChart({ results, height = 360 }: WithdrawalsChartProps) {
+export function WithdrawalsChart({ results, height }: WithdrawalsChartProps) {
+  const isMobile = useIsMobile();
+  const effectiveHeight = height ?? (isMobile ? 260 : 360);
   const data: Datum[] = useMemo(
     () =>
       results.map(r => ({
@@ -128,9 +131,9 @@ export function WithdrawalsChart({ results, height = 360 }: WithdrawalsChartProp
   );
 
   return (
-    <div style={{ width: '100%', height }}>
+    <div style={{ width: '100%', height: effectiveHeight }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 24, right: 16, left: 0, bottom: 12 }}>
+        <BarChart data={data} margin={{ top: 24, right: 16, left: isMobile ? 12 : 0, bottom: 12 }}>
           <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="2 4" vertical={false} />
           <XAxis
             dataKey="year"

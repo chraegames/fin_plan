@@ -50,7 +50,7 @@ export function ScenarioTabs({
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        padding: '0 32px',
+        padding: '0 clamp(12px, 3vw, 32px)',
         height: 40,
         background: 'var(--bg)',
         borderBottom: '1px solid var(--border-soft)',

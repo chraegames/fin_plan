@@ -62,14 +62,15 @@ export function YearByYear({ results, birthYear, penaltyCutoff, onCashFlowClick 
           border: '1px solid var(--border)',
           borderRadius: 14,
           boxShadow: 'var(--shadow-card)',
-          overflow: 'hidden',
           maxHeight: 720,
-          overflowY: 'auto',
+          overflow: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         <table
           style={{
             width: '100%',
+            minWidth: 760,
             borderCollapse: 'separate',
             borderSpacing: 0,
             fontFamily: 'var(--font-mono)',

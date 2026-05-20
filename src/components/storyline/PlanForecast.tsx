@@ -20,6 +20,7 @@ import { YearByYear } from './sections/YearByYear';
 import { Footer } from './sections/Footer';
 import { InputGroup } from './sections/InputGroup';
 import { DrawerHost } from './drawers/DrawerHost';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 type Tab = 'networth' | 'withdrawals' | 'cashflow';
 
@@ -49,6 +50,7 @@ export function PlanForecast({
   const [tab, setTab] = useState<Tab>('networth');
   const [realDollars, setRealDollars] = useState(false);
   const yearTableRef = useRef<HTMLElement>(null);
+  const isMobile = useIsMobile();
 
   const penaltyCutoff = earlyWithdrawalCutoff(input.birthYear);
   const hasWithdrawals = input.withdrawals.some(w => w.periods.some(p => p.amount > 0));
@@ -211,14 +213,27 @@ export function PlanForecast({
           <div
             style={{
               display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: isMobile ? 'stretch' : 'center',
               marginBottom: 16,
               flexWrap: 'wrap',
               gap: 12,
             }}
           >
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 6,
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+                WebkitOverflowScrolling: 'touch',
+                paddingBottom: isMobile ? 4 : 0,
+                margin: isMobile ? '0 -4px' : 0,
+                paddingLeft: isMobile ? 4 : 0,
+                paddingRight: isMobile ? 4 : 0,
+              }}
+            >
               {(
                 [
                   { key: 'networth' as Tab, label: 'Net worth' },
@@ -237,13 +252,22 @@ export function PlanForecast({
                     background: tab === t.key ? 'var(--bg-soft)' : 'transparent',
                     color: tab === t.key ? 'var(--ink)' : 'var(--ink-3)',
                     border: `1px solid ${tab === t.key ? 'var(--border)' : 'transparent'}`,
+                    flexShrink: 0,
                   }}
                 >
                   {t.label}
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, fontSize: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isMobile ? 'flex-start' : 'flex-end',
+                gap: 4,
+                fontSize: 12,
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ color: 'var(--ink-muted)' }}>Amounts in</span>
                 <div

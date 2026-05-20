@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Button } from '../../primitives/Button';
 import { Icon } from '../../primitives/Icon';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface EditDrawerProps {
   open: boolean;
@@ -21,6 +22,8 @@ export function EditDrawer({
   children,
   footer,
 }: EditDrawerProps) {
+  const isMobile = useIsMobile();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -39,7 +42,8 @@ export function EditDrawer({
         inset: 0,
         zIndex: 50,
         display: 'flex',
-        justifyContent: 'flex-end',
+        justifyContent: isMobile ? 'stretch' : 'flex-end',
+        alignItems: isMobile ? 'flex-end' : 'stretch',
       }}
     >
       <div
@@ -56,21 +60,38 @@ export function EditDrawer({
       <aside
         style={{
           position: 'relative',
-          height: '100%',
-          width: 620,
+          height: isMobile ? '85vh' : '100%',
+          maxHeight: isMobile ? '85vh' : undefined,
+          width: isMobile ? '100%' : 620,
           maxWidth: '100vw',
           background: 'var(--bg)',
-          borderLeft: '1px solid var(--border)',
+          borderLeft: isMobile ? 'none' : '1px solid var(--border)',
+          borderTop: isMobile ? '1px solid var(--border)' : 'none',
+          borderTopLeftRadius: isMobile ? 14 : 0,
+          borderTopRightRadius: isMobile ? 14 : 0,
           boxShadow: 'var(--shadow-pop)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'slidein 280ms ease-out',
+          animation: isMobile ? 'slideup 280ms ease-out' : 'slidein 280ms ease-out',
         }}
         onClick={e => e.stopPropagation()}
       >
+        {isMobile && (
+          <div
+            aria-hidden
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 99,
+              background: 'var(--border-strong)',
+              margin: '8px auto 0',
+              flexShrink: 0,
+            }}
+          />
+        )}
         <header
           style={{
-            padding: '22px 28px',
+            padding: isMobile ? '14px 20px' : '22px 28px',
             borderBottom: '1px solid var(--border-soft)',
             display: 'flex',
             alignItems: 'flex-start',
@@ -94,7 +115,7 @@ export function EditDrawer({
             <h3
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 28,
+                fontSize: isMobile ? 22 : 28,
                 fontWeight: 500,
                 letterSpacing: '-0.015em',
                 color: 'var(--ink)',
@@ -120,6 +141,7 @@ export function EditDrawer({
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             <Icon name="close" size={14} />
@@ -130,7 +152,7 @@ export function EditDrawer({
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '20px 28px',
+            padding: isMobile ? '16px 20px' : '20px 28px',
             display: 'flex',
             flexDirection: 'column',
             gap: 14,
@@ -141,29 +163,38 @@ export function EditDrawer({
 
         <footer
           style={{
-            padding: '14px 28px',
+            padding: isMobile ? '12px 20px' : '14px 28px',
             background: 'var(--surface-2)',
             borderTop: '1px solid var(--border-soft)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
+            flexWrap: 'wrap',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 12,
-              color: 'var(--ink-3)',
-            }}
-          >
-            <Icon name="info" size={12} />
-            Updates apply immediately. Use scenarios to A/B compare.
-          </div>
+          {!isMobile && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 12,
+                color: 'var(--ink-3)',
+              }}
+            >
+              <Icon name="info" size={12} />
+              Updates apply immediately. Use scenarios to A/B compare.
+            </div>
+          )}
           {footer ?? (
-            <Button variant="primary" size="md" onClick={onClose} leading={<Icon name="check" />}>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={onClose}
+              leading={<Icon name="check" />}
+              style={isMobile ? { marginLeft: 'auto' } : undefined}
+            >
               Done
             </Button>
           )}
