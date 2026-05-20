@@ -198,7 +198,7 @@ export function NetWorthChart({
   }
 
   return (
-    <div style={{ width: '100%', height }}>
+    <div style={{ width: '100%', height: effectiveHeight }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: isMobile ? 40 : 24, right: 16, left: isMobile ? 12 : 0, bottom: 12 }}>
           <defs>
