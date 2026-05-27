@@ -426,6 +426,7 @@ export default function App() {
         onDeleteProfile={deleteProfile}
         onDevResetToIntro={devResetToIntro}
         onDevResetToWelcome={devResetToWelcome}
+        minimal={!seenIntro}
       />
       {!seenIntro ? (
         <Intro onDismiss={dismissIntro} />

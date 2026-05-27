@@ -28,6 +28,10 @@ interface AppBarProps {
   onDevResetToIntro?: () => void;
   /** Local-only: reset to a clean Welcome screen (wipes plan data). */
   onDevResetToWelcome?: () => void;
+  /** When true, hide all navigation/CRUD controls — only the theme
+   *  toggle (and the localhost dev affordances) remain. Used on the
+   *  first-visit intro screen so the only user action is the CTA. */
+  minimal?: boolean;
   rightSlot?: ReactNode;
 }
 
@@ -48,6 +52,7 @@ export function AppBar({
   onDeleteProfile,
   onDevResetToIntro,
   onDevResetToWelcome,
+  minimal = false,
   rightSlot,
 }: AppBarProps) {
   const profileInitial = activeProfile.name.trim().charAt(0).toUpperCase() || '·';
@@ -124,16 +129,66 @@ export function AppBar({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {rightSlot}
-        {isMobile ? (
+        {/* Theme toggle survives `minimal` mode — the intro screen is the
+            user's first impression and they should be able to flip the
+            theme before engaging. */}
+        {!minimal && !isMobile && route !== 'history' && (
+          <Button
+            variant="outline"
+            size="md"
+            onClick={onGoHistory}
+            leading={<Icon name="calendar" />}
+          >
+            History
+          </Button>
+        )}
+        {!minimal && !isMobile && route === 'history' && (
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={onGoPlan}
+            leading={<Icon name="arrowUp" size={12} />}
+          >
+            Back to plan
+          </Button>
+        )}
+        {!minimal && !isMobile && (
           <>
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={onToggleTheme}
-              leading={<Icon name={theme === 'dark' ? 'sun' : 'moon'} />}
-              title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-              aria-label="Toggle theme"
+            <Button variant="ghost" size="md" onClick={onExport} leading={<Icon name="download" />}>
+              Export
+            </Button>
+            <Button variant="ghost" size="md" onClick={onImport} leading={<Icon name="upload" />}>
+              Import
+            </Button>
+          </>
+        )}
+        <Button
+          variant="ghost"
+          size="md"
+          onClick={onToggleTheme}
+          leading={<Icon name={theme === 'dark' ? 'sun' : 'moon'} />}
+          title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+          aria-label="Toggle theme"
+        />
+        {!minimal && !isMobile && (
+          <>
+            <Button variant="ghost" size="md" onClick={onAbout} leading={<Icon name="info" />}>
+              About
+            </Button>
+            <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
+            <ProfileChip
+              profilesState={profilesState}
+              activeProfile={activeProfile}
+              initial={profileInitial}
+              onSwitch={onSwitchProfile}
+              onCreate={onCreateProfile}
+              onRename={onRenameProfile}
+              onDelete={onDeleteProfile}
             />
+          </>
+        )}
+        {!minimal && isMobile && (
+          <>
             <AppBarMobileMenu
               route={route}
               onExport={onExport}
@@ -151,55 +206,6 @@ export function AppBar({
               onRename={onRenameProfile}
               onDelete={onDeleteProfile}
               compact
-            />
-          </>
-        ) : (
-          <>
-            {route === 'history' ? (
-              <Button
-                variant="ghost"
-                size="md"
-                onClick={onGoPlan}
-                leading={<Icon name="arrowUp" size={12} />}
-              >
-                Back to plan
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="md"
-                onClick={onGoHistory}
-                leading={<Icon name="calendar" />}
-              >
-                History
-              </Button>
-            )}
-            <Button variant="ghost" size="md" onClick={onExport} leading={<Icon name="download" />}>
-              Export
-            </Button>
-            <Button variant="ghost" size="md" onClick={onImport} leading={<Icon name="upload" />}>
-              Import
-            </Button>
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={onToggleTheme}
-              leading={<Icon name={theme === 'dark' ? 'sun' : 'moon'} />}
-              title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-              aria-label="Toggle theme"
-            />
-            <Button variant="ghost" size="md" onClick={onAbout} leading={<Icon name="info" />}>
-              About
-            </Button>
-            <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 6px' }} />
-            <ProfileChip
-              profilesState={profilesState}
-              activeProfile={activeProfile}
-              initial={profileInitial}
-              onSwitch={onSwitchProfile}
-              onCreate={onCreateProfile}
-              onRename={onRenameProfile}
-              onDelete={onDeleteProfile}
             />
           </>
         )}
