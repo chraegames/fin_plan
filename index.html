@@ -10,30 +10,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f5f7" />
 
-    <title>Free FIRE Calculator &amp; Retirement Planner &mdash; FIRE Planner</title>
+    <title>FIRE Planner &mdash; Plan your retirement in your browser. Free, private, no signup.</title>
     <meta
       name="description"
-      content="Free retirement and long-term financial projection tool. Model income, expenses, investments, illustrative US federal taxes (MFJ assumption), and withdrawals across a customizable horizon. Runs entirely in your browser."
+      content="Free, private, browser-only retirement planner. Model income, expenses, investments, illustrative US federal taxes (MFJ), and withdrawals across your own horizon. No signup, no server — your data never leaves your device."
     />
     <link rel="canonical" href="https://fireplan.chraegames.cloud/" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="FIRE Planner" />
     <meta property="og:url" content="https://fireplan.chraegames.cloud/" />
-    <meta property="og:title" content="Free FIRE Calculator &amp; Retirement Planner &mdash; FIRE Planner" />
+    <meta property="og:title" content="FIRE Planner &mdash; Plan your retirement in your browser. Free, private, no signup." />
     <meta
       property="og:description"
-      content="Model income, expenses, investments, illustrative US federal taxes (MFJ assumption), and withdrawals across a customizable horizon. Free, browser-only, no account required."
+      content="Free, private, browser-only retirement planner. Model income, expenses, investments, illustrative US federal taxes (MFJ), and withdrawals across your own horizon. No signup, no server — your data never leaves your device."
     />
     <meta property="og:image" content="https://fireplan.chraegames.cloud/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="FIRE Planner &mdash; Free FIRE Calculator &amp; Retirement Planner" />
+    <meta name="twitter:title" content="FIRE Planner &mdash; Plan your retirement in your browser. Free, private, no signup." />
     <meta
       name="twitter:description"
-      content="A free, browser-only retirement projection tool."
+      content="Free, private, browser-only retirement planner. Model income, expenses, investments, illustrative US federal taxes (MFJ), and withdrawals across your own horizon. No signup, no server — your data never leaves your device."
     />
     <meta name="twitter:image" content="https://fireplan.chraegames.cloud/og.png" />
 
@@ -51,28 +51,76 @@
         "operatingSystem": "Any (web browser)",
         "browserRequirements": "Requires JavaScript",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "description": "Free retirement and long-term financial projection tool. Model income, expenses, investments, illustrative US federal taxes (MFJ assumption), and withdrawals across a customizable horizon. Runs entirely in your browser."
+        "description": "Free, private, browser-only retirement planner. Model income, expenses, investments, illustrative US federal taxes (MFJ), and withdrawals across your own horizon. No signup, no server — your data never leaves your device."
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What can I do with FIRE Planner?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Project income, expenses, investment growth, illustrative federal taxes, and withdrawals across a configurable horizon. Compare scenarios side-by-side, record actuals year by year as life happens, and let an optimizer pick a tax-efficient withdrawal schedule."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does FIRE Planner work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Everything runs in your browser — the simulation, the optimizer, the charts. There is no server-side computation. Plans persist in your browser's localStorage so they're here when you come back."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens to my data?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No account, no server, no tracking of personal information. Export and import plans as JSON files you control. Clearing your browser data erases everything — nothing is kept anywhere else."
+            }
+          }
+        ]
       }
     </script>
   </head>
   <body>
     <div id="root"></div>
     <noscript>
-      <main style="max-width:720px;margin:80px auto;padding:0 24px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#1a1a1a;">
+      <main style="max-width:720px;margin:80px auto;padding:0 24px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#1a1c24;">
         <h1 style="font-size:48px;line-height:1.1;margin:0 0 16px;font-weight:400;letter-spacing:-0.03em;">
-          Plan your retirement, in five minutes.
+          Plan your retirement, in your browser.
         </h1>
-        <p style="font-size:18px;line-height:1.55;color:#555;margin:0;">
-          FIRE Planner is a free, browser-only retirement and long-term financial projection tool. Model income, expenses, investments, US federal taxes, and withdrawals across a customizable horizon. Everything runs locally &mdash; no account, no server, no tracking.
+        <p style="font-size:18px;line-height:1.55;color:#545861;margin:0;">
+          Free, private, browser-only. No signup, no server &mdash; your data never leaves this device.
         </p>
-        <ul style="font-size:16px;line-height:1.8;color:#333;margin:24px 0 0;padding-left:20px;">
-          <li>Illustrative US federal income tax (2026 MFJ brackets) and long-term capital gains</li>
-          <li>Brokerage, Roth IRA, and Traditional IRA accounts</li>
-          <li>LP-based optimizer for a tax-efficient withdrawal schedule</li>
-          <li>Year-by-year actuals overrides to refine the projection</li>
-          <li>Configurable birth year for the early-withdrawal penalty cutoff</li>
-        </ul>
-        <p style="margin-top:32px;color:#888;font-size:14px;">
+
+        <section style="margin-top:32px;">
+          <h2 style="font-size:20px;margin:0 0 8px;font-weight:500;letter-spacing:-0.015em;color:#1a1c24;">What you can do</h2>
+          <p style="font-size:16px;line-height:1.6;color:#3a3e48;margin:0;">
+            Project income, expenses, investment growth, illustrative federal taxes, and withdrawals across a configurable horizon. Compare scenarios side-by-side, record actuals year by year as life happens, and let an optimizer pick a tax-efficient withdrawal schedule.
+          </p>
+        </section>
+
+        <section style="margin-top:24px;">
+          <h2 style="font-size:20px;margin:0 0 8px;font-weight:500;letter-spacing:-0.015em;color:#1a1c24;">How it works</h2>
+          <p style="font-size:16px;line-height:1.6;color:#3a3e48;margin:0;">
+            Everything runs in your browser &mdash; the simulation, the optimizer, the charts. There is no server-side computation. Plans persist in this browser's localStorage so they're here when you come back.
+          </p>
+        </section>
+
+        <section style="margin-top:24px;">
+          <h2 style="font-size:20px;margin:0 0 8px;font-weight:500;letter-spacing:-0.015em;color:#1a1c24;">Your data</h2>
+          <p style="font-size:16px;line-height:1.6;color:#3a3e48;margin:0;">
+            No account, no server, no tracking of personal information. Export and import plans as JSON files you control. Clearing your browser data erases everything &mdash; nothing is kept anywhere else.
+          </p>
+        </section>
+
+        <p style="margin-top:40px;color:#797d86;font-size:14px;">
           This app requires JavaScript to run.
         </p>
       </main>
