@@ -33,6 +33,7 @@ import { ExportModal } from './components/storyline/ExportModal';
 import { ImportModal } from './components/storyline/ImportModal';
 import { useTheme } from './hooks/useTheme';
 import { track } from './utils/analytics';
+import { dedupeName } from './utils/dedupeName';
 
 type Route = 'plan' | 'history';
 export type DrawerKind =
@@ -121,7 +122,7 @@ export default function App() {
         const id = generateId();
         const fresh: Scenario = {
           id,
-          name: 'Default',
+          name: dedupeName('Default', p.plans.map(pl => pl.name)),
           input: buildDefaultInput(),
           actuals: { ...defaultActuals },
           touched: false,
@@ -198,13 +199,16 @@ export default function App() {
       updateActiveProfile(profile => {
         const active =
           profile.plans.find(p => p.id === profile.activePlanId) ?? profile.plans[0];
+        // Silently suffix " (2)", " (3)" etc. if the user-supplied
+        // name collides with an existing scenario in this profile.
+        const uniqueName = dedupeName(name, profile.plans.map(p => p.name));
         return {
           ...profile,
           plans: [
             ...profile.plans,
             {
               id: newId,
-              name,
+              name: uniqueName,
               input: structuredClone(active.input),
               actuals: structuredClone(active.actuals ?? defaultActuals),
               // Explicit creation always counts as touched, so the user
@@ -275,18 +279,20 @@ export default function App() {
         touched: false,
       },
     ];
-    setProfilesState(prev => ({
-      profiles: [
-        ...prev.profiles,
-        {
-          id: profileId,
-          name: `Profile ${prev.profiles.length + 1}`,
-          plans,
-          activePlanId: planId,
-        },
-      ],
-      activeProfileId: profileId,
-    }));
+    setProfilesState(prev => {
+      // `Profile N` was already a counter, but deleting a middle
+      // profile can leave the count out of sync with the existing
+      // names. Dedupe so we never produce a duplicate.
+      const proposed = `Profile ${prev.profiles.length + 1}`;
+      const name = dedupeName(proposed, prev.profiles.map(p => p.name));
+      return {
+        profiles: [
+          ...prev.profiles,
+          { id: profileId, name, plans, activePlanId: planId },
+        ],
+        activeProfileId: profileId,
+      };
+    });
   }, [setProfilesState]);
 
   const renameProfile = useCallback(
