@@ -103,10 +103,32 @@ export default function App() {
     setSeenIntroRaw(false);
   }, []);
 
+  // Non-destructive: switch to (or create) an untouched scenario in the
+  // active profile so the Welcome screen renders. All other profiles
+  // and scenarios are preserved. Repeated clicks reuse the existing
+  // untouched scenario instead of accumulating "Default" tabs.
   const devResetToWelcome = useCallback(() => {
     setSeenIntroRaw(true);
     safeSetItem(INTRO_SEEN_KEY, '1');
-    setProfilesState(freshStart());
+    setProfilesState(prev => ({
+      ...prev,
+      profiles: prev.profiles.map(p => {
+        if (p.id !== prev.activeProfileId) return p;
+        const existingUntouched = p.plans.find(pl => pl.touched === false);
+        if (existingUntouched) {
+          return { ...p, activePlanId: existingUntouched.id };
+        }
+        const id = generateId();
+        const fresh: Scenario = {
+          id,
+          name: 'Default',
+          input: buildDefaultInput(),
+          actuals: { ...defaultActuals },
+          touched: false,
+        };
+        return { ...p, plans: [...p.plans, fresh], activePlanId: id };
+      }),
+    }));
   }, [setProfilesState]);
 
   const activeProfile =

@@ -119,7 +119,7 @@ export function AppBar({
               </DevJumpButton>
             )}
             {onDevResetToWelcome && (
-              <DevJumpButton onClick={onDevResetToWelcome} title="Reset to a clean Welcome screen — WIPES local plan data (dev only)">
+              <DevJumpButton onClick={onDevResetToWelcome} title="Switch to (or create) an untouched scenario in this profile so Welcome renders — preserves all existing data">
                 ↻ Welcome
               </DevJumpButton>
             )}
