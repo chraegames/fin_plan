@@ -187,6 +187,16 @@ export function AppBar({
             />
           </>
         )}
+        {!minimal && isMobile && route === 'history' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onGoPlan}
+            leading={<Icon name="arrowUp" size={12} />}
+          >
+            Back
+          </Button>
+        )}
         {!minimal && isMobile && (
           <>
             <AppBarMobileMenu
@@ -195,7 +205,6 @@ export function AppBar({
               onImport={onImport}
               onAbout={onAbout}
               onGoHistory={onGoHistory}
-              onGoPlan={onGoPlan}
             />
             <ProfileChip
               profilesState={profilesState}
@@ -260,7 +269,6 @@ interface AppBarMobileMenuProps {
   onImport: () => void;
   onAbout: () => void;
   onGoHistory: () => void;
-  onGoPlan: () => void;
 }
 
 function AppBarMobileMenu({
@@ -269,7 +277,6 @@ function AppBarMobileMenu({
   onImport,
   onAbout,
   onGoHistory,
-  onGoPlan,
 }: AppBarMobileMenuProps) {
   return (
     <Popover
@@ -288,14 +295,9 @@ function AppBarMobileMenu({
     >
       {({ close }) => (
         <>
-          {route === 'history' ? (
-            <PopoverItem
-              leading={<Icon name="arrowUp" size={12} />}
-              onClick={() => { onGoPlan(); close(); }}
-            >
-              Back to plan
-            </PopoverItem>
-          ) : (
+          {/* Back-to-plan is surfaced as a top-level button in the bar
+              when route === 'history', so it doesn't appear here. */}
+          {route !== 'history' && (
             <PopoverItem
               leading={<Icon name="calendar" size={12} />}
               onClick={() => { onGoHistory(); close(); }}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { forwardRef, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../primitives/Icon';
 import { Popover, PopoverItem, PopoverDivider, PopoverLabel } from '../primitives/Popover';
@@ -25,6 +25,7 @@ export function ScenarioTabs({
 }: ScenarioTabsProps) {
   const canDelete = profile.plans.length > 1;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLDivElement>(null);
   const [showRightFade, setShowRightFade] = useState(false);
 
   useEffect(() => {
@@ -43,6 +44,18 @@ export function ScenarioTabs({
       ro.disconnect();
     };
   }, [profile.plans.length]);
+
+  // Keep the active scenario tab visible whenever it changes (new
+  // scenario creation, tap on a partially-clipped tab, profile
+  // switch). `inline: 'nearest'` is a no-op when the tab is already
+  // fully visible, so this is safe to fire on desktop too.
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({
+      inline: 'nearest',
+      block: 'nearest',
+      behavior: 'smooth',
+    });
+  }, [activeScenario.id]);
 
   return (
     <div
@@ -88,17 +101,21 @@ export function ScenarioTabs({
             scrollbarWidth: 'none',
           }}
         >
-          {profile.plans.map(p => (
-            <ScenarioTab
-              key={p.id}
-              scenario={p}
-              isActive={p.id === activeScenario.id}
-              canDelete={canDelete}
-              onSwitch={() => onSwitch(p.id)}
-              onRename={name => onRename(p.id, name)}
-              onDelete={() => onDelete(p.id)}
-            />
-          ))}
+          {profile.plans.map(p => {
+            const isActive = p.id === activeScenario.id;
+            return (
+              <ScenarioTab
+                key={p.id}
+                ref={isActive ? activeTabRef : undefined}
+                scenario={p}
+                isActive={isActive}
+                canDelete={canDelete}
+                onSwitch={() => onSwitch(p.id)}
+                onRename={name => onRename(p.id, name)}
+                onDelete={() => onDelete(p.id)}
+              />
+            );
+          })}
         </div>
         {showRightFade && (
           <div
@@ -132,14 +149,10 @@ interface ScenarioTabProps {
   onDelete: () => void;
 }
 
-function ScenarioTab({
-  scenario,
-  isActive,
-  canDelete,
-  onSwitch,
-  onRename,
-  onDelete,
-}: ScenarioTabProps) {
+const ScenarioTab = forwardRef<HTMLDivElement, ScenarioTabProps>(function ScenarioTab(
+  { scenario, isActive, canDelete, onSwitch, onRename, onDelete },
+  ref,
+) {
   const [hovered, setHovered] = useState(false);
   const showMenuTrigger = isActive || hovered;
 
@@ -156,6 +169,7 @@ function ScenarioTab({
 
   return (
     <div
+      ref={ref}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -196,7 +210,7 @@ function ScenarioTab({
       />
     </div>
   );
-}
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // Per-tab "⋯" menu
