@@ -60,7 +60,7 @@ export function ImportModal({
     reader.onload = () => {
       try {
         const raw = JSON.parse(reader.result as string) as ProfilesState;
-        if (!Array.isArray(raw.profiles) || !raw.activeProfileId) {
+        if (!Array.isArray(raw.profiles) || raw.profiles.length === 0 || !raw.activeProfileId) {
           setError('That file does not look like an export. Choose a fire-planner-*.json file.');
           return;
         }

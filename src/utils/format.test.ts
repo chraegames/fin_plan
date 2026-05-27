@@ -33,7 +33,7 @@ describe('formatDollarsCompact', () => {
   it('formats values under 1000 with full precision (rounded)', () => {
     expect(formatDollarsCompact(0)).toBe('$0');
     expect(formatDollarsCompact(999)).toBe('$999');
-    expect(formatDollarsCompact(-200)).toBe('$-200');
+    expect(formatDollarsCompact(-200)).toBe('-$200');
   });
 
   it('formats thousands with a K suffix', () => {
@@ -42,11 +42,9 @@ describe('formatDollarsCompact', () => {
     expect(formatDollarsCompact(999_499)).toBe('$999K');
   });
 
-  // Known boundary bug: 999_999.5 stays in the K branch but .toFixed(0) of
-  // 999.9995 rounds to "1000", producing "$1000K". Pinned so a future fix
-  // breaks the test on purpose. See review TODO list.
-  it('produces "$1000K" at the K→M boundary (current behavior)', () => {
-    expect(formatDollarsCompact(999_999.5)).toBe('$1000K');
+  it('promotes near-million values into the M branch instead of "$1000K"', () => {
+    expect(formatDollarsCompact(999_500)).toBe('$1.0M');
+    expect(formatDollarsCompact(999_999.5)).toBe('$1.0M');
   });
 
   it('formats millions with one decimal and M suffix', () => {
@@ -55,10 +53,9 @@ describe('formatDollarsCompact', () => {
     expect(formatDollarsCompact(12_500_000)).toBe('$12.5M');
   });
 
-  // Negative compact currently produces "$-1.2M" (sign after `$`). Pinned as
-  // a regression anchor; the review flagged this as a cosmetic bug to fix.
-  it('places the minus sign after the dollar prefix for negatives (current behavior)', () => {
-    expect(formatDollarsCompact(-1_234_567)).toBe('$-1.2M');
-    expect(formatDollarsCompact(-5_000)).toBe('$-5K');
+  it('places the minus sign before the dollar prefix for negatives', () => {
+    expect(formatDollarsCompact(-1_234_567)).toBe('-$1.2M');
+    expect(formatDollarsCompact(-5_000)).toBe('-$5K');
+    expect(formatDollarsCompact(-200)).toBe('-$200');
   });
 });

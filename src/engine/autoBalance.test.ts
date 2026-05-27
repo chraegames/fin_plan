@@ -216,6 +216,37 @@ describe('autoBalance honors cash floor', () => {
     expect(worstCash, `min cash at year ${worstYear}`).toBeGreaterThan(-200_000);
   });
 
+  it('handles a sub-floor target without crashing or infinite-looping', () => {
+    // Regression: targetCash < CASH_FLOOR (10_000) used to invert the
+    // binary-search bounds (lo=10_000, hi=targetCash) and degenerate. The
+    // clamp keeps lo <= hi; the optimizer should still produce a valid
+    // schedule with non-negative, non-NaN withdrawals.
+    const input = makeInput({
+      startingCash: 50_000,
+      brokerageBalance: 200_000,
+      rothBalance: 100_000,
+      iraBalance: 200_000,
+      incomes: [],
+      expenses: [{
+        id: 'e', name: 'Living', frequency: 'annual', applyInflation: true,
+        periods: [{ startYear: START_YEAR, endYear: END_YEAR, amount: 40_000 }],
+      }],
+    });
+    const { schedules, results } = runAutoAndSim(input, 0);
+    // Every scheduled amount is finite and non-negative.
+    for (const s of schedules) {
+      for (const p of s.periods) {
+        expect(Number.isFinite(p.amount)).toBe(true);
+        expect(p.amount).toBeGreaterThanOrEqual(0);
+      }
+    }
+    // Engine ran every year and produced finite cash values.
+    expect(results).toHaveLength(END_YEAR - START_YEAR + 1);
+    for (const r of results) {
+      expect(Number.isFinite(r.endingCash)).toBe(true);
+    }
+  });
+
   it('always withdraws when cash sits below target and accounts have balance', () => {
     // The user-reported bug: the LP would return zero withdrawals for many
     // early years, letting cash spiral hundreds of thousands of dollars

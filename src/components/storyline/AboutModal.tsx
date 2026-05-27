@@ -131,7 +131,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
           </AboutBlock>
           <AboutBlock title="What it models" accent="var(--accent)">
             <ul style={{ fontSize: 12.5, color: 'var(--ink-3)', lineHeight: 1.6, paddingLeft: 16, listStyle: 'disc' }}>
-              <li>US federal income tax (2026 brackets) and long-term capital gains</li>
+              <li>US federal income tax — illustrative 2026 Married Filing Jointly brackets only, not a substitute for tax-prep software or a CPA</li>
               <li>Brokerage, Roth IRA, and Traditional IRA accounts</li>
               <li>10% early-withdrawal penalty before the year you turn 60</li>
               <li>Brokerage cost basis (gains taxed, return-of-capital is not)</li>
@@ -140,6 +140,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
           </AboutBlock>
           <AboutBlock title="What it skips" accent="var(--negative)">
             <ul style={{ fontSize: 12.5, color: 'var(--ink-3)', lineHeight: 1.6, paddingLeft: 16, listStyle: 'disc' }}>
+              <li>Filing statuses other than MFJ (Single, HoH, MFS)</li>
               <li>State or local income tax</li>
               <li>Social Security, pensions, RMDs, NIIT, Medicare IRMAA</li>
               <li>Roth 5-year rule or Roth conversions</li>

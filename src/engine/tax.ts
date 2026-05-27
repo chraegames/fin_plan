@@ -1,18 +1,31 @@
-export const STANDARD_DEDUCTION = 29200;
+// Federal tax constants — 2026 Married Filing Jointly schedule, per IRS
+// Rev. Proc. 2025-32 (One Big Beautiful Bill amendments applied). These
+// are illustrative-only: the model ignores filing status, state/local
+// tax, NIIT, AMT, Medicare IRMAA, and a long list of other real-world
+// adjustments. See AboutModal for the full disclaimer.
+//
+// TODO(filing-status): support Single / HoH / MFS schedules instead of
+// hard-coding MFJ. Today's defaults make tax estimates roughly correct
+// only for joint filers.
+export const STANDARD_DEDUCTION = 32200;
 
+// Tuples are [bracket width, marginal rate]. Top thresholds (MFJ 2026):
+// 10%→24,800, 12%→100,800, 22%→211,400, 24%→403,550, 32%→512,450,
+// 35%→768,700, 37% above.
 export const INCOME_BRACKETS: readonly [number, number][] = [
-  [23200, 0.10],
-  [94300 - 23200, 0.12],
-  [201050 - 94300, 0.22],
-  [383900 - 201050, 0.24],
-  [487450 - 383900, 0.32],
-  [731200 - 487450, 0.35],
+  [24800, 0.10],
+  [100800 - 24800, 0.12],
+  [211400 - 100800, 0.22],
+  [403550 - 211400, 0.24],
+  [512450 - 403550, 0.32],
+  [768700 - 512450, 0.35],
   [Infinity, 0.37],
 ];
 
+// LTCG brackets (MFJ 2026): 0%→98,900, 15%→613,700, 20% above.
 export const CAPITAL_GAINS_BRACKETS: readonly [number, number][] = [
-  [94050, 0.00],
-  [583750 - 94050, 0.15],
+  [98900, 0.00],
+  [613700 - 98900, 0.15],
   [Infinity, 0.20],
 ];
 

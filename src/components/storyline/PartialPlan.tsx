@@ -177,7 +177,7 @@ export function PartialPlan({
             value={`${input.endYear - input.startYear + 1} yrs`}
             sub={`${input.startYear} → ${input.endYear}`}
           />
-          <KPIChip label="Penalty-free" value={String(penaltyCutoff)} sub="age 59½" tone="positive" />
+          <KPIChip label="Penalty-free" value={String(penaltyCutoff)} sub="age 60" tone="positive" />
           {!hasExpenses && <PendingChip label="Final NW" sub="needs expenses" />}
           {!hasWithdrawals && <PendingChip label="Lifetime tax" sub="needs withdrawals" />}
           <PendingChip label="Cash gap" sub="needs strategy" />
@@ -326,7 +326,7 @@ export function PartialPlan({
               {
                 label: 'Birth year',
                 value: String(input.birthYear),
-                meta: `59½ in ${penaltyCutoff}`,
+                meta: `age 60 in ${penaltyCutoff}`,
                 color: 'var(--ink-3)',
               },
             ]}

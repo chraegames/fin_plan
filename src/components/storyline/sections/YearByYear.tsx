@@ -171,7 +171,7 @@ export function YearByYear({ results, birthYear, penaltyCutoff, onCashFlowClick 
                           textTransform: 'uppercase',
                         }}
                       >
-                        59½
+                        AGE 60
                       </span>
                     )}
                   </td>

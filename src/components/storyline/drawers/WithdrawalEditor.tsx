@@ -113,6 +113,9 @@ export function WithdrawalEditor({
             Enter a target cash amount to enable Re-generate.
           </div>
         )}
+        <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontStyle: 'italic' }}>
+          Tax figures are illustrative 2026 MFJ estimates — not for filing.
+        </div>
       </article>
 
       {(['brokerage', 'roth', 'ira'] as AccountType[]).map(acct => {

@@ -103,7 +103,7 @@ export function PlanForecast({
   const markers: ChartMarker[] = useMemo(() => {
     const m: ChartMarker[] = [{ year: input.startYear, label: 'Today', tone: 'neutral' }];
     if (penaltyCutoff >= input.startYear && penaltyCutoff <= input.endYear) {
-      m.push({ year: penaltyCutoff, label: '59½ · penalty-free', tone: 'positive' });
+      m.push({ year: penaltyCutoff, label: 'age 60 · penalty-free', tone: 'positive' });
     }
     const cashGone = displayResults.find(r => r.endingCash < 0);
     if (cashGone && cashGone.year !== summary?.depletion?.year) {
@@ -191,7 +191,7 @@ export function PlanForecast({
           <KPIChip
             label="Penalty-free"
             value={String(penaltyCutoff)}
-            sub="age 59½"
+            sub="age 60"
             tone="positive"
           />
           <KPIChip
@@ -650,7 +650,7 @@ function ReturnsCard({ input, onEdit }: { input: PlanInput; onEdit: () => void }
         {
           label: 'Birth year',
           value: String(input.birthYear),
-          meta: `59½ in ${earlyWithdrawalCutoff(input.birthYear)}`,
+          meta: `age 60 in ${earlyWithdrawalCutoff(input.birthYear)}`,
           color: 'var(--ink-3)',
         },
       ]}

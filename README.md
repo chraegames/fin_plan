@@ -8,7 +8,8 @@ horizon. Everything runs locally; no account, no server, no tracking.
 
 ## What it models
 
-- US federal income tax (2026 brackets) and long-term capital gains
+- US federal income tax — **illustrative 2026 Married Filing Jointly brackets only** (not a substitute for tax-prep software)
+- Long-term capital gains (2026 MFJ thresholds)
 - Brokerage, Roth IRA, and Traditional IRA accounts
 - Configurable birth year for the 10% early-withdrawal penalty cutoff
 - Brokerage cost basis (only the gain portion of a withdrawal is taxed)
@@ -18,9 +19,10 @@ horizon. Everything runs locally; no account, no server, no tracking.
 
 ## What it does NOT model
 
-State / local tax, Social Security, pensions, RMDs, NIIT, Medicare IRMAA, the
-Roth 5-year rule, return variability, or sequence-of-returns risk. See the
-in-app **About** dialog for details.
+Filing statuses other than MFJ (Single, HoH, MFS), state / local tax, Social
+Security, pensions, RMDs, NIIT, Medicare IRMAA, the Roth 5-year rule, return
+variability, or sequence-of-returns risk. See the in-app **About** dialog
+for details.
 
 ## Local development
 

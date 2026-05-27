@@ -14,11 +14,13 @@ interface WelcomeProps {
   onImport: () => void;
 }
 
-const CURRENT_YEAR = 2026;
 const DEFAULT_BIRTH_YEAR = 1980;
 const DEFAULT_END_YEAR = 2065;
 
 export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProps) {
+  // Computed once on mount — the upper bound for birth year and lower bound
+  // for the projection end-year are both relative to "now".
+  const [currentYear] = useState(() => new Date().getFullYear());
   const [birthYear, setBirthYear] = useState(DEFAULT_BIRTH_YEAR);
   const [endYear, setEndYear] = useState(DEFAULT_END_YEAR);
   const [total, setTotal] = useState(0);
@@ -186,11 +188,11 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
           </header>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <ScratchField step={1} prompt="What year were you born?" hint="Used for the 59½ early-withdrawal rule.">
-              <YearInput value={birthYear} onChange={setBirthYear} min={1900} max={CURRENT_YEAR} width={160} />
+            <ScratchField step={1} prompt="What year were you born?" hint="Sets the year you turn 60 — when penalty-free withdrawals begin.">
+              <YearInput value={birthYear} onChange={setBirthYear} min={1900} max={currentYear} width={160} />
             </ScratchField>
             <ScratchField step={2} prompt="Plan through which year?" hint="Default is age 85.">
-              <YearInput value={endYear} onChange={setEndYear} min={CURRENT_YEAR + 1} max={2200} width={160} />
+              <YearInput value={endYear} onChange={setEndYear} min={currentYear + 1} max={2200} width={160} />
             </ScratchField>
             <ScratchField
               step={3}
@@ -256,7 +258,7 @@ export function Welcome({ onLoadPreset, onBuild, onSkip, onImport }: WelcomeProp
           boxShadow: 'var(--shadow-card)',
         }}
       >
-        <ValueProp icon="spark" title="Key years marked" sub="Today, 59½, cash-depleted, plan-depleted" />
+        <ValueProp icon="spark" title="Key years marked" sub="Today, age 60, cash-depleted, plan-depleted" />
         <ValueProp icon="sparkle" title="LP-optimized withdrawals" sub="Tax-efficient schedule across accounts" />
         <ValueProp icon="calendar" title="Year-by-year ledger" sub="Full simulation transparency" />
         {!isMobile && <span style={{ width: 1, height: 36, background: 'var(--border)' }} />}

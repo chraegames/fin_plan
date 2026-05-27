@@ -85,9 +85,11 @@ export function autoBalance(input: PlanInput, targetCash: number, actuals?: Actu
   }
 
   // --- User's target overshoots the plan's sustainability. Binary-search
-  // the highest target in [floor, userTarget] that keeps cash at the floor. ---
-  let lo = CASH_FLOOR;
-  let hi = targetCash;
+  // the highest target in [floor, userTarget] that keeps cash at the floor.
+  // Clamp the bounds so a sub-floor target (e.g. $0) doesn't invert the
+  // range; behavior is unchanged when targetCash >= CASH_FLOOR. ---
+  let lo = Math.min(CASH_FLOOR, targetCash);
+  let hi = Math.max(CASH_FLOOR, targetCash);
   // Even the floor may be unsustainable; if so, just use the user's target
   // and let cash dip — the greedy will still withdraw maximally each year.
   const atFloor = simulateGreedy(input, actuals, postFrozen, frozenYears, Y, penaltyCutoff, lo);

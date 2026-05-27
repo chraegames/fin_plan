@@ -232,10 +232,22 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
         >
           {years.map(y => {
             const active = y === activeYear;
+            // "In progress" lights up when the user has entered *any* actual
+            // for that year — across all three categories (income, expense,
+            // withdrawal) plus year-end balances and cash. Expenses can be
+            // either annual (key === y) or monthly (key === y*100+m, so the
+            // year is floor(key/100)).
             const hasData =
-              !!actuals.endingCash?.[y] ||
+              actuals.endingCash?.[y] != null ||
               ACCOUNT_ROWS.some(([a]) => actuals.endingBalances?.[a]?.[y] != null) ||
-              Object.values(actuals.expenses).some(map => Object.keys(map).some(k => Number(k) === y || Math.floor(Number(k) / 100) === y));
+              ACCOUNT_ROWS.some(([a]) => actuals.withdrawals[a]?.[y] != null) ||
+              Object.values(actuals.incomes).some(map => map[y] != null) ||
+              Object.values(actuals.expenses).some(map =>
+                Object.keys(map).some(k => {
+                  const n = Number(k);
+                  return n === y || Math.floor(n / 100) === y;
+                }),
+              );
             return (
               <button
                 key={y}
