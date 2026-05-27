@@ -51,8 +51,13 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [saveError, setSaveError] = useState(false);
-  const [saveErrorDismissed, setSaveErrorDismissed] = useState(false);
+  // Two counters drive the save-error toast: every failure bumps
+  // `saveErrorVersion`, and dismissing the toast records that version. The
+  // toast is shown whenever the latest failure hasn't been dismissed —
+  // so a second failure after dismissing the first re-shows the toast.
+  const [saveErrorVersion, setSaveErrorVersion] = useState(0);
+  const [dismissedErrorVersion, setDismissedErrorVersion] = useState(0);
+  const showSaveError = saveErrorVersion > dismissedErrorVersion;
   const { theme, toggle: toggleTheme } = useTheme();
 
   // Persist on every update from the event-handler path rather than in an
@@ -66,7 +71,7 @@ export default function App() {
             ? (updater as (p: ProfilesState) => ProfilesState)(prev)
             : updater;
         const ok = safeSetItem(PROFILES_KEY, JSON.stringify(next));
-        if (!ok) setSaveError(true);
+        if (!ok) setSaveErrorVersion(v => v + 1);
         return next;
       });
     },
@@ -389,7 +394,7 @@ export default function App() {
         onRenameProfile={renameProfile}
         onDeleteProfile={deleteProfile}
       />
-      {saveError && !saveErrorDismissed && (
+      {showSaveError && (
         <div
           role="status"
           style={{
@@ -409,7 +414,7 @@ export default function App() {
           </span>
           <button
             type="button"
-            onClick={() => setSaveErrorDismissed(true)}
+            onClick={() => setDismissedErrorVersion(saveErrorVersion)}
             aria-label="Dismiss save warning"
             style={{
               background: 'transparent',

@@ -1,6 +1,7 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -27,6 +28,9 @@ export function ConfirmDialog({
   onConfirm,
   icon = 'warning',
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, dialogRef);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -55,6 +59,7 @@ export function ConfirmDialog({
       }}
     >
       <div
+        ref={dialogRef}
         onClick={e => e.stopPropagation()}
         role="alertdialog"
         aria-modal="true"

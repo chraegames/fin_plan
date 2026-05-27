@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Button } from '../../primitives/Button';
 import { Icon } from '../../primitives/Icon';
 import { useIsMobile } from '../../../hooks/useIsMobile';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface EditDrawerProps {
   open: boolean;
@@ -23,6 +24,9 @@ export function EditDrawer({
   footer,
 }: EditDrawerProps) {
   const isMobile = useIsMobile();
+  const dialogRef = useRef<HTMLElement>(null);
+  const titleId = useId();
+  useFocusTrap(open, dialogRef);
 
   useEffect(() => {
     if (!open) return;
@@ -58,6 +62,10 @@ export function EditDrawer({
         }}
       />
       <aside
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         style={{
           position: 'relative',
           height: isMobile ? '85vh' : '100%',
@@ -113,6 +121,7 @@ export function EditDrawer({
               {eyebrow}
             </div>
             <h3
+              id={titleId}
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: isMobile ? 22 : 28,

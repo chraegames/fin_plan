@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface AboutModalProps {
   open: boolean;
@@ -8,6 +9,10 @@ interface AboutModalProps {
 }
 
 export function AboutModal({ open, onClose }: AboutModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useFocusTrap(open, dialogRef);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -36,6 +41,10 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
       }}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
@@ -75,6 +84,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
             <Icon name="close" size={14} />
           </button>
           <h2
+            id={titleId}
             style={{
               fontFamily: 'var(--font-display)',
               fontSize: 30,

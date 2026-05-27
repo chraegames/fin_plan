@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../primitives/Button';
 import { Icon } from '../../primitives/Icon';
 import { MoneyInput } from '../../primitives/Input';
@@ -37,10 +37,18 @@ export function WithdrawalEditor({
     onChange(items.map(it => (it.id === id ? { ...it, ...updates } : it)));
 
   const [flashing, setFlashing] = useState(false);
+  const flashTimerRef = useRef<number | undefined>(undefined);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current !== undefined) clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
   const handleAutoBalance = () => {
     onAutoBalance(targetCash);
     setFlashing(true);
-    setTimeout(() => setFlashing(false), 1600);
+    if (flashTimerRef.current !== undefined) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlashing(false), 1600);
   };
 
   return (

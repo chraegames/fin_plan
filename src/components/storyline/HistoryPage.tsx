@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   PlanInput,
   ActualsData,
@@ -9,6 +9,7 @@ import { resolveAmount } from '../../engine/resolve';
 import { formatDollars, formatDollarsCompact } from '../../utils/format';
 import { Page } from '../layout/Page';
 import { Footer } from './sections/Footer';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface HistoryPageProps {
   input: PlanInput;
@@ -30,6 +31,16 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
   const simStart = input.startYear;
   const maxHistoryYear = Math.min(CURRENT_YEAR, input.endYear);
   const [activeYear, setActiveYear] = useState(Math.max(simStart, maxHistoryYear));
+  const isMobile = useIsMobile();
+  const yearStripRef = useRef<HTMLElement>(null);
+  const activeYearBtnRef = useRef<HTMLButtonElement>(null);
+
+  // On mobile, the year nav is a horizontal strip — scroll the active year
+  // into view whenever it changes so it stays visible after tap navigation.
+  useEffect(() => {
+    if (!isMobile) return;
+    activeYearBtnRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeYear, isMobile]);
 
   const years = useMemo(() => {
     const arr: number[] = [];
@@ -185,16 +196,38 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 24 }}>
-        {/* Year navigator */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '180px 1fr',
+          gap: isMobile ? 16 : 24,
+        }}
+      >
+        {/* Year navigator — vertical sidebar on desktop, horizontal scrolling
+            strip on mobile. Sticky offset clears AppBar (56) + ScenarioTabs
+            (40) on mobile; just the AppBar on desktop. */}
         <nav
+          ref={yearStripRef}
           style={{
             display: 'flex',
-            flexDirection: 'column',
+            flexDirection: isMobile ? 'row' : 'column',
             gap: 6,
             alignSelf: 'flex-start',
             position: 'sticky',
-            top: 80,
+            top: isMobile ? 96 : 80,
+            zIndex: 5,
+            ...(isMobile
+              ? {
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                  padding: '8px 0',
+                  background: 'var(--bg)',
+                  margin: '0 -16px',
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                  scrollbarWidth: 'none',
+                }
+              : {}),
           }}
         >
           {years.map(y => {
@@ -206,6 +239,7 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
             return (
               <button
                 key={y}
+                ref={active ? activeYearBtnRef : undefined}
                 onClick={() => setActiveYear(y)}
                 style={{
                   display: 'flex',
@@ -220,6 +254,8 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
                   textAlign: 'left',
                   cursor: 'pointer',
                   boxShadow: active ? 'var(--shadow-card)' : 'none',
+                  flexShrink: 0,
+                  ...(isMobile ? { minWidth: 116 } : {}),
                 }}
               >
                 <div>
@@ -295,7 +331,13 @@ export function HistoryPage({ input, actuals, results, onActualsChange, onAbout 
                 Replaces {activeYear + 1}'s starting values
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                gap: 14,
+              }}
+            >
               <BalanceCell
                 color="var(--chart-cash)"
                 label="Cash"

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 function useHover(): [boolean, { onMouseEnter: () => void; onMouseLeave: () => void }] {
@@ -23,7 +23,10 @@ interface PopoverPosition {
   top: number;
   left?: number;
   right?: number;
+  maxHeight?: number;
 }
+
+const VIEWPORT_MARGIN = 8;
 
 export function Popover({ trigger, children, align = 'left', width = 240 }: PopoverProps) {
   const [open, setOpen] = useState(false);
@@ -50,6 +53,10 @@ export function Popover({ trigger, children, align = 'left', width = 240 }: Popo
     };
   }, [open]);
 
+  // Initial position (before the popover has been measured). We compute the
+  // preferred placement directly from the trigger rect so the popover paints
+  // somewhere reasonable on first frame; the layout effect below then flips
+  // or clamps once we know the actual height/width.
   useEffect(() => {
     if (!open) return;
     const update = () => {
@@ -71,6 +78,64 @@ export function Popover({ trigger, children, align = 'left', width = 240 }: Popo
     };
   }, [open, align]);
 
+  // Once the popover has rendered, measure it and re-place if it would
+  // overflow the viewport: flip above the trigger when the bottom edge would
+  // run off-screen, switch horizontal alignment when the side overflows, and
+  // clamp `maxHeight` so it never extends past the viewport.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const wrapper = wrapperRef.current;
+    const popover = popoverRef.current;
+    if (!wrapper || !popover) return;
+
+    const trigger = wrapper.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let top = trigger.bottom + 6;
+    const wouldOverflowBottom = top + popoverRect.height > vh - VIEWPORT_MARGIN;
+    const flippedTop = trigger.top - popoverRect.height - 6;
+    const canFlip = flippedTop >= VIEWPORT_MARGIN;
+    if (wouldOverflowBottom && canFlip) {
+      top = flippedTop;
+    }
+    const maxHeight = Math.max(120, vh - top - VIEWPORT_MARGIN);
+
+    let nextLeft: number | undefined;
+    let nextRight: number | undefined;
+    if (align === 'left') {
+      const leftEdge = trigger.left;
+      if (leftEdge + width > vw - VIEWPORT_MARGIN) {
+        nextRight = VIEWPORT_MARGIN;
+      } else {
+        nextLeft = Math.max(VIEWPORT_MARGIN, leftEdge);
+      }
+    } else {
+      const rightEdge = vw - trigger.right;
+      if (trigger.right - width < VIEWPORT_MARGIN) {
+        nextLeft = VIEWPORT_MARGIN;
+      } else {
+        nextRight = Math.max(VIEWPORT_MARGIN, rightEdge);
+      }
+    }
+
+    // Only update when something materially changed — bails out of the
+    // measure-set-measure feedback loop that useLayoutEffect can trigger.
+    setPos(prev => {
+      if (
+        prev &&
+        prev.top === top &&
+        prev.left === nextLeft &&
+        prev.right === nextRight &&
+        prev.maxHeight === maxHeight
+      ) {
+        return prev;
+      }
+      return { top, left: nextLeft, right: nextRight, maxHeight };
+    });
+  }, [open, align, width, pos?.top, pos?.left, pos?.right]);
+
   return (
     <div ref={wrapperRef} style={{ position: 'relative' }}>
       {trigger({ open, toggle: () => setOpen(o => !o) })}
@@ -85,6 +150,8 @@ export function Popover({ trigger, children, align = 'left', width = 240 }: Popo
               right: pos.right,
               zIndex: 1000,
               width,
+              maxHeight: pos.maxHeight,
+              overflowY: pos.maxHeight ? 'auto' : 'visible',
               background: 'var(--surface)',
               border: '1px solid var(--border)',
               borderRadius: 10,

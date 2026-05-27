@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
 import type { ProfilesState } from '../../models/types';
 import { migratePlans } from '../../utils/persistence';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ImportModalProps {
   profilesState: ProfilesState;
@@ -25,6 +26,9 @@ export function ImportModal({
   const [parsed, setParsed] = useState<ParsedFile | null>(null);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useFocusTrap(true, dialogRef);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -104,6 +108,10 @@ export function ImportModal({
       }}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
@@ -125,6 +133,7 @@ export function ImportModal({
 
         {!showConfirm ? (
           <ExplainStep
+            titleId={titleId}
             currentProfileCount={currentProfileCount}
             currentScenarioCount={currentScenarioCount}
             currentProfileNames={currentProfileNames}
@@ -135,6 +144,7 @@ export function ImportModal({
           />
         ) : (
           <ConfirmStep
+            titleId={titleId}
             parsed={parsed!}
             currentProfileCount={currentProfileCount}
             currentScenarioCount={currentScenarioCount}
@@ -153,6 +163,7 @@ export function ImportModal({
 // ────────────────────────────────────────────────────────────────────────
 
 interface ExplainStepProps {
+  titleId: string;
   currentProfileCount: number;
   currentScenarioCount: number;
   currentProfileNames: string;
@@ -163,6 +174,7 @@ interface ExplainStepProps {
 }
 
 function ExplainStep({
+  titleId,
   currentProfileCount,
   currentScenarioCount,
   currentProfileNames,
@@ -174,6 +186,7 @@ function ExplainStep({
   return (
     <>
       <ModalHeader
+        titleId={titleId}
         icon="upload"
         iconBg="var(--accent-soft)"
         iconColor="var(--accent-ink)"
@@ -282,6 +295,7 @@ function ExplainStep({
 // ────────────────────────────────────────────────────────────────────────
 
 interface ConfirmStepProps {
+  titleId: string;
   parsed: ParsedFile;
   currentProfileCount: number;
   currentScenarioCount: number;
@@ -291,6 +305,7 @@ interface ConfirmStepProps {
 }
 
 function ConfirmStep({
+  titleId,
   parsed,
   currentProfileCount,
   currentScenarioCount,
@@ -306,6 +321,7 @@ function ConfirmStep({
   return (
     <>
       <ModalHeader
+        titleId={titleId}
         icon="warning"
         iconBg="var(--negative-soft)"
         iconColor="var(--negative)"
@@ -418,6 +434,7 @@ function ConfirmStep({
 // ────────────────────────────────────────────────────────────────────────
 
 interface ModalHeaderProps {
+  titleId?: string;
   icon: IconName;
   iconBg: string;
   iconColor: string;
@@ -426,7 +443,7 @@ interface ModalHeaderProps {
   onClose: () => void;
 }
 
-function ModalHeader({ icon, iconBg, iconColor, title, subtitle, onClose }: ModalHeaderProps) {
+function ModalHeader({ titleId, icon, iconBg, iconColor, title, subtitle, onClose }: ModalHeaderProps) {
   return (
     <header
       style={{
@@ -455,6 +472,7 @@ function ModalHeader({ icon, iconBg, iconColor, title, subtitle, onClose }: Moda
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <h2
+          id={titleId}
           style={{
             fontFamily: 'var(--font-display)',
             fontSize: 20,

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DrawerKind } from '../../App';
 import type { PlanInput, ActualsData, SimulationResult } from '../../models/types';
 import { earlyWithdrawalCutoff } from '../../engine/constants';
@@ -561,6 +561,13 @@ function WithdrawalsCard({
   onAutoBalance: () => void;
 }) {
   const [flashing, setFlashing] = useState(false);
+  const flashTimerRef = useRef<number | undefined>(undefined);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current !== undefined) clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
   const anyScheduled = input.withdrawals.some(w => w.periods.some(p => p.amount > 0));
   const isFirstTime = !anyScheduled || input.targetCash === 0;
 
@@ -573,7 +580,8 @@ function WithdrawalsCard({
     }
     onAutoBalance();
     setFlashing(true);
-    setTimeout(() => setFlashing(false), 1600);
+    if (flashTimerRef.current !== undefined) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlashing(false), 1600);
   };
 
   return (

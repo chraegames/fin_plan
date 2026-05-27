@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SimulationResult, YearResult } from '../../../models/types';
 import { formatDollars } from '../../../utils/format';
 import { SectionHead } from '../../layout/SectionHead';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface YearByYearProps {
   results: SimulationResult;
@@ -20,6 +21,30 @@ const FILTER_LABELS: Record<Filter, string> = {
 
 export function YearByYear({ results, birthYear, penaltyCutoff, onCashFlowClick }: YearByYearProps) {
   const [filter, setFilter] = useState<Filter>('all');
+  const isMobile = useIsMobile();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showRightFade, setShowRightFade] = useState(false);
+
+  // On mobile the table can overflow horizontally. Watch scroll position and
+  // viewport width to decide whether to render a right-edge gradient hint.
+  // Note: the fade only renders when isMobile && showRightFade, so we don't
+  // need to reset the flag when leaving mobile — the render condition gates it.
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setShowRightFade(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+    };
+    update();
+    el.addEventListener('scroll', update);
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [isMobile, results.length]);
 
   const rows = useMemo(() => {
     if (filter === 'pre60') return results.filter(r => r.year < penaltyCutoff);
@@ -56,17 +81,19 @@ export function YearByYear({ results, birthYear, penaltyCutoff, onCashFlowClick 
         }
       />
 
-      <div
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
-          boxShadow: 'var(--shadow-card)',
-          maxHeight: 720,
-          overflow: 'auto',
-          WebkitOverflowScrolling: 'touch',
-        }}
-      >
+      <div style={{ position: 'relative' }}>
+        <div
+          ref={scrollRef}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            boxShadow: 'var(--shadow-card)',
+            maxHeight: 720,
+            overflow: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
         <table
           style={{
             width: '100%',
@@ -183,6 +210,23 @@ export function YearByYear({ results, birthYear, penaltyCutoff, onCashFlowClick 
             })}
           </tbody>
         </table>
+        </div>
+        {isMobile && showRightFade && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              height: '100%',
+              width: 36,
+              pointerEvents: 'none',
+              borderTopRightRadius: 14,
+              borderBottomRightRadius: 14,
+              background: 'linear-gradient(to right, transparent, var(--surface))',
+            }}
+          />
+        )}
       </div>
     </section>
   );

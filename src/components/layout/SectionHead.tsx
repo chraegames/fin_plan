@@ -16,6 +16,7 @@ export function SectionHead({ overline, title, sub, right }: SectionHeadProps) {
         justifyContent: 'space-between',
         marginBottom: 18,
         gap: 16,
+        flexWrap: 'wrap',
       }}
     >
       <div>
