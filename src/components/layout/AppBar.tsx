@@ -24,6 +24,10 @@ interface AppBarProps {
   onCreateProfile: () => void;
   onRenameProfile: (profileId: string, name: string) => void;
   onDeleteProfile: (profileId: string) => void;
+  /** Local-only: re-show the first-visit intro screen. */
+  onDevResetToIntro?: () => void;
+  /** Local-only: reset to a clean Welcome screen (wipes plan data). */
+  onDevResetToWelcome?: () => void;
   rightSlot?: ReactNode;
 }
 
@@ -42,6 +46,8 @@ export function AppBar({
   onCreateProfile,
   onRenameProfile,
   onDeleteProfile,
+  onDevResetToIntro,
+  onDevResetToWelcome,
   rightSlot,
 }: AppBarProps) {
   const profileInitial = activeProfile.name.trim().charAt(0).toUpperCase() || '·';
@@ -99,6 +105,20 @@ export function AppBar({
           >
             LOCAL
           </span>
+        )}
+        {local && !isMobile && (onDevResetToIntro || onDevResetToWelcome) && (
+          <div style={{ display: 'inline-flex', gap: 4 }}>
+            {onDevResetToIntro && (
+              <DevJumpButton onClick={onDevResetToIntro} title="Re-show the first-visit intro (clears the seen flag; plan data untouched)">
+                ↻ Intro
+              </DevJumpButton>
+            )}
+            {onDevResetToWelcome && (
+              <DevJumpButton onClick={onDevResetToWelcome} title="Reset to a clean Welcome screen — WIPES local plan data (dev only)">
+                ↻ Welcome
+              </DevJumpButton>
+            )}
+          </div>
         )}
       </div>
 
@@ -185,6 +205,42 @@ export function AppBar({
         )}
       </div>
     </header>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Local-only dev jump button (shares the LOCAL chip's amber palette)
+// ────────────────────────────────────────────────────────────────────────
+
+function DevJumpButton({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      style={{
+        fontFamily: 'var(--font-mono, monospace)',
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        padding: '3px 8px',
+        borderRadius: 4,
+        border: '1px solid #1c1917',
+        background: 'transparent',
+        color: '#1c1917',
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

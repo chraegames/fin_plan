@@ -12,15 +12,18 @@ import type {
   ProfilesState,
 } from './models/types';
 import {
+  INTRO_SEEN_KEY,
   PROFILES_KEY,
   cleanActuals,
   freshStart,
+  loadIntroSeen,
   loadProfiles,
   migratePlans,
   safeSetItem,
 } from './utils/persistence';
 import { AppBar } from './components/layout/AppBar';
 import { ScenarioTabs } from './components/layout/ScenarioTabs';
+import { Intro } from './components/storyline/Intro';
 import { Welcome } from './components/storyline/Welcome';
 import { PartialPlan } from './components/storyline/PartialPlan';
 import { PlanForecast } from './components/storyline/PlanForecast';
@@ -51,6 +54,10 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  // First-visit intro screen. Initial value grandfathers users who already
+  // have any touched scenario (loadIntroSeen also checks legacy storage
+  // shapes), so the intro only appears to genuinely new visitors.
+  const [seenIntro, setSeenIntroRaw] = useState<boolean>(loadIntroSeen);
   // Two counters drive the save-error toast: every failure bumps
   // `saveErrorVersion`, and dismissing the toast records that version. The
   // toast is shown whenever the latest failure hasn't been dismissed —
@@ -77,6 +84,30 @@ export default function App() {
     },
     [],
   );
+
+  const dismissIntro = useCallback(() => {
+    track('intro_dismissed');
+    setSeenIntroRaw(true);
+    safeSetItem(INTRO_SEEN_KEY, '1');
+  }, []);
+
+  // Local-only dev affordances. Both clear the intro-seen flag / plan
+  // data via the same paths a real user would, so they participate in
+  // the existing save-error handling.
+  const devResetToIntro = useCallback(() => {
+    try {
+      localStorage.removeItem(INTRO_SEEN_KEY);
+    } catch {
+      // ignore — toggling state is what actually drives the UI
+    }
+    setSeenIntroRaw(false);
+  }, []);
+
+  const devResetToWelcome = useCallback(() => {
+    setSeenIntroRaw(true);
+    safeSetItem(INTRO_SEEN_KEY, '1');
+    setProfilesState(freshStart());
+  }, [setProfilesState]);
 
   const activeProfile =
     profilesState.profiles.find(p => p.id === profilesState.activeProfileId) ??
@@ -393,7 +424,13 @@ export default function App() {
         onCreateProfile={createProfile}
         onRenameProfile={renameProfile}
         onDeleteProfile={deleteProfile}
+        onDevResetToIntro={devResetToIntro}
+        onDevResetToWelcome={devResetToWelcome}
       />
+      {!seenIntro ? (
+        <Intro onDismiss={dismissIntro} />
+      ) : (
+        <>
       {showSaveError && (
         <div
           role="status"
@@ -474,10 +511,12 @@ export default function App() {
           onAutoBalance={handleAutoBalance}
           onAbout={() => setAboutOpen(true)}
           onGoHistory={() => {
-          track('history_opened');
-          setRoute('history');
-        }}
+            track('history_opened');
+            setRoute('history');
+          }}
         />
+      )}
+        </>
       )}
 
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />

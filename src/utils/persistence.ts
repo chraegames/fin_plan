@@ -13,6 +13,7 @@ import type {
 // retire them later: just delete this module's legacy branches.
 
 export const PROFILES_KEY = 'financial-planner-profiles';
+export const INTRO_SEEN_KEY = 'firePlannerIntroSeen';
 const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
 const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';
@@ -225,6 +226,45 @@ export function freshStart(): ProfilesState {
     profiles: [{ id: profileId, name: 'Default', plans, activePlanId: planId }],
     activeProfileId: profileId,
   };
+}
+
+/**
+ * Initial value for the intro-screen seen flag. Returns true (intro
+ * already seen / skipped) when:
+ *   - the explicit dismissed flag is present in localStorage, OR
+ *   - the user has any pre-existing touched scenario (grandfather
+ *     returning users who have been using the app before the intro
+ *     screen existed).
+ * Returns false only for genuinely new visitors.
+ */
+export function loadIntroSeen(): boolean {
+  try {
+    if (localStorage.getItem(INTRO_SEEN_KEY) != null) return true;
+  } catch {
+    // localStorage unavailable — treat as a fresh visitor.
+    return false;
+  }
+  try {
+    const saved = localStorage.getItem(PROFILES_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as ProfilesState;
+      if (parsed.profiles?.some(p => p.plans?.some(pl => pl.touched))) {
+        return true;
+      }
+    }
+    // Also grandfather pre-profiles localStorage shapes — any of them
+    // means the user has been here before.
+    if (
+      localStorage.getItem(OLD_SCENARIOS_KEY) ||
+      localStorage.getItem(OLD_INPUT_KEY) ||
+      localStorage.getItem(OLD_PLANS_KEY)
+    ) {
+      return true;
+    }
+  } catch {
+    // Ignore — fall through to "first visit".
+  }
+  return false;
 }
 
 /**
