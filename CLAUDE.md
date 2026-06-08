@@ -16,16 +16,25 @@ src/
   utils/                  # persistence, formatting, analytics, env detection
   hooks/                  # useTheme, useIsMobile, useFocusTrap
   models/types.ts         # the data model — everything else types against this
+  pages/                  # static SEO content pages (build-time prerendered, no app shell)
+    routeMeta.ts          # pure route manifest (slug/path/title/desc) — single source
+    routes.tsx            # binds each route's metadata to its Content component
+    ContentLayout.tsx     # shared layout + prose primitives (H2/P/UL/LI/A)
+    contentStyles.ts      # CSS-only entry so content pages get styling, not the app
+    <slug>/Content.tsx    # per-page copy (coast-fire-calculator, 4-percent-rule, …)
   components/
     layout/               # AppBar, ScenarioTabs, Page, NameForm, Logo, SectionHead
     primitives/           # Button, Icon, Input variants, Popover (used everywhere)
     storyline/            # screen-level components and modals
-      Intro / Welcome / PartialPlan / PlanForecast / HistoryPage
+      Intro / IntroContent / Welcome / PartialPlan / PlanForecast / HistoryPage
       AboutModal / ExportModal / ImportModal / ConfirmDialog
       cards/ charts/ drawers/ sections/
   styles/
     tokens.css            # design tokens via CSS custom properties (light + dark)
     base.css              # element resets, fonts, theme-bound declarations
+scripts/
+  prerender.tsx           # renderToStaticMarkup helpers + sitemap builder (build-time)
+<slug>/index.html         # one HTML entry per content route (Vite multi-page input)
 ```
 
 Recharts is the only runtime UI dep (used by `storyline/charts/*`). Three Fontsource families are bundled (space-grotesk display, dm-sans body, jetbrains-mono numerics). No CSS framework, no UI kit, no router. There is no React Router — routing is just `useState` enums in `App.tsx`.
@@ -137,7 +146,7 @@ Documented in About modal, README, `engine/constants.ts`, and inside `engine/tax
 - **"Age 60" semantics for the 59½ rule.** We have birth *year* but not birth *month*. `earlyWithdrawalCutoff = birthYear + 60` is exact for December-born users and ~6 months conservative for January-born ones.
 - **Not modeled at all:** state/local tax, Social Security, pensions, RMDs, NIIT, Medicare IRMAA, the Roth 5-year rule, Roth conversions, return variability, sequence-of-returns risk, inflation on income.
 
-If you change the brackets, also update: README "What it models" section, About modal "What it models" / "What it skips" blocks, the noscript block in `index.html`, the OG/meta/JSON-LD descriptions (they all carry "2026 MFJ" framing), and re-run `tax.test.ts` against the new boundaries.
+If you change the brackets, also update: README "What it models" section, About modal "What it models" / "What it skips" blocks, the `how-it-works` content page (`src/pages/how-it-works/Content.tsx`, which spells out the 2026 MFJ assumption), the OG/meta/JSON-LD descriptions (they all carry "2026 MFJ" framing), and re-run `tax.test.ts` against the new boundaries.
 
 ---
 
@@ -210,18 +219,24 @@ intro_shown, intro_dismissed
 
 ---
 
-## SEO surface — `index.html`
+## SEO surface — build-time prerender + static content pages
 
-Two parallel "what is this app" surfaces exist by design:
+The app is client-only, but the marketing/content HTML is **prerendered at build time** so crawlers, link unfurlers (Slack/Discord/Twitter/Bing), and no-JS visitors get real content on the first byte — without server-side rendering the stateful `App`.
 
-1. **The Intro component** — first-visit UX for JS users.
-2. **The `<noscript>` block** — what crawlers, link unfurlers (Slack/Discord/Twitter/Bing), and JS-disabled visitors see.
+**How it works** (`vite.config.ts` → `seoPrerender()` plugin, build-only):
 
-They share brand voice and structure but should not be merged: the Intro's "What this is" panel is collapsed by default, so crawlers wouldn't see its substance; link unfurlers don't run JS at all. The noscript intentionally flattens the same three sections.
+1. `transformIndexHtml` renders a pure component tree to a static string (via `scripts/prerender.tsx` → `renderToStaticMarkup`) and injects it into that page's empty `<div id="root">`.
+   - **Home (`index.html`)** gets `IntroContent` (`components/storyline/IntroContent.tsx`). On mount, `App`'s `createRoot().render()` *replaces* it — no `hydrateRoot`, so no hydration mismatch despite the server having no localStorage. This **supersedes the old `<noscript>` block** (removed): the same copy now lives, visible, in `#root`.
+   - **Content pages** (`/coast-fire-calculator/`, `/4-percent-rule/`, `/retirement-withdrawal-strategy/`, `/how-it-works/`) are static-only — their `index.html` loads `src/pages/contentStyles.ts` (CSS only) instead of the app, so they ship no recharts/app bundle.
+2. `closeBundle` writes `dist/sitemap.xml` from the route manifest (home + every content route), so it never goes stale. The old hand-maintained `public/sitemap.xml` was removed.
 
-Two JSON-LD blocks: `WebApplication` (current pricing + category) and `FAQPage` (three Q&As mirroring the Intro panel — eligible for Google FAQ rich snippets).
+**Single source of copy.** `IntroContent.tsx` exports `IntroHeader` / `IntroSections` / `IntroDisclaimer`, consumed by *both* the interactive `Intro.tsx` (wraps them in the CTA + collapsible accordion) and the prerendered home HTML. Editing the hero/"what this is" copy in one place updates both. Content-page routes are declared once in `src/pages/routeMeta.ts` (pure data, also drives cross-links + sitemap).
 
-If you change the Intro's copy, also update the noscript and the meta/OG/Twitter/JSON-LD descriptions so the brand voice stays consistent across all four surfaces.
+**Purity contract.** Everything reachable from `scripts/prerender.tsx` (IntroContent, ContentLayout, the page components) must stay free of hooks, browser APIs, and CSS imports — it's rendered to a string in the Vite/Node build context. `tsconfig.node.json` carries `jsx: react-jsx` + DOM libs so the config-side type-checks this tree.
+
+**JSON-LD.** `index.html` keeps `WebApplication` + `FAQPage`; each content page's `index.html` carries its own `BreadcrumbList`.
+
+If you change the Intro's copy, also update the meta/OG/Twitter/JSON-LD descriptions in `index.html` (and the per-page `index.html` heads as relevant) so the brand voice stays consistent.
 
 ---
 
@@ -232,8 +247,9 @@ If you change the Intro's copy, also update the noscript and the meta/OG/Twitter
 - **Don't bypass `safeSetItem`.** Direct `localStorage.setItem` skips the quota toast path and crashes the app in Safari private mode / quota-exceeded scenarios.
 - **Don't mutate `ProfilesState` from inside `runSimulation` or any engine function.** The engine is pure; the UI hook (`useMemo`) assumes inputs don't change as a side effect.
 - **Don't conditionally render hooks.** See [Coding rules](#coding-rules-the-linter-enforces).
-- **Don't introduce a router.** The two-axis routing (intro/seen + screen derivation) covers everything; adding React Router would be a regression.
-- **Don't drop the noscript block** even though it's "duplicate content." See [SEO surface](#seo-surface--indexhtml).
+- **Don't introduce a router.** The two-axis routing (intro/seen + screen derivation) covers the app; the SEO content pages are separate static HTML entries (Vite multi-page), not client routes. Adding React Router would be a regression.
+- **Keep the prerender tree pure.** Anything reachable from `scripts/prerender.tsx` (IntroContent, ContentLayout, page components) must avoid hooks, browser APIs, and CSS imports — it renders to a string at build time. See [SEO surface](#seo-surface--build-time-prerender--static-content-pages).
+- **Don't `hydrateRoot` the home page.** The prerendered `#root` is intentionally *replaced* by `createRoot().render()`, not hydrated — the server has no localStorage, so hydration would mismatch.
 
 ---
 
@@ -243,4 +259,4 @@ If you change the Intro's copy, also update the noscript and the meta/OG/Twitter
 - **Tweaking the chart**: `components/storyline/charts/`.
 - **Changing what counts as "touched"**: `App.tsx` `screen` derivation and every handler that sets `touched: true` — search for `touched: true`.
 - **Adding a localStorage key**: declare it in `persistence.ts`, plumb load via a `loadX()` helper, write via `safeSetItem`, add tests.
-- **Refreshing brand copy**: change `Intro.tsx` + `index.html` (noscript + meta + OG + Twitter + JSON-LD) + `AboutModal.tsx` + `README.md` in lockstep.
+- **Refreshing brand copy**: change `IntroContent.tsx` (feeds both `Intro.tsx` and the prerendered home HTML) + `index.html` (meta + OG + Twitter + JSON-LD) + `AboutModal.tsx` + `README.md` in lockstep. Content-page copy lives in `src/pages/<slug>/Content.tsx` with meta in `src/pages/routeMeta.ts` + the per-page `index.html`.

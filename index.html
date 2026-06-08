@@ -89,42 +89,14 @@
     </script>
   </head>
   <body>
+    <!--
+      #root is populated at build time with the prerendered <IntroContent/> markup
+      (see vite.config.ts seoPrerender + scripts/prerender.tsx) so crawlers and
+      no-JS visitors get the real hero + "what this is" copy on the first byte.
+      App's createRoot render replaces it on mount. This supersedes the old
+      <noscript> block — single source of copy now lives in IntroContent.tsx.
+    -->
     <div id="root"></div>
-    <noscript>
-      <main style="max-width:720px;margin:80px auto;padding:0 24px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#1a1c24;">
-        <h1 style="font-size:48px;line-height:1.1;margin:0 0 16px;font-weight:400;letter-spacing:-0.03em;">
-          Plan your retirement, in your browser.
-        </h1>
-        <p style="font-size:18px;line-height:1.55;color:#545861;margin:0;">
-          Free, private, browser-only. No signup, no server &mdash; your data never leaves this device.
-        </p>
-
-        <section style="margin-top:32px;">
-          <h2 style="font-size:20px;margin:0 0 8px;font-weight:500;letter-spacing:-0.015em;color:#1a1c24;">What you can do</h2>
-          <p style="font-size:16px;line-height:1.6;color:#3a3e48;margin:0;">
-            Project income, expenses, investment growth, illustrative federal taxes, and withdrawals across a configurable horizon. Compare scenarios side-by-side, record actuals year by year as life happens, and let an optimizer pick a tax-efficient withdrawal schedule.
-          </p>
-        </section>
-
-        <section style="margin-top:24px;">
-          <h2 style="font-size:20px;margin:0 0 8px;font-weight:500;letter-spacing:-0.015em;color:#1a1c24;">How it works</h2>
-          <p style="font-size:16px;line-height:1.6;color:#3a3e48;margin:0;">
-            Everything runs in your browser &mdash; the simulation, the optimizer, the charts. There is no server-side computation. Plans persist in this browser's localStorage so they're here when you come back.
-          </p>
-        </section>
-
-        <section style="margin-top:24px;">
-          <h2 style="font-size:20px;margin:0 0 8px;font-weight:500;letter-spacing:-0.015em;color:#1a1c24;">Your data</h2>
-          <p style="font-size:16px;line-height:1.6;color:#3a3e48;margin:0;">
-            No account, no server, no tracking of personal information. Export and import plans as JSON files you control. Clearing your browser data erases everything &mdash; nothing is kept anywhere else.
-          </p>
-        </section>
-
-        <p style="margin-top:40px;color:#797d86;font-size:14px;">
-          This app requires JavaScript to run.
-        </p>
-      </main>
-    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
