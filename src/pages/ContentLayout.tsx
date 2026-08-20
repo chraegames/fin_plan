@@ -5,7 +5,8 @@
 // pages are content-only; they do NOT mount the React app or recharts.
 
 import type { CSSProperties, ReactNode } from 'react';
-import { CONTENT_ROUTES } from './routeMeta';
+import { CONTENT_ROUTES, FIRE_HOME_PATH } from './routeMeta';
+import { SITE_NAME } from '../site/manifest';
 
 const proseColor = 'var(--ink-2)';
 
@@ -64,6 +65,15 @@ const linkStyle: CSSProperties = {
   textUnderlineOffset: 2,
 };
 
+const crumbStyle: CSSProperties = {
+  fontSize: 11,
+  color: 'var(--accent-ink)',
+  fontWeight: 600,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  textDecoration: 'none',
+};
+
 export function A({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a href={href} style={linkStyle}>
@@ -94,19 +104,15 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
         paddingTop: 'clamp(40px, 8vw, 80px)',
       }}
     >
-      <a
-        href="/"
-        style={{
-          fontSize: 11,
-          color: 'var(--accent-ink)',
-          fontWeight: 600,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          textDecoration: 'none',
-        }}
-      >
-        FIRE Planner
-      </a>
+      <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <a href="/" style={crumbStyle}>
+          {SITE_NAME}
+        </a>
+        <span style={{ color: 'var(--ink-muted)', fontSize: 11 }}>/</span>
+        <a href={FIRE_HOME_PATH} style={crumbStyle}>
+          FIRE Planner
+        </a>
+      </nav>
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h1
@@ -136,7 +142,7 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
 
       <div>
         <a
-          href="/"
+          href={FIRE_HOME_PATH}
           style={{
             display: 'inline-flex',
             alignItems: 'center',

@@ -1,20 +1,20 @@
-// Build-time prerendering for SEO. Renders the marketing/content components to
-// static HTML strings so crawlers and no-JS visitors get real content on the
-// first byte. Used by the inline prerender plugin in vite.config.ts.
+// Build-time prerendering for SEO. Renders each page's pure component to a
+// static HTML string so crawlers and no-JS visitors get real content on the
+// first byte. Used by the sitePages() plugin in vite.config.ts.
 //
 // PURE Node context: only imports component trees that are themselves free of
-// hooks/CSS imports/browser APIs (IntroContent + the ContentLayout pages), plus
-// react-dom/server (already a dependency). Do not import the app shell here.
+// hooks/CSS imports/browser APIs (see src/site/prerenderPages.tsx), plus
+// react-dom/server. Do not import the app shell here.
 
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
-import { IntroContent } from '../src/components/storyline/IntroContent';
-import { CONTENT_PAGES } from '../src/pages/routes';
-import { CONTENT_ROUTES, HOME_ROUTE, SITE_ORIGIN } from '../src/pages/routeMeta';
+import { PRERENDER_PAGES } from '../src/site/prerenderPages';
+import { SITE_ORIGIN, livePages } from '../src/site/manifest';
 
-/** Normalize a transformIndexHtml ctx.path (e.g. "/coast-fire-calculator/index.html") to a route key like "/coast-fire-calculator". "" means home. */
-function normalizePath(path: string): string {
-  return path.replace(/index\.html$/, '').replace(/\/+$/, '');
+/** Normalize a transformIndexHtml ctx.path ("/fire-planner/index.html", "/index.html") to a manifest path ("/fire-planner/", "/"). */
+export function normalizePath(path: string): string {
+  const dir = path.replace(/index\.html$/, '');
+  return dir.endsWith('/') ? dir : `${dir}/`;
 }
 
 /**
@@ -23,27 +23,26 @@ function normalizePath(path: string): string {
  */
 export function renderRootForPath(path: string): string {
   const key = normalizePath(path);
-  if (key === '') return renderToStaticMarkup(createElement(IntroContent));
-  const route = CONTENT_PAGES.find(r => normalizePath(r.path) === key);
-  if (!route) return '';
-  return renderToStaticMarkup(createElement(route.Component));
+  const page = PRERENDER_PAGES.find(p => p.entry.path === key);
+  if (!page) return '';
+  return renderToStaticMarkup(createElement(page.Component));
 }
 
-/** Generates a sitemap.xml covering the home page + every content route. */
+const PRIORITY = { hub: '1.0', app: '0.9', content: '0.8' } as const;
+
+/** Generates a sitemap.xml covering every live page. */
 export function buildSitemap(lastmod = new Date().toISOString().slice(0, 10)): string {
-  const paths = [HOME_ROUTE.path, ...CONTENT_ROUTES.map(r => r.path)];
-  const urls = paths
-    .map(p => {
-      const priority = p === HOME_ROUTE.path ? '1.0' : '0.8';
-      return [
+  const urls = livePages()
+    .map(p =>
+      [
         '  <url>',
-        `    <loc>${SITE_ORIGIN}${p}</loc>`,
+        `    <loc>${SITE_ORIGIN}${p.path}</loc>`,
         `    <lastmod>${lastmod}</lastmod>`,
         '    <changefreq>monthly</changefreq>',
-        `    <priority>${priority}</priority>`,
+        `    <priority>${PRIORITY[p.kind]}</priority>`,
         '  </url>',
-      ].join('\n');
-    })
+      ].join('\n'),
+    )
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }

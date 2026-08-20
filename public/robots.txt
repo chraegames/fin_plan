@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://fireplan.chraegames.cloud/sitemap.xml
+Sitemap: https://chraegames.cloud/sitemap.xml

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- title / description / canonical / OG / JSON-LD are injected at build
+         time from src/site/manifest.ts — see scripts/head.ts. -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#f5f5f7" />
+  </head>
+  <body>
+    <!--
+      #root is populated at build time with the prerendered <IntroContent/> markup
+      (see vite.config.ts sitePages + scripts/prerender.tsx) so crawlers and
+      no-JS visitors get the real hero + "what this is" copy on the first byte.
+      App's createRoot render replaces it on mount.
+    -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
