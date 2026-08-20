@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../storyline/ConfirmDialog';
 import type { Profile, ProfilesState } from '../../models/types';
 import { isLocalHost } from '../../utils/env';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { SITE_NAME } from '../../site/manifest';
 
 interface AppBarProps {
   profilesState: ProfilesState;
@@ -75,6 +76,25 @@ export function AppBar({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 20, minWidth: 0 }}>
+        {!isMobile && (
+          <a
+            href="/"
+            title={`Back to ${SITE_NAME}`}
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: local ? '#1c1917' : 'var(--accent-ink)',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              paddingRight: 20,
+              borderRight: `1px solid ${local ? '#b45309' : 'var(--border)'}`,
+            }}
+          >
+            {SITE_NAME}
+          </a>
+        )}
         <button
           onClick={onGoPlan}
           style={{ display: 'flex', alignItems: 'center', gap: 9 }}
@@ -323,6 +343,12 @@ function AppBarMobileMenu({
             onClick={() => { onAbout(); close(); }}
           >
             About
+          </PopoverItem>
+          <PopoverItem
+            leading={<Icon name="grid" size={12} />}
+            onClick={() => { window.location.assign('/'); }}
+          >
+            {SITE_NAME} home
           </PopoverItem>
         </>
       )}
