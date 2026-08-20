@@ -14,6 +14,12 @@ import type {
 
 export const PROFILES_KEY = 'financial-planner-profiles';
 export const INTRO_SEEN_KEY = 'firePlannerIntroSeen';
+// Shared by every page on the site (hub, FIRE planner, each tool). The value
+// predates the hub — keep it so existing visitors' theme choice survives.
+export const THEME_KEY = 'firePlannerTheme';
+export const UNIT_CONVERTER_KEY = 'chraeLab.unitConverter';
+export const CALCULATOR_HISTORY_KEY = 'chraeLab.calculator.history';
+export const TODO_KEY = 'chraeLab.todo';
 const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
 const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';
