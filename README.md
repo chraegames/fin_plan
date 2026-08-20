@@ -1,4 +1,24 @@
-# Financial Planner
+# Chrae Lab
+
+A collection of small, free tools that run entirely in the browser —
+no accounts, no server, everything stored on your device. Live at
+[chraegames.cloud](https://chraegames.cloud).
+
+| Category     | Tool                                           | Path                |
+|--------------|------------------------------------------------|---------------------|
+| Finance      | **FIRE Planner** — retirement / FIRE projection | `/fire-planner/`    |
+| Utilities    | Unit converter (length, weight, volume, area, speed, temperature) | `/unit-converter/` |
+| Utilities    | Calculator (basic + scientific, history)       | `/calculator/`      |
+| Productivity | To-do list (multiple lists, due dates)         | `/todo/`            |
+| Utilities    | Currency converter, World clock                | coming soon         |
+| Games        | —                                              | coming soon         |
+
+Every page is its own static HTML entry (Vite multi-page); the hub landing
+page and the FIRE content guides are prerendered at build time, and each
+tool mounts its own small React root. See `CLAUDE.md` for the architecture
+and `DEPLOY.md` for hosting.
+
+## FIRE Planner
 
 A free, browser-only retirement and long-term financial projection tool. Model
 income, expenses, investments, taxes, and withdrawals across a customizable
@@ -6,7 +26,7 @@ horizon. Everything runs locally; no account, no server, no tracking.
 
 > Educational tool &mdash; not financial, tax, or legal advice.
 
-## What it models
+### What it models
 
 - US federal income tax — **illustrative 2026 Married Filing Jointly brackets only** (not a substitute for tax-prep software)
 - Long-term capital gains (2026 MFJ thresholds)
@@ -17,7 +37,7 @@ horizon. Everything runs locally; no account, no server, no tracking.
 - An LP-based optimizer that picks a tax-efficient withdrawal schedule
 - Year-by-year "actuals" overrides that refine the projection
 
-## What it does NOT model
+### What it does NOT model
 
 Filing statuses other than MFJ (Single, HoH, MFS), state / local tax, Social
 Security, pensions, RMDs, NIIT, Medicare IRMAA, the Roth 5-year rule, return

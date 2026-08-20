@@ -1,43 +1,73 @@
 # Repo guide
 
-A browser-only retirement / FIRE planning SPA. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`; the entire engine runs client-side.
+**Chrae Lab** (`https://chraegames.cloud`) — a hub of small browser-only tools. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`.
 
-User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree.
+The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
+
+User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree. Most of it is about the FIRE planner because that's where the complexity is.
 
 ---
 
 ## Big picture
 
 ```
+index.html                # hub landing (prerendered <Landing/>; src/hub/main.ts adds CSS + theme toggle)
+fire-planner/index.html   # FIRE planner app entry (src/main.tsx)
+fire-planner/<slug>/index.html   # static FIRE content guides (CSS-only entry)
+<tool>/index.html         # one per tool: unit-converter, calculator, todo (src/tools/<tool>/main.tsx)
+scripts/
+  head.ts                 # buildHeadTags(entry): title/canonical/OG/JSON-LD + THEME_BOOT_SCRIPT
+  prerender.tsx           # renderRootForPath + buildSitemap (build-time, Node)
 src/
-  main.tsx                # boots StrictMode + analytics, mounts <App />
-  App.tsx                 # state owner; computes routing; passes handlers down
-  engine/                 # pure simulation (no React, no DOM)
-  utils/                  # persistence, formatting, analytics, env detection
+  site/
+    manifest.ts           # THE page manifest: SITE_ORIGIN, SITE_NAME, CATEGORIES, PAGES + helpers
+    prerenderPages.tsx    # manifest path → pure component rendered into #root at build time
+    ToolStatic.tsx        # no-JS fallback prerendered for tool pages
+  hub/
+    Landing.tsx           # pure landing page (categories → tool cards, Live / Coming soon)
+    main.ts               # hub entry: styles + analytics + vanilla theme toggle (no React)
+  tools/<tool>/           # main.tsx (entry) + App.tsx + pure logic .ts + tests
+  main.tsx                # FIRE planner entry: boots StrictMode + analytics, mounts <App />
+  App.tsx                 # FIRE planner state owner; computes routing; passes handlers down
+  engine/                 # pure FIRE simulation (no React, no DOM)
+  utils/                  # persistence (all localStorage keys), formatting, analytics, env detection
   hooks/                  # useTheme, useIsMobile, useFocusTrap
-  models/types.ts         # the data model — everything else types against this
-  pages/                  # static SEO content pages (build-time prerendered, no app shell)
-    routeMeta.ts          # pure route manifest (slug/path/title/desc) — single source
-    routes.tsx            # binds each route's metadata to its Content component
+  models/types.ts         # the FIRE data model — everything else types against this
+  pages/                  # FIRE static SEO content guides (build-time prerendered, no app shell)
+    routeMeta.ts          # FIRE's view of the manifest (CONTENT_ROUTES, FIRE_HOME_PATH)
     ContentLayout.tsx     # shared layout + prose primitives (H2/P/UL/LI/A)
     contentStyles.ts      # CSS-only entry so content pages get styling, not the app
     <slug>/Content.tsx    # per-page copy (coast-fire-calculator, 4-percent-rule, …)
   components/
-    layout/               # AppBar, ScenarioTabs, Page, NameForm, Logo, SectionHead
+    layout/               # AppBar, ToolShell, ScenarioTabs, Page, NameForm, Logo, SectionHead
     primitives/           # Button, Icon, Input variants, Popover (used everywhere)
-    storyline/            # screen-level components and modals
+    storyline/            # FIRE screen-level components and modals
       Intro / IntroContent / Welcome / PartialPlan / PlanForecast / HistoryPage
       AboutModal / ExportModal / ImportModal / ConfirmDialog
       cards/ charts/ drawers/ sections/
   styles/
+    global.ts             # the one styles entry (fonts + tokens + base) every page imports
     tokens.css            # design tokens via CSS custom properties (light + dark)
     base.css              # element resets, fonts, theme-bound declarations
-scripts/
-  prerender.tsx           # renderToStaticMarkup helpers + sitemap builder (build-time)
-<slug>/index.html         # one HTML entry per content route (Vite multi-page input)
 ```
 
-Recharts is the only runtime UI dep (used by `storyline/charts/*`). Three Fontsource families are bundled (space-grotesk display, dm-sans body, jetbrains-mono numerics). No CSS framework, no UI kit, no router. There is no React Router — routing is just `useState` enums in `App.tsx`.
+Recharts is the only runtime UI dep (used by `storyline/charts/*`; Rollup keeps it out of the tool bundles). Three Fontsource families are bundled (space-grotesk display, dm-sans body, jetbrains-mono numerics). No CSS framework, no UI kit, no router. There is no React Router — pages are separate HTML entries, and inside the FIRE app routing is just `useState` enums in `App.tsx`.
+
+---
+
+## Site manifest — `src/site/manifest.ts`
+
+Pure data, importable from Node (vite config) and the browser alike. `PAGES: SiteEntry[]` lists every URL with `{ slug, path, kind: 'hub'|'app'|'content', status: 'live'|'soon', name, tagline, title, description, category?, area?, label?, ogType?, jsonLd?, verification? }`. It drives:
+
+- **Vite inputs** — `vite.config.ts` builds `rollupOptions.input` from `livePages()`; a live entry without `<path>/index.html` fails `scripts/pages.test.ts` before it fails the build.
+- **`<head>` tags** — the `sitePages()` plugin (`vite.config.ts`) calls `buildHeadTags(entry)` (`scripts/head.ts`) for every page in dev and build: `<title>`, description, canonical, OG/Twitter, robots, verification metas, `BreadcrumbList` JSON-LD (from `breadcrumbs(entry)`), any `entry.jsonLd` blocks (FIRE home keeps `WebApplication` + `FAQPage`), the anti-flash background style, and the theme boot script. **Per-page `index.html` files therefore contain no `<title>`/meta** — only charset, viewport, icons, `<div id="root"></div>` and the module script.
+- **Prerender** — `src/site/prerenderPages.tsx` maps each live path to a pure component; `renderRootForPath` (`scripts/prerender.tsx`) renders it into the literal `<div id="root"></div>` at build time. The plugin throws if that literal is missing. Hub → `Landing`, FIRE home → `IntroContent`, content guides → their `Content`, tools → `ToolStatic`.
+- **Sitemap** — `buildSitemap()` lists `livePages()` (priority 1.0 hub / 0.9 apps / 0.8 content) into `dist/sitemap.xml`.
+- **Landing cards, breadcrumbs, ToolShell header, FIRE "Related" links** (`routeMeta.ts` filters content entries with `area === 'fire-planner'`).
+
+**Adding a tool:** add a `PAGES` entry (`status: 'soon'` until it works — the landing card then renders unlinked), create `<slug>/index.html` (copy `calculator/index.html`), `src/tools/<slug>/main.tsx` (`import '../../styles/global'; initAnalytics(); track('tool_opened', { tool }); createRoot(...)`), wrap the UI in `ToolShell`, declare any storage key in `persistence.ts`, then flip to `live`. No change to `vite.config.ts`, the sitemap, or any `<head>` is needed.
+
+**Theme boot.** `THEME_BOOT_SCRIPT` (`scripts/head.ts`) runs before CSS on every page: stored `firePlannerTheme` wins, else `prefers-color-scheme`. `useTheme.readInitial()` applies the identical rule — keep the two in lockstep or pages flip theme on mount. The hub has no React; `src/hub/main.ts` toggles `data-theme` by hand and writes the same key.
 
 ---
 
@@ -114,7 +144,10 @@ else, based on activePlan:
 |---|---|---|
 | `financial-planner-profiles` | `PROFILES_KEY` | Current `ProfilesState` blob (the only "data" key) |
 | `firePlannerIntroSeen` | `INTRO_SEEN_KEY` | `'1'` once the user dismisses the Intro |
-| `firePlannerTheme` | `THEME_KEY` (in `useTheme.ts`) | `'light'` or `'dark'` |
+| `firePlannerTheme` | `THEME_KEY` | `'light'` or `'dark'` — shared by every page on the site (legacy name, don't rename the value) |
+| `chraeLab.unitConverter` | `UNIT_CONVERTER_KEY` | Last category + from/to units |
+| `chraeLab.calculator.history` | `CALCULATOR_HISTORY_KEY` | Recent calculations (newest first, capped) |
+| `chraeLab.todo` | `TODO_KEY` | To-do lists + items |
 | `financial-planner-scenarios` | legacy | Pre-profiles "single profile, many scenarios" shape |
 | `financial-planner-input` | legacy | Pre-scenarios "one plan" shape |
 | `financial-planner-plans` | legacy | Withdrawal schedules from the pre-scenarios shape |
@@ -152,7 +185,7 @@ If you change the brackets, also update: README "What it models" section, About 
 
 ## Dev affordances (localhost only)
 
-`AppBar.tsx` shows three things when `isLocalHost()` returns true (`hostname === localhost | 127.0.0.1 | ''`):
+`AppBar.tsx` (and `ToolShell.tsx`, for the amber bar only) shows three things when `isLocalHost()` returns true (`hostname === localhost | 127.0.0.1 | ''`):
 
 1. An orange app-bar background + black `LOCAL` chip so it's obvious you're not on production.
 2. `↻ Intro` button — clears `INTRO_SEEN_KEY` and flips state. **Non-destructive.** Plan data untouched.
@@ -199,8 +232,15 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 | `utils/persistence.test.ts` | Every legacy migration shape, `cleanActuals` clipping logic (uses `vi.useFakeTimers()` to pin `Date.now()`) |
 | `utils/format.test.ts` | `formatDollars` + `formatDollarsCompact` boundaries; the `999_500 → "$1.0M"` and negative-sign-placement fixes are pinned here |
 | `utils/dedupeName.test.ts` | Smallest-gap insertion, case/whitespace sensitivity, Set vs array input |
+| `site/manifest.test.ts` | Path/slug shape, unique paths, categories/areas resolve, breadcrumb trails |
+| `pages/seo.test.ts` | Prerender output per page (hub cards, FIRE hero, content headings, related links stay inside `/fire-planner/`), sitemap = live pages only |
+| `scripts/head.test.ts` | Canonical/OG URLs, BreadcrumbList shape, FIRE JSON-LD blocks, theme boot script uses `THEME_KEY` |
+| `scripts/pages.test.ts` | Every live manifest entry has its `index.html` on disk |
+| `tools/unit-converter/*.test.ts` | Unit round-trips + pinned conversions, result formatting |
+| `tools/calculator/*.test.ts` | Expression parser (precedence, right-assoc `^`, deg/rad, errors with positions), history cap |
+| `tools/todo/*.test.ts` | Reducer actions + invariants (active list always valid), due-date labels, load/save validation |
 
-75 tests as of the latest commit. New engine/util modules should ship with a test file.
+New engine/util/tool-logic modules should ship with a test file. Tools keep their logic in pure `.ts` modules so they're testable without a DOM.
 
 ---
 
@@ -209,34 +249,28 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 `utils/analytics.ts` injects Umami via `VITE_UMAMI_HOST` + `VITE_UMAMI_WEBSITE_ID` env vars (set in `.env.production`). Disabled automatically on localhost and when env vars are missing — `npm run dev` never touches the production Umami. Event names used today:
 
 ```
-drawer_opened, plan_created, profile_created, auto_balance_run,
-preset_loaded, plan_built, skip_to_advanced, export_downloaded,
-import_applied, history_opened, theme_toggled,
-intro_shown, intro_dismissed
+FIRE:  drawer_opened, plan_created, profile_created, auto_balance_run,
+       preset_loaded, plan_built, skip_to_advanced, export_downloaded,
+       import_applied, history_opened, intro_shown, intro_dismissed
+Tools: tool_opened {tool}, converter_used {category, from, to},
+       calc_evaluated {ok}, todo_created, todo_list_created
+Both:  theme_toggled {theme}
 ```
 
-`track()` swallows all errors — analytics must never break the app.
+One Umami website ID covers the whole site; tools are told apart by page path in Umami's Pages view. Every entry (`src/main.tsx`, `src/hub/main.ts`, each `src/tools/<tool>/main.tsx`) calls `initAnalytics()`; fire `tool_opened` from the entry module, not from an effect (StrictMode would double it). `track()` swallows all errors — analytics must never break the app.
 
 ---
 
-## SEO surface — build-time prerender + static content pages
+## SEO surface — build-time prerender
 
-The app is client-only, but the marketing/content HTML is **prerendered at build time** so crawlers, link unfurlers (Slack/Discord/Twitter/Bing), and no-JS visitors get real content on the first byte — without server-side rendering the stateful `App`.
+Everything is client-only, but every page's first byte carries real HTML so crawlers, link unfurlers (Slack/Discord/Twitter/Bing), and no-JS visitors get content — without server-side rendering the stateful apps. The mechanics live in the [Site manifest](#site-manifest--srcsitemanifestts) section; the contracts:
 
-**How it works** (`vite.config.ts` → `seoPrerender()` plugin, build-only):
+- **FIRE home (`/fire-planner/`)** is prerendered with `IntroContent` (`components/storyline/IntroContent.tsx`). On mount, `App`'s `createRoot().render()` *replaces* it — no `hydrateRoot`, so no hydration mismatch despite the server having no localStorage. Tool pages work the same way with `ToolStatic`.
+- **FIRE content guides** (`/fire-planner/coast-fire-calculator/`, `/4-percent-rule/`, `/retirement-withdrawal-strategy/`, `/how-it-works/`) and the **hub landing** are static-only — their `index.html` loads a CSS-only entry (or `src/hub/main.ts`) instead of an app, so they ship no React/recharts bundle.
+- **Single source of copy.** `IntroContent.tsx` exports `IntroHeader` / `IntroSections` / `IntroDisclaimer`, consumed by *both* the interactive `Intro.tsx` and the prerendered FIRE home. Titles/descriptions for every page live only in the manifest.
+- **Purity contract.** Everything reachable from `scripts/prerender.tsx` (`prerenderPages.tsx` → Landing, ToolStatic, IntroContent, ContentLayout, the page components) must stay free of hooks, browser APIs, and CSS imports — it's rendered to a string in the Vite/Node build context. `tsconfig.node.json` carries `jsx: react-jsx` + DOM libs so the config-side type-checks this tree.
 
-1. `transformIndexHtml` renders a pure component tree to a static string (via `scripts/prerender.tsx` → `renderToStaticMarkup`) and injects it into that page's empty `<div id="root">`.
-   - **Home (`index.html`)** gets `IntroContent` (`components/storyline/IntroContent.tsx`). On mount, `App`'s `createRoot().render()` *replaces* it — no `hydrateRoot`, so no hydration mismatch despite the server having no localStorage. This **supersedes the old `<noscript>` block** (removed): the same copy now lives, visible, in `#root`.
-   - **Content pages** (`/coast-fire-calculator/`, `/4-percent-rule/`, `/retirement-withdrawal-strategy/`, `/how-it-works/`) are static-only — their `index.html` loads `src/pages/contentStyles.ts` (CSS only) instead of the app, so they ship no recharts/app bundle.
-2. `closeBundle` writes `dist/sitemap.xml` from the route manifest (home + every content route), so it never goes stale. The old hand-maintained `public/sitemap.xml` was removed.
-
-**Single source of copy.** `IntroContent.tsx` exports `IntroHeader` / `IntroSections` / `IntroDisclaimer`, consumed by *both* the interactive `Intro.tsx` (wraps them in the CTA + collapsible accordion) and the prerendered home HTML. Editing the hero/"what this is" copy in one place updates both. Content-page routes are declared once in `src/pages/routeMeta.ts` (pure data, also drives cross-links + sitemap).
-
-**Purity contract.** Everything reachable from `scripts/prerender.tsx` (IntroContent, ContentLayout, the page components) must stay free of hooks, browser APIs, and CSS imports — it's rendered to a string in the Vite/Node build context. `tsconfig.node.json` carries `jsx: react-jsx` + DOM libs so the config-side type-checks this tree.
-
-**JSON-LD.** `index.html` keeps `WebApplication` + `FAQPage`; each content page's `index.html` carries its own `BreadcrumbList`.
-
-If you change the Intro's copy, also update the meta/OG/Twitter/JSON-LD descriptions in `index.html` (and the per-page `index.html` heads as relevant) so the brand voice stays consistent.
+If you change the Intro's copy, also update the FIRE entry's `description`/`jsonLd` in the manifest so the brand voice stays consistent.
 
 ---
 
@@ -247,9 +281,11 @@ If you change the Intro's copy, also update the meta/OG/Twitter/JSON-LD descript
 - **Don't bypass `safeSetItem`.** Direct `localStorage.setItem` skips the quota toast path and crashes the app in Safari private mode / quota-exceeded scenarios.
 - **Don't mutate `ProfilesState` from inside `runSimulation` or any engine function.** The engine is pure; the UI hook (`useMemo`) assumes inputs don't change as a side effect.
 - **Don't conditionally render hooks.** See [Coding rules](#coding-rules-the-linter-enforces).
-- **Don't introduce a router.** The two-axis routing (intro/seen + screen derivation) covers the app; the SEO content pages are separate static HTML entries (Vite multi-page), not client routes. Adding React Router would be a regression.
-- **Keep the prerender tree pure.** Anything reachable from `scripts/prerender.tsx` (IntroContent, ContentLayout, page components) must avoid hooks, browser APIs, and CSS imports — it renders to a string at build time. See [SEO surface](#seo-surface--build-time-prerender--static-content-pages).
-- **Don't `hydrateRoot` the home page.** The prerendered `#root` is intentionally *replaced* by `createRoot().render()`, not hydrated — the server has no localStorage, so hydration would mismatch.
+- **Don't introduce a router.** The two-axis routing (intro/seen + screen derivation) covers the FIRE app; every other page (hub, tools, content guides) is a separate static HTML entry (Vite multi-page), not a client route. Adding React Router would be a regression.
+- **Keep the prerender tree pure.** Anything reachable from `scripts/prerender.tsx` (Landing, ToolStatic, IntroContent, ContentLayout, page components) must avoid hooks, browser APIs, and CSS imports — it renders to a string at build time. See [SEO surface](#seo-surface--build-time-prerender).
+- **Don't `hydrateRoot` any page.** The prerendered `#root` is intentionally *replaced* by `createRoot().render()`, not hydrated — the server has no localStorage, so hydration would mismatch.
+- **Don't put `<title>` or meta tags in an `index.html`.** They're generated from the manifest; a hand-written one would duplicate. Keep the literal `<div id="root"></div>` too — the prerender plugin string-replaces it and throws if it's gone.
+- **Don't link to `/` from inside the FIRE app expecting the planner.** `/` is the hub now; the planner is `FIRE_HOME_PATH` (`/fire-planner/`).
 
 ---
 
@@ -259,4 +295,6 @@ If you change the Intro's copy, also update the meta/OG/Twitter/JSON-LD descript
 - **Tweaking the chart**: `components/storyline/charts/`.
 - **Changing what counts as "touched"**: `App.tsx` `screen` derivation and every handler that sets `touched: true` — search for `touched: true`.
 - **Adding a localStorage key**: declare it in `persistence.ts`, plumb load via a `loadX()` helper, write via `safeSetItem`, add tests.
-- **Refreshing brand copy**: change `IntroContent.tsx` (feeds both `Intro.tsx` and the prerendered home HTML) + `index.html` (meta + OG + Twitter + JSON-LD) + `AboutModal.tsx` + `README.md` in lockstep. Content-page copy lives in `src/pages/<slug>/Content.tsx` with meta in `src/pages/routeMeta.ts` + the per-page `index.html`.
+- **Adding a tool or page**: see the recipe under [Site manifest](#site-manifest--srcsitemanifestts). Tool code goes in `src/tools/<slug>/`, wrapped in `components/layout/ToolShell.tsx`.
+- **Refreshing brand copy**: hub copy is `src/hub/Landing.tsx` + the hub entry in `src/site/manifest.ts`. FIRE copy is `IntroContent.tsx` (feeds both `Intro.tsx` and the prerendered FIRE home) + the `fire-planner` manifest entry (description + JSON-LD) + `AboutModal.tsx` + `README.md`. Content-guide copy lives in `src/pages/<slug>/Content.tsx` with meta in the manifest.
+- **Changing the domain**: `SITE_ORIGIN` in the manifest, `public/robots.txt`, and the Traefik labels in `DEPLOY.md` — nothing else hardcodes it (tests assert the old `fireplan.` host never appears in the sitemap).

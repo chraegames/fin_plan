@@ -1,4 +1,4 @@
-# Deploying fin_plan to a Hostinger VPS (Traefik + Docker)
+# Deploying Chrae Lab (fin_plan) to a Hostinger VPS (Traefik + Docker)
 
 A pure client-side React/Vite SPA — no backend, no env vars, no secrets, all state in `localStorage`. `npm run build` outputs static files to `dist/`.
 
@@ -47,14 +47,16 @@ Apply: `sudo systemctl restart ssh`. **Keep the original root session open while
 ### A.3 DNS first (before starting the container)
 Traefik will request a Let's Encrypt cert on first start, which only works if your domain already resolves to the VPS. Add an `A` record:
 
-| Type | Name | Value      |
-|------|------|------------|
-| A    | @    | <VPS_IP>   |
-| A    | www  | <VPS_IP>   |
+| Type | Name     | Value      | Serves                                   |
+|------|----------|------------|------------------------------------------|
+| A    | @        | <VPS_IP>   | `chraegames.cloud` — the Chrae Lab hub    |
+| A    | www      | <VPS_IP>   | 301 → apex                                |
+| A    | fireplan | <VPS_IP>   | legacy; 301 → `chraegames.cloud/fire-planner/…` |
+| A    | stats    | <VPS_IP>   | Umami (Part D)                            |
 
 (Or use Hostinger's default hostname `srv1479830.hstgr.cloud` if you don't have your own domain yet — it should already resolve.)
 
-Wait for propagation: `dig your-domain.com +short` should return the VPS IP.
+Wait for propagation: `dig chraegames.cloud +short` should return the VPS IP. Keep the `fireplan` record for as long as you want the old links to keep working — Traefik needs it to resolve to issue the cert for the redirect router.
 
 ### A.4 Project directory on the VPS
 As the `deploy` user:
@@ -78,19 +80,34 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.fin_plan.rule=Host(`your-domain.com`)"
-      - "traefik.http.routers.fin_plan.entrypoints=websecure"
-      - "traefik.http.routers.fin_plan.tls=true"
-      - "traefik.http.routers.fin_plan.tls.certresolver=letsencrypt"
       - "traefik.http.services.fin_plan.loadbalancer.server.port=80"
+
+      # Hub: apex + www, with www permanently redirected to the apex.
+      - "traefik.http.routers.hub.rule=Host(`chraegames.cloud`) || Host(`www.chraegames.cloud`)"
+      - "traefik.http.routers.hub.entrypoints=websecure"
+      - "traefik.http.routers.hub.tls=true"
+      - "traefik.http.routers.hub.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.hub.middlewares=www-to-apex"
+      - "traefik.http.middlewares.www-to-apex.redirectregex.regex=^https?://www\\.chraegames\\.cloud/(.*)"
+      - "traefik.http.middlewares.www-to-apex.redirectregex.replacement=https://chraegames.cloud/$${1}"
+      - "traefik.http.middlewares.www-to-apex.redirectregex.permanent=true"
+
+      # Legacy planner host: path-preserving 301 into the hub's /fire-planner/ area.
+      - "traefik.http.routers.fireplan_legacy.rule=Host(`fireplan.chraegames.cloud`)"
+      - "traefik.http.routers.fireplan_legacy.entrypoints=websecure"
+      - "traefik.http.routers.fireplan_legacy.tls=true"
+      - "traefik.http.routers.fireplan_legacy.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.fireplan_legacy.middlewares=fireplan-to-hub"
+      - "traefik.http.middlewares.fireplan-to-hub.redirectregex.regex=^https?://fireplan\\.chraegames\\.cloud/(.*)"
+      - "traefik.http.middlewares.fireplan-to-hub.redirectregex.replacement=https://chraegames.cloud/fire-planner/$${1}"
+      - "traefik.http.middlewares.fireplan-to-hub.redirectregex.permanent=true"
 ```
 
-If you want both apex and `www`, change the rule to:
-```
-Host(`your-domain.com`) || Host(`www.your-domain.com`)
-```
-
-Traefik's existing config auto-redirects HTTP→HTTPS, so you don't need a separate router for :80.
+Notes:
+- `$${1}` is Compose's escape for a literal `${1}` — Traefik sees `${1}`.
+- Both regexes are anchored on their own host, so a request that already hits `chraegames.cloud` never matches a redirect — no loops.
+- Labels only take effect on container (re)creation: `docker compose up -d` after editing.
+- Traefik's existing config auto-redirects HTTP→HTTPS, so you don't need a separate router for :80.
 
 ### A.6 `nginx.conf`
 Create `/opt/fin_plan/nginx.conf`:
@@ -102,6 +119,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Directory redirects (/fire-planner → /fire-planner/) must stay relative;
+    # nginx sits behind Traefik and doesn't know the public scheme/host.
+    absolute_redirect off;
+
     # Vite hashes asset filenames → cache them forever
     location /assets/ {
         expires 1y;
@@ -109,7 +130,9 @@ server {
         try_files $uri =404;
     }
 
-    # index.html and other unhashed files → never cache
+    # index.html and other unhashed files → never cache.
+    # Every page is its own <dir>/index.html (hub, /fire-planner/, each tool),
+    # so $uri/ resolves them; unknown paths fall back to the hub.
     location / {
         add_header Cache-Control "no-cache, must-revalidate";
         try_files $uri $uri/ /index.html;
@@ -209,7 +232,7 @@ Add another `A` record pointing at the VPS:
 |------|-------|------------|
 | A    | stats | <VPS_IP>   |
 
-Wait for `dig stats.your-domain.com +short` to return the VPS IP before continuing (Traefik needs DNS to resolve to request the cert).
+Wait for `dig stats.chraegames.cloud +short` to return the VPS IP before continuing (Traefik needs DNS to resolve to request the cert).
 
 ### D.2 Project directory
 ```bash
@@ -238,7 +261,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=umami_umami_net"
-      - "traefik.http.routers.umami.rule=Host(`stats.your-domain.com`)"
+      - "traefik.http.routers.umami.rule=Host(`stats.chraegames.cloud`)"
       - "traefik.http.routers.umami.entrypoints=websecure"
       - "traefik.http.routers.umami.tls=true"
       - "traefik.http.routers.umami.tls.certresolver=letsencrypt"
@@ -314,10 +337,10 @@ docker compose up -d
 The healthcheck-gated `depends_on` ensures Umami waits for Postgres on this attempt.
 
 ### D.5 Initial admin login
-1. Open `https://stats.your-domain.com`.
+1. Open `https://stats.chraegames.cloud`.
 2. Log in with `admin` / `umami`.
 3. **Immediately change the password** under "Profile → Change password" — this account is internet-reachable.
-4. Settings → Websites → **Add website** → name "fin_plan", domain "your-domain.com" → Save.
+4. Settings → Websites → **Add website** → name "fin_plan", domain "chraegames.cloud" → Save.
 5. Click the website's **"Edit"** → copy the **Website ID** (a UUID).
 
 ### D.6 Wire the tracking script
@@ -326,7 +349,7 @@ The tracking script is injected by `src/utils/analytics.ts` at runtime, only whe
 Edit `.env.production` in the repo root:
 
 ```
-VITE_UMAMI_HOST=stats.your-domain.com
+VITE_UMAMI_HOST=stats.chraegames.cloud
 VITE_UMAMI_WEBSITE_ID=<UUID from D.5>
 ```
 
@@ -335,9 +358,9 @@ Then rebuild and redeploy (Part B). Vite bakes these values into the production 
 **To disable analytics**: leave either var blank in `.env.production` and rebuild — the script is never injected and `track()` calls no-op.
 
 ### D.7 Verify
-- Load `https://your-domain.com` → in Umami's **Realtime** view, you should appear within ~30 seconds.
-- DevTools → Network: `https://stats.your-domain.com/api/send` returns 200 on page load and on each tracked action (preset loaded, plan created, theme toggled, drawer opened, export, import, auto-balance, history opened).
-- DevTools → Application → Cookies: empty for both `your-domain.com` and `stats.your-domain.com` — Umami is cookie-less by design.
+- Load `https://chraegames.cloud` → in Umami's **Realtime** view, you should appear within ~30 seconds.
+- DevTools → Network: `https://stats.chraegames.cloud/api/send` returns 200 on page load and on each tracked action (preset loaded, plan created, theme toggled, drawer opened, export, import, auto-balance, history opened).
+- DevTools → Application → Cookies: empty for both `chraegames.cloud` and `stats.chraegames.cloud` — Umami is cookie-less by design.
 
 ### D.8 Custom events at a glance
 The app sends these events (see `src/utils/analytics.ts` for the wrapper and `src/App.tsx` for the call sites):
@@ -360,6 +383,25 @@ All `track()` calls no-op if `window.umami` isn't loaded (script blocked, dev se
 
 ---
 
+## Part E — The hub migration (fireplan.chraegames.cloud → chraegames.cloud)
+
+The site became the **Chrae Lab** hub: the root is a landing page listing tools, and the FIRE planner moved to `/fire-planner/`. The code side is done (`SITE_ORIGIN` in `src/site/manifest.ts`, canonicals, sitemap, robots, webmanifest all point at `https://chraegames.cloud`). The ops side, in order:
+
+1. **DNS** — add the `@` and `www` A records (A.3). Keep `fireplan` and `stats`.
+2. **Traefik labels** — replace the labels in `/opt/fin_plan/docker-compose.yml` with the block in A.5, add `absolute_redirect off;` to `nginx.conf` (A.6), then `docker compose up -d`. Watch `docker logs traefik-traefik-1 --tail 50` for the three new certs (apex, www, fireplan).
+3. **Deploy** — `npm run build && rsync -avz --delete dist/ deploy@<VPS_IP>:/opt/fin_plan/dist/`.
+4. **Check redirects**:
+   ```bash
+   curl -sI https://www.chraegames.cloud/x | grep -i location          # → https://chraegames.cloud/x
+   curl -sI https://fireplan.chraegames.cloud/how-it-works/ | grep -i location
+                                                                      # → https://chraegames.cloud/fire-planner/how-it-works/
+   curl -sI https://chraegames.cloud/fire-planner | grep -i location   # → /fire-planner/
+   curl -s https://chraegames.cloud/sitemap.xml | grep -c '<loc>'      # one per live page
+   ```
+5. **Umami** — Settings → Websites → edit the existing website and change its domain to `chraegames.cloud`. Keep the same website ID (`.env.production` is unchanged), so history stays in one report; tool usage is separated by page path (`/fire-planner/…`, `/calculator/`, …) in the Pages view.
+6. **Google Search Console** — add a *Domain* property for `chraegames.cloud` (DNS TXT verification; it covers apex, www and fireplan). Submit `https://chraegames.cloud/sitemap.xml`. In the old `fireplan.chraegames.cloud` property run **Change of Address** → `chraegames.cloud`. The `google-site-verification` meta tag is still emitted on the hub and FIRE home from the manifest, so the old URL-prefix property keeps verifying too.
+7. **Bing Webmaster Tools** — add `chraegames.cloud` (import from Search Console, or use the `msvalidate.01` meta that's already on the hub page) and submit the sitemap.
+
 ## Verification
 
 1. **Build smoke test (local)**:
@@ -372,8 +414,8 @@ All `track()` calls no-op if `window.umami` isn't loaded (script blocked, dev se
 2. **First deploy + cert**:
    - `docker compose up -d` on the VPS should produce no errors.
    - `docker logs traefik-traefik-1 | grep -i acme` should show successful certificate issuance.
-   - `https://your-domain.com` loads with a valid cert (no browser warning).
-   - `http://your-domain.com` redirects to HTTPS (Traefik's built-in redirect).
+   - `https://chraegames.cloud` loads with a valid cert (no browser warning).
+   - `http://chraegames.cloud` redirects to HTTPS (Traefik's built-in redirect).
 
 3. **Headers + caching**:
    - DevTools → Network: assets in `/assets/` show `Cache-Control: public, immutable`.
@@ -397,7 +439,7 @@ All `track()` calls no-op if `window.umami` isn't loaded (script blocked, dev se
 ## Troubleshooting
 
 **Cert doesn't issue / 404 from Traefik**:
-- `dig your-domain.com +short` returns the VPS IP? If not, DNS hasn't propagated.
+- `dig chraegames.cloud +short` returns the VPS IP? If not, DNS hasn't propagated.
 - `docker logs traefik-traefik-1 --tail 100` — look for ACME errors. The most common cause is the domain not resolving yet.
 - The label `Host()` value must match exactly what's in the browser URL bar (including/excluding `www`).
 
