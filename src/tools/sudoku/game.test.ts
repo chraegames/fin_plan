@@ -125,6 +125,51 @@ describe('gameReducer', () => {
   });
 });
 
+describe('digit-first entry', () => {
+  const base = newGame('easy', 99);
+
+  it('pickDigit fills the selected cell and becomes sticky for later cell taps', () => {
+    const a = firstEmpty(base);
+    const b = base.cells.findIndex((v, k) => v === 0 && k !== a);
+    let s = gameReducer(base, { type: 'select', index: a });
+    s = gameReducer(s, { type: 'pickDigit', digit: 4 });
+    expect(s.cells[a]).toBe(4);
+    expect(s.activeDigit).toBe(4);
+    s = gameReducer(s, { type: 'select', index: b });
+    expect(s.cells[b]).toBe(4);
+    expect(s.selected).toBe(b);
+    // tapping a cell that already holds the active digit clears it
+    s = gameReducer(s, { type: 'select', index: b });
+    expect(s.cells[b]).toBe(0);
+  });
+
+  it('pickDigit with no cell selected only arms the digit; picking it again releases', () => {
+    let s = gameReducer(base, { type: 'pickDigit', digit: 7 });
+    expect(s.activeDigit).toBe(7);
+    expect(s.cells).toEqual(base.cells);
+    s = gameReducer(s, { type: 'pickDigit', digit: 7 });
+    expect(s.activeDigit).toBeNull();
+  });
+
+  it('tapping a given cell with an active digit only selects it', () => {
+    const given = base.puzzle.findIndex(v => v !== 0);
+    let s = gameReducer(base, { type: 'pickDigit', digit: 2 });
+    s = gameReducer(s, { type: 'select', index: given });
+    expect(s.selected).toBe(given);
+    expect(s.cells[given]).toBe(base.puzzle[given]);
+    expect(s.history).toHaveLength(0);
+  });
+
+  it('active digit pencils marks in notes mode', () => {
+    const a = firstEmpty(base);
+    let s = gameReducer(base, { type: 'toggleNotesMode' });
+    s = gameReducer(s, { type: 'pickDigit', digit: 5 });
+    s = gameReducer(s, { type: 'select', index: a });
+    expect(s.cells[a]).toBe(0);
+    expect(s.notes[a]).toBe(1 << 5);
+  });
+});
+
 describe('persistence', () => {
   const base = newGame('medium', 7);
 
@@ -137,6 +182,7 @@ describe('persistence', () => {
     expect(back.puzzle).toEqual(s.puzzle);
     expect(back.elapsed).toBe(1);
     expect(back.selected).toBeNull();
+    expect(back.activeDigit).toBeNull();
     expect(back.history).toHaveLength(0);
   });
 

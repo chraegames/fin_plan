@@ -113,18 +113,18 @@ export default function App() {
       else if (key === 'n' || key === 'N') action = { type: 'toggleNotesMode' };
       else if (key === 'h' || key === 'H') action = { type: 'hint' };
       else if ((key === 'z' && (e.metaKey || e.ctrlKey)) || key === 'u' || key === 'U') action = { type: 'undo' };
-      else if (key === 'Escape') action = { type: 'select', index: null };
+      else if (key === 'Escape') action = state.activeDigit != null ? { type: 'pickDigit', digit: state.activeDigit } : { type: 'select', index: null };
       if (!action) return;
       e.preventDefault();
       dispatch(action);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [confirmNew]);
+  }, [confirmNew, state.activeDigit]);
 
   const conflicts = findConflicts(state.cells);
   const counts = digitCounts(state.cells);
-  const selectedDigit = state.selected != null ? state.cells[state.selected] : 0;
+  const selectedDigit = state.activeDigit ?? (state.selected != null ? state.cells[state.selected] : 0);
   const maxWidth = isMobile ? 560 : 880;
 
   return (
@@ -205,11 +205,18 @@ export default function App() {
         <div style={{ flex: '1 1 240px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {state.status === 'won' && <WinCard state={state} onPlayAgain={() => startNew(state.difficulty)} />}
           <Controls state={state} dispatch={dispatch} />
-          <NumberPad counts={counts} selectedDigit={selectedDigit} notesMode={state.notesMode} dispatch={dispatch} />
+          <NumberPad
+            counts={counts}
+            selectedDigit={selectedDigit}
+            activeDigit={state.activeDigit}
+            notesMode={state.notesMode}
+            dispatch={dispatch}
+          />
           {!isMobile && (
             <p style={{ fontSize: 12, color: 'var(--ink-muted)', margin: '4px 2px 0', lineHeight: 1.5 }}>
-              Keyboard: arrows move, 1–9 type, ⌫ erase, <kbd>N</kbd> notes, <kbd>H</kbd> hint,{' '}
-              <kbd>U</kbd> or ⌘Z undo.
+              Tap a number, then tap cells to fill it in — or pick a cell first and then a number.
+              Keyboard: arrows move, 1–9 type, ⌫ erase, <kbd>N</kbd> notes, <kbd>H</kbd> hint, <kbd>U</kbd> or
+              ⌘Z undo, Esc release.
             </p>
           )}
         </div>
@@ -416,11 +423,12 @@ function Controls({ state, dispatch }: { state: GameState; dispatch: (a: GameAct
 interface NumberPadProps {
   counts: number[];
   selectedDigit: number;
+  activeDigit: number | null;
   notesMode: boolean;
   dispatch: (a: GameAction) => void;
 }
 
-function NumberPad({ counts, selectedDigit, notesMode, dispatch }: NumberPadProps) {
+function NumberPad({ counts, selectedDigit, activeDigit, notesMode, dispatch }: NumberPadProps) {
   return (
     <div
       role="group"
@@ -430,12 +438,14 @@ function NumberPad({ counts, selectedDigit, notesMode, dispatch }: NumberPadProp
       {Array.from({ length: 9 }, (_, k) => k + 1).map(d => {
         const remaining = 9 - counts[d];
         const done = remaining <= 0;
-        const active = d === selectedDigit;
+        const sticky = d === activeDigit;
+        const active = sticky || d === selectedDigit;
         return (
           <button
             key={d}
             type="button"
-            onClick={() => dispatch({ type: 'input', digit: d })}
+            onClick={() => dispatch({ type: 'pickDigit', digit: d })}
+            aria-pressed={sticky}
             aria-label={`${notesMode ? 'Note' : 'Enter'} ${d}, ${remaining} remaining`}
             style={{
               all: 'unset',
@@ -448,8 +458,9 @@ function NumberPad({ counts, selectedDigit, notesMode, dispatch }: NumberPadProp
               minHeight: 48,
               borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
-              background: active ? 'var(--accent-soft)' : 'var(--surface-2)',
-              color: done ? 'var(--ink-muted)' : active ? 'var(--accent-ink)' : 'var(--ink)',
+              background: sticky ? 'var(--accent)' : active ? 'var(--accent-soft)' : 'var(--surface-2)',
+              color: sticky ? 'oklch(0.995 0.005 80)' : done ? 'var(--ink-muted)' : active ? 'var(--accent-ink)' : 'var(--ink)',
+              boxShadow: sticky ? '0 0 0 2px var(--accent-soft)' : 'none',
               opacity: done ? 0.55 : 1,
               fontFamily: 'var(--font-display)',
               fontWeight: 600,
@@ -458,7 +469,7 @@ function NumberPad({ counts, selectedDigit, notesMode, dispatch }: NumberPadProp
             }}
           >
             {d}
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-muted)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: sticky ? 'inherit' : 'var(--ink-muted)', opacity: sticky ? 0.8 : 1 }}>
               {done ? '✓' : remaining}
             </span>
           </button>

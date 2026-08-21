@@ -28,6 +28,8 @@ export interface GameState {
   /** Pencil marks as a bitmask per cell (bit d = digit d). */
   notes: number[];
   selected: number | null;
+  /** Digit-first entry: the pad digit that tapping a cell will place (null = cell-first). */
+  activeDigit: number | null;
   notesMode: boolean;
   /** Undo stack, oldest first. */
   history: Snapshot[];
@@ -42,6 +44,7 @@ export type GameAction =
   | { type: 'select'; index: number | null }
   | { type: 'move'; dr: number; dc: number }
   | { type: 'input'; digit: number }
+  | { type: 'pickDigit'; digit: number }
   | { type: 'erase' }
   | { type: 'toggleNotesMode' }
   | { type: 'undo' }
@@ -61,6 +64,7 @@ export function newGame(difficulty: Difficulty, seed: number): GameState {
     cells: [...puzzle],
     notes: new Array(81).fill(0),
     selected: null,
+    activeDigit: null,
     notesMode: false,
     history: [],
     elapsed: 0,
@@ -78,6 +82,29 @@ function pushHistory(state: GameState): Snapshot[] {
   return next.length > HISTORY_MAX ? next.slice(next.length - HISTORY_MAX) : next;
 }
 
+/** Place (or toggle) digit `d` in cell `i`, honouring notes mode. */
+function applyDigit(state: GameState, i: number, d: number): GameState {
+  if (state.status !== 'playing' || isGiven(state, i) || d < 1 || d > 9) return state;
+
+  if (state.notesMode) {
+    if (state.cells[i] !== 0) return state;
+    const notes = [...state.notes];
+    notes[i] ^= 1 << d;
+    return { ...state, notes, history: pushHistory(state) };
+  }
+
+  const cells = [...state.cells];
+  const notes = [...state.notes];
+  if (cells[i] === d) {
+    cells[i] = 0; // tapping the same digit again clears it
+  } else {
+    cells[i] = d;
+    notes[i] = 0;
+    for (const p of PEERS[i]) notes[p] &= ~(1 << d); // auto-erase matching pencil marks
+  }
+  return finish(state, cells, notes);
+}
+
 function finish(state: GameState, cells: Grid, notes: number[]): GameState {
   const won = isSolved(cells);
   return {
@@ -87,6 +114,7 @@ function finish(state: GameState, cells: Grid, notes: number[]): GameState {
     history: pushHistory(state),
     status: won ? 'won' : 'playing',
     selected: won ? null : state.selected,
+    activeDigit: won ? null : state.activeDigit,
   };
 }
 
@@ -98,8 +126,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'restart':
       return { ...newGame(state.difficulty, state.seed), elapsed: 0 };
 
-    case 'select':
-      return state.selected === action.index ? state : { ...state, selected: action.index };
+    case 'select': {
+      const i = action.index;
+      const next = state.selected === i ? state : { ...state, selected: i };
+      if (i != null && state.activeDigit != null) return applyDigit(next, i, state.activeDigit);
+      return next;
+    }
 
     case 'move': {
       const from = state.selected ?? 0;
@@ -116,27 +148,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'input': {
       const i = state.selected;
-      if (i == null || state.status !== 'playing' || isGiven(state, i)) return state;
+      if (i == null) return state;
+      return applyDigit(state, i, action.digit);
+    }
+
+    case 'pickDigit': {
+      // Tapping the pad: enter the digit into the selected cell (cell-first)
+      // and make it sticky so further cell taps paint it (digit-first).
+      // Tapping the active digit again releases it.
       const d = action.digit;
-      if (d < 1 || d > 9) return state;
-
-      if (state.notesMode) {
-        if (state.cells[i] !== 0) return state;
-        const notes = [...state.notes];
-        notes[i] ^= 1 << d;
-        return { ...state, notes, history: pushHistory(state) };
-      }
-
-      const cells = [...state.cells];
-      const notes = [...state.notes];
-      if (cells[i] === d) {
-        cells[i] = 0; // tapping the same digit again clears it
-      } else {
-        cells[i] = d;
-        notes[i] = 0;
-        for (const p of PEERS[i]) notes[p] &= ~(1 << d); // auto-erase matching pencil marks
-      }
-      return finish(state, cells, notes);
+      if (state.activeDigit === d) return { ...state, activeDigit: null };
+      const next = state.selected != null ? applyDigit(state, state.selected, d) : state;
+      return { ...next, activeDigit: d };
     }
 
     case 'erase': {
@@ -223,6 +246,7 @@ export function parseSavedGame(raw: string | null): GameState | null {
       cells: o.cells,
       notes: o.notes,
       selected: null,
+      activeDigit: null,
       notesMode: false,
       history: [],
       elapsed: typeof o.elapsed === 'number' && o.elapsed >= 0 ? Math.floor(o.elapsed) : 0,
