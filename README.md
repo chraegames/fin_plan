@@ -11,7 +11,7 @@ no accounts, no server, everything stored on your device. Live at
 | Utilities    | Calculator (basic + scientific, history)       | `/calculator/`      |
 | Productivity | To-do list (multiple lists, due dates)         | `/todo/`            |
 | Utilities    | Currency converter, World clock                | coming soon         |
-| Games        | —                                              | coming soon         |
+| Games        | Sudoku (easy–expert, notes, hints, undo)       | `/sudoku/`          |
 
 Every page is its own static HTML entry (Vite multi-page); the hub landing
 page and the FIRE content guides are prerendered at build time, and each

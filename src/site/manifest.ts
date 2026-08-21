@@ -265,6 +265,18 @@ export const PAGES: SiteEntry[] = [
     description:
       'A free to-do list with multiple lists and due dates. Everything is stored in your browser — no account, no sync, no tracking.',
   },
+  {
+    slug: 'sudoku',
+    path: '/sudoku/',
+    kind: 'app',
+    status: 'live',
+    category: 'games',
+    name: 'Sudoku',
+    tagline: 'Four difficulties, pencil marks, hints — progress saved on your device.',
+    title: 'Sudoku — free online puzzles, easy to expert',
+    description:
+      'Play free Sudoku in your browser with four difficulty levels, pencil marks, hints and an undo button. Every puzzle has a unique solution and your game is saved on your device.',
+  },
 ];
 
 export const HUB = PAGES[0];
