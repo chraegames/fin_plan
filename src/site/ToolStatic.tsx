@@ -3,6 +3,7 @@
 // and no-JS visitors the tool's name + description instead of an empty div.
 
 import { SITE_NAME, type SiteEntry } from './manifest';
+import { ToolAbout } from './ToolAbout';
 
 export function ToolStatic({ entry }: { entry: SiteEntry }) {
   return (
@@ -49,6 +50,7 @@ export function ToolStatic({ entry }: { entry: SiteEntry }) {
         This tool needs JavaScript to run. Nothing is sent to a server — it works entirely in your
         browser.
       </p>
+      <ToolAbout entry={entry} />
     </div>
   );
 }

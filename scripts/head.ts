@@ -7,6 +7,7 @@ import {
   SITE_NAME,
   absoluteUrl,
   breadcrumbs,
+  liveTools,
   type SiteEntry,
 } from '../src/site/manifest';
 import { THEME_KEY } from '../src/utils/persistence';
@@ -59,6 +60,48 @@ function breadcrumbList(entry: SiteEntry): object {
   };
 }
 
+/** WebApplication + FAQPage for a tool, derived from its `about` copy so markup and schema never drift. */
+function toolJsonLd(entry: SiteEntry): object[] {
+  if (!entry.about) return [];
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: entry.name,
+      url: absoluteUrl(entry.path),
+      applicationCategory: entry.about.applicationCategory,
+      operatingSystem: 'Any (web browser)',
+      browserRequirements: 'Requires JavaScript',
+      isAccessibleForFree: true,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      description: entry.description,
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: entry.about.faq.map(({ q, a }) => ({
+        '@type': 'Question',
+        name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      })),
+    },
+  ];
+}
+
+function toolItemList(): object {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `${SITE_NAME} tools`,
+    itemListElement: liveTools().map((tool, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: tool.name,
+      url: absoluteUrl(tool.path),
+    })),
+  };
+}
+
 export function buildHeadTags(entry: SiteEntry): HeadTag[] {
   const url = absoluteUrl(entry.path);
   const image = absoluteUrl('/og.png');
@@ -86,6 +129,8 @@ export function buildHeadTags(entry: SiteEntry): HeadTag[] {
     tags.push(meta('name', name, content));
   }
   if (entry.kind !== 'hub') tags.push(jsonLd(breadcrumbList(entry)));
+  if (entry.kind === 'hub') tags.push(jsonLd(toolItemList()));
+  if (entry.kind === 'app') for (const block of toolJsonLd(entry)) tags.push(jsonLd(block));
   for (const block of entry.jsonLd ?? []) tags.push(jsonLd(block));
   return tags;
 }

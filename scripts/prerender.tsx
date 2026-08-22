@@ -30,15 +30,14 @@ export function renderRootForPath(path: string): string {
 
 const PRIORITY = { hub: '1.0', app: '0.9', content: '0.8' } as const;
 
-/** Generates a sitemap.xml covering every live page. */
+/** Generates a sitemap.xml covering every live page; <lastmod> is the entry's `updated` date, else the build date. */
 export function buildSitemap(lastmod = new Date().toISOString().slice(0, 10)): string {
   const urls = livePages()
     .map(p =>
       [
         '  <url>',
         `    <loc>${SITE_ORIGIN}${p.path}</loc>`,
-        `    <lastmod>${lastmod}</lastmod>`,
-        '    <changefreq>monthly</changefreq>',
+        `    <lastmod>${p.updated ?? lastmod}</lastmod>`,
         `    <priority>${PRIORITY[p.kind]}</priority>`,
         '  </url>',
       ].join('\n'),

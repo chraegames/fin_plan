@@ -47,6 +47,18 @@ export const CATEGORIES: Category[] = [
 export type PageKind = 'hub' | 'app' | 'content';
 export type PageStatus = 'live' | 'soon';
 
+/** Indexable copy for a tool page: rendered below the tool (static + live) and emitted as WebApplication + FAQPage JSON-LD. */
+export interface ToolAbout {
+  /** 1–2 sentence lede shown under the tool. */
+  intro: string;
+  /** Concrete features, one per bullet. */
+  features: string[];
+  /** Rendered as an FAQ section and as FAQPage JSON-LD — keep text identical in both. */
+  faq: { q: string; a: string }[];
+  /** schema.org applicationCategory, e.g. 'UtilitiesApplication'. */
+  applicationCategory: string;
+}
+
 export interface SiteEntry {
   /** Path-derived id without slashes: '', 'fire-planner', 'fire-planner/how-it-works'. */
   slug: string;
@@ -73,6 +85,10 @@ export interface SiteEntry {
   jsonLd?: object[];
   /** Search-engine verification metas, by meta name. */
   verification?: Record<string, string>;
+  /** Apps only: on-page About/FAQ copy; drives the auto-generated JSON-LD. */
+  about?: ToolAbout;
+  /** YYYY-MM-DD of the last meaningful content change — sitemap <lastmod>. */
+  updated?: string;
 }
 
 const FIRE_DESCRIPTION =
@@ -95,9 +111,29 @@ export const PAGES: SiteEntry[] = [
     description:
       'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list and more. No accounts, no tracking.',
     verification: SEARCH_VERIFICATION,
+    updated: '2026-08-21',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        url: `${SITE_ORIGIN}/`,
+        description:
+          'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list and more. No accounts, no tracking.',
+        inLanguage: 'en',
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: SITE_NAME,
+        url: `${SITE_ORIGIN}/`,
+        logo: `${SITE_ORIGIN}/icon-512.png`,
+      },
+    ],
   },
   {
     slug: 'fire-planner',
+    updated: '2026-08-21',
     path: '/fire-planner/',
     kind: 'app',
     status: 'live',
@@ -153,6 +189,7 @@ export const PAGES: SiteEntry[] = [
   },
   {
     slug: 'fire-planner/coast-fire-calculator',
+    updated: '2026-08-21',
     path: '/fire-planner/coast-fire-calculator/',
     kind: 'content',
     status: 'live',
@@ -167,6 +204,7 @@ export const PAGES: SiteEntry[] = [
   },
   {
     slug: 'fire-planner/4-percent-rule',
+    updated: '2026-08-21',
     path: '/fire-planner/4-percent-rule/',
     kind: 'content',
     status: 'live',
@@ -181,6 +219,7 @@ export const PAGES: SiteEntry[] = [
   },
   {
     slug: 'fire-planner/retirement-withdrawal-strategy',
+    updated: '2026-08-21',
     path: '/fire-planner/retirement-withdrawal-strategy/',
     kind: 'content',
     status: 'live',
@@ -195,6 +234,7 @@ export const PAGES: SiteEntry[] = [
   },
   {
     slug: 'fire-planner/how-it-works',
+    updated: '2026-08-21',
     path: '/fire-planner/how-it-works/',
     kind: 'content',
     status: 'live',
@@ -215,9 +255,39 @@ export const PAGES: SiteEntry[] = [
     category: 'utilities',
     name: 'Unit converter',
     tagline: 'Length, weight, volume, area, speed and temperature.',
-    title: 'Unit converter — length, weight, temperature and more',
+    title: 'Unit converter — metric and imperial, free and instant',
     description:
-      'Convert between metric and imperial units for length, weight, volume, area, speed and temperature. Free, instant, and runs entirely in your browser.',
+      'Free online unit converter for length, weight, volume, area, speed and temperature. Convert metric to imperial and back instantly — runs entirely in your browser.',
+    updated: '2026-08-21',
+    about: {
+      applicationCategory: 'UtilitiesApplication',
+      intro:
+        'A fast online unit converter for everyday measurements. Pick a category, type a value, and the result updates as you type — no page reloads, no ads, nothing sent to a server.',
+      features: [
+        'Six categories: length, weight and mass, volume, area, speed and temperature.',
+        'Metric and imperial units side by side — metres to feet, kilograms to pounds, litres to gallons, Celsius to Fahrenheit and more.',
+        'Swap the from and to units with one click and see the conversion both ways.',
+        'Remembers your last category and units on this device.',
+      ],
+      faq: [
+        {
+          q: 'How do I convert metric to imperial units?',
+          a: 'Choose a category such as length or weight, pick the unit you have (for example metres) and the unit you want (for example feet), then type the value. The converted result appears instantly and updates as you type.',
+        },
+        {
+          q: 'Which units does the converter support?',
+          a: 'Length (millimetres to miles), weight and mass (grams to tons), volume (millilitres to gallons), area (square metres to acres), speed (km/h, mph, m/s, knots) and temperature (Celsius, Fahrenheit, Kelvin).',
+        },
+        {
+          q: 'How accurate are the conversions?',
+          a: 'Every unit is defined against an exact base unit using published conversion factors, so results are as precise as the numbers you enter. Results are rounded for display but computed at full precision.',
+        },
+        {
+          q: 'Is the unit converter free and private?',
+          a: 'Yes. It is free, has no ads or account, and the conversion happens entirely in your browser. Your last-used units are kept in your browser storage only.',
+        },
+      ],
+    },
   },
   {
     slug: 'calculator',
@@ -227,9 +297,40 @@ export const PAGES: SiteEntry[] = [
     category: 'utilities',
     name: 'Calculator',
     tagline: 'Basic and scientific, with keyboard input and history.',
-    title: 'Calculator — basic and scientific, in your browser',
+    title: 'Online calculator — basic and scientific, with history',
     description:
-      'A free online calculator with scientific functions, keyboard input and a history of your recent calculations. No ads, no signup.',
+      'A free online calculator with scientific functions, keyboard input and a history of your recent calculations. No ads, no signup — runs entirely in your browser.',
+    updated: '2026-08-21',
+    about: {
+      applicationCategory: 'UtilitiesApplication',
+      intro:
+        'A free online calculator that works like a real one: type a whole expression, press Enter, and get the answer. Switch to scientific mode for trigonometry, logarithms, powers and roots.',
+      features: [
+        'Basic and scientific modes — sin, cos, tan, log, ln, square root, powers, factorial and constants like π and e.',
+        'Type full expressions with parentheses; operator precedence is respected, so 2 + 3 × 4 is 14.',
+        'Keyboard input on desktop and a tap-friendly keypad on mobile.',
+        'A history of recent calculations you can tap to reuse, saved on this device.',
+        'Degrees or radians for trigonometric functions.',
+      ],
+      faq: [
+        {
+          q: 'Can I use the calculator with my keyboard?',
+          a: 'Yes. Type numbers and operators directly, use parentheses for grouping, and press Enter to evaluate. Backspace edits the expression and Escape clears it.',
+        },
+        {
+          q: 'What scientific functions are included?',
+          a: 'Trigonometric functions (sin, cos, tan and their inverses), logarithms (log and ln), exponents and roots, factorial, percentages, and the constants π and e. A toggle switches between degrees and radians.',
+        },
+        {
+          q: 'Does the calculator keep a history?',
+          a: 'Each evaluated expression and its result is added to a history panel. Tap an entry to put it back into the input. The history is stored in your browser and can be cleared at any time.',
+        },
+        {
+          q: 'Is this calculator free?',
+          a: 'Yes — no ads, no account and no downloads. Everything runs in your browser and nothing is sent to a server.',
+        },
+      ],
+    },
   },
   {
     slug: 'currency-converter',
@@ -263,7 +364,37 @@ export const PAGES: SiteEntry[] = [
     tagline: 'Simple lists with due dates, saved on your device.',
     title: 'To-do list — simple, private, saved in your browser',
     description:
-      'A free to-do list with multiple lists and due dates. Everything is stored in your browser — no account, no sync, no tracking.',
+      'A free online to-do list with multiple lists and due dates. Everything is stored in your browser — no account, no sync, no tracking.',
+    updated: '2026-08-21',
+    about: {
+      applicationCategory: 'ProductivityApplication',
+      intro:
+        'A simple online to-do list with no sign-up. Add tasks, set due dates, tick them off, and keep separate lists for work, home or anything else — all saved in your browser.',
+      features: [
+        'Multiple lists — switch between them from the list picker.',
+        'Due dates with Today, Tomorrow and overdue labels so what matters stands out.',
+        'Check items off, edit them in place, or clear completed tasks in one go.',
+        'No ads and no tracking — nothing is sent to a server.',
+      ],
+      faq: [
+        {
+          q: 'Do I need an account to use the to-do list?',
+          a: 'No. There is no sign-up and no login. Your lists are saved in your browser’s local storage on the device you are using.',
+        },
+        {
+          q: 'Will my tasks sync between devices?',
+          a: 'Not at the moment. Because everything is stored locally for privacy, each browser keeps its own lists. Clearing your browser data will remove them.',
+        },
+        {
+          q: 'Can I have more than one list?',
+          a: 'Yes. Create as many lists as you like — for example Work, Groceries and Weekend — and switch between them. Each list keeps its own tasks and due dates.',
+        },
+        {
+          q: 'Is the to-do list free?',
+          a: 'Yes. It is free, ad-free and runs entirely in your browser.',
+        },
+      ],
+    },
   },
   {
     slug: 'sudoku',
@@ -273,9 +404,44 @@ export const PAGES: SiteEntry[] = [
     category: 'games',
     name: 'Sudoku',
     tagline: 'Four difficulties, pencil marks, hints — progress saved on your device.',
-    title: 'Sudoku — free online puzzles, easy to expert',
+    title: 'Sudoku — free online Sudoku puzzles, easy to expert',
     description:
-      'Play free Sudoku in your browser with four difficulty levels, pencil marks, hints and an undo button. Every puzzle has a unique solution and your game is saved on your device.',
+      'Play free Sudoku online with four difficulty levels, pencil marks, hints and undo. Every puzzle has a unique solution and your game is saved on your device.',
+    updated: '2026-08-21',
+    about: {
+      applicationCategory: 'GameApplication',
+      intro:
+        'Play Sudoku online for free, with no ads and no account. Choose easy, medium, hard or expert, use pencil marks to track candidates, and pick up where you left off — your game is saved on this device.',
+      features: [
+        'Four difficulty levels: easy, medium, hard and expert. Every puzzle is generated with exactly one solution.',
+        'Fast input: tap a number, then tap the cells where it goes — or pick a cell first, or use the keyboard.',
+        'Pencil marks (notes) with automatic clean-up when you place a digit, plus undo, erase and hints.',
+        'Conflict highlighting, same-number highlighting and a timer.',
+        'Your current game is saved automatically and resumes when you come back.',
+      ],
+      faq: [
+        {
+          q: 'How do you play Sudoku?',
+          a: 'Fill the 9×9 grid so that every row, every column and every 3×3 box contains the digits 1 to 9 exactly once. Start from the given numbers and use logic — never guessing — to work out the rest.',
+        },
+        {
+          q: 'What do the difficulty levels mean?',
+          a: 'Easy puzzles start with around 40 given numbers and can be solved with basic scanning. Medium, hard and expert remove more givens (down to about 24), so you will need pencil marks and more advanced techniques.',
+        },
+        {
+          q: 'How do pencil marks work?',
+          a: 'Turn on Notes (or press N) and tap a number to write it as a small candidate in the selected cell. When you place a final digit, matching notes in the same row, column and box are cleared automatically.',
+        },
+        {
+          q: 'Does a hint give away the answer?',
+          a: 'A hint fills in the selected cell with its correct value (or fixes the first wrong cell if there is one). Hints are counted, so you can see how many you used when you finish.',
+        },
+        {
+          q: 'Is my game saved?',
+          a: 'Yes. The puzzle, your entries, notes and the timer are saved in your browser, so closing the tab and coming back later resumes the same game.',
+        },
+      ],
+    },
   },
 ];
 
@@ -283,6 +449,25 @@ export const HUB = PAGES[0];
 
 export function livePages(): SiteEntry[] {
   return PAGES.filter(p => p.status === 'live');
+}
+
+/** Live apps, in manifest order. */
+export function liveTools(): SiteEntry[] {
+  return PAGES.filter(p => p.kind === 'app' && p.status === 'live');
+}
+
+/** Live content guides, in manifest order. */
+export function contentPages(): SiteEntry[] {
+  return PAGES.filter(p => p.kind === 'content' && p.status === 'live');
+}
+
+/** Other live tools for "More tools" links: same category first, then the rest in manifest order. */
+export function relatedTools(entry: SiteEntry): SiteEntry[] {
+  const others = liveTools().filter(t => t.slug !== entry.slug);
+  return [
+    ...others.filter(t => t.category === entry.category),
+    ...others.filter(t => t.category !== entry.category),
+  ];
 }
 
 export function toolsIn(category: CategoryId): SiteEntry[] {

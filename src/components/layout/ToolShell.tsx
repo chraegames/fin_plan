@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { isLocalHost } from '../../utils/env';
 import { SITE_NAME, type SiteEntry } from '../../site/manifest';
+import { ToolAbout } from '../../site/ToolAbout';
 
 interface ToolShellProps {
   entry: SiteEntry;
@@ -97,6 +98,9 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
         }}
       >
         {children}
+        <div style={{ marginTop: 40 }}>
+          <ToolAbout entry={entry} />
+        </div>
       </main>
 
       <footer
@@ -115,9 +119,7 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
           color: 'var(--ink-muted)',
         }}
       >
-        <a href="/" style={{ color: 'inherit' }}>
-          ← All {SITE_NAME} tools
-        </a>
+        <span>{SITE_NAME}</span>
         <span>Runs entirely in your browser.</span>
       </footer>
     </div>

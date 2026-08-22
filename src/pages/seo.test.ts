@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderRootForPath, buildSitemap, normalizePath } from '../../scripts/prerender';
 import { CONTENT_ROUTES, FIRE_HOME_PATH, SITE_ORIGIN } from './routeMeta';
-import { CATEGORIES, HUB, PAGES, livePages } from '../site/manifest';
+import { CATEGORIES, HUB, PAGES, byPath, contentPages, livePages } from '../site/manifest';
 
 describe('normalizePath', () => {
   it('maps dev and build ctx.path forms to manifest paths', () => {
@@ -20,6 +20,21 @@ describe('renderRootForPath', () => {
     expect(html).toContain('Coming soon');
     // live tools are links, "soon" tools are not
     expect(html).toContain(`href="${FIRE_HOME_PATH}"`);
+    expect(html).not.toContain('href="/currency-converter/"');
+    // Guides section + footer nav link every content page and every live tool
+    for (const g of contentPages()) expect(html).toContain(`href="${g.path}"`);
+    expect(html).toContain('Guides');
+    expect(html).toContain('collection of free online tools');
+  });
+
+  it('prerenders tool pages with About, FAQ text and links to sibling tools', () => {
+    const entry = byPath('/sudoku/')!;
+    const html = renderRootForPath('/sudoku/index.html');
+    expect(html).toContain('About Sudoku');
+    for (const f of entry.about!.faq) expect(html).toContain(f.q);
+    expect(html).toContain('href="/calculator/"');
+    expect(html).toContain('href="/"');
+    expect(html).not.toContain('href="/sudoku/"');
     expect(html).not.toContain('href="/currency-converter/"');
   });
 
@@ -66,7 +81,9 @@ describe('buildSitemap', () => {
     for (const p of PAGES.filter(p => p.status === 'soon')) {
       expect(xml).not.toContain(`<loc>${SITE_ORIGIN}${p.path}</loc>`);
     }
-    expect(xml).toContain('<lastmod>2026-01-01</lastmod>');
+    // per-page `updated` wins over the build date
+    expect(xml).toContain('<lastmod>2026-08-21</lastmod>');
+    expect(xml).not.toContain('<lastmod>2026-01-01</lastmod>');
     expect(xml).not.toContain('fireplan.chraegames.cloud');
   });
 });

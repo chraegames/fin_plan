@@ -7,8 +7,11 @@ import {
   absoluteUrl,
   breadcrumbs,
   byPath,
+  contentPages,
   livePages,
+  liveTools,
   pathFor,
+  relatedTools,
   toolsIn,
 } from './manifest';
 
@@ -58,5 +61,30 @@ describe('site manifest', () => {
       'fire-planner',
       'fire-planner/how-it-works',
     ]);
+  });
+
+  it('every live non-FIRE tool carries About copy with features + FAQs', () => {
+    for (const p of liveTools().filter(p => p.slug !== 'fire-planner')) {
+      expect(p.about, p.slug).toBeDefined();
+      expect(p.about!.features.length).toBeGreaterThanOrEqual(3);
+      expect(p.about!.faq.length).toBeGreaterThanOrEqual(3);
+      expect(p.about!.intro.length).toBeGreaterThan(40);
+      expect(p.about!.applicationCategory).toMatch(/Application$/);
+    }
+  });
+
+  it('updated dates are ISO days and every live page has one', () => {
+    for (const p of livePages()) expect(p.updated, p.slug).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('liveTools / contentPages filter by kind and status', () => {
+    expect(liveTools().every(p => p.kind === 'app' && p.status === 'live')).toBe(true);
+    expect(liveTools().map(p => p.slug)).toContain('sudoku');
+    expect(liveTools().map(p => p.slug)).not.toContain('currency-converter');
+    expect(contentPages().every(p => p.kind === 'content')).toBe(true);
+    expect(contentPages()).toHaveLength(4);
+    const rel = relatedTools(byPath('/calculator/')!).map(p => p.slug);
+    expect(rel[0]).toBe('unit-converter'); // same category first
+    expect(rel).not.toContain('calculator');
   });
 });

@@ -18,9 +18,14 @@ describe('buildHeadTags', () => {
     expect(find(tags, t => t.tag === 'title')[0].children).toBe(entry.title);
   });
 
-  it('hub has no BreadcrumbList; content pages get a three-level trail', () => {
-    const hubLd = find(buildHeadTags(HUB), t => t.attrs?.type === 'application/ld+json');
-    expect(hubLd).toHaveLength(0);
+  it('hub has WebSite + Organization + ItemList but no BreadcrumbList; content pages get a three-level trail', () => {
+    const hubLd = find(buildHeadTags(HUB), t => t.attrs?.type === 'application/ld+json').map(t =>
+      JSON.parse(t.children!),
+    );
+    expect(hubLd.map(b => b['@type']).sort()).toEqual(['ItemList', 'Organization', 'WebSite']);
+    const list = hubLd.find(b => b['@type'] === 'ItemList');
+    expect(list.itemListElement.map((i: { name: string }) => i.name)).toContain('Sudoku');
+    expect(list.itemListElement[0].url).toBe(`${SITE_ORIGIN}/fire-planner/`);
 
     const ld = find(
       buildHeadTags(byPath('/fire-planner/how-it-works/')!),
@@ -51,5 +56,17 @@ describe('buildHeadTags', () => {
     expect(tags[0].injectTo).toBe('head-prepend');
     expect(tags[0].children).toBe(THEME_BOOT_SCRIPT);
     expect(THEME_BOOT_SCRIPT).toContain(`'${THEME_KEY}'`);
+  });
+
+  it('tool pages derive WebApplication + FAQPage from their About copy', () => {
+    const entry = byPath('/sudoku/')!;
+    const blocks = find(buildHeadTags(entry), t => t.attrs?.type === 'application/ld+json').map(t =>
+      JSON.parse(t.children!),
+    );
+    expect(blocks.map(b => b['@type'])).toEqual(['BreadcrumbList', 'WebApplication', 'FAQPage']);
+    expect(blocks[1].applicationCategory).toBe('GameApplication');
+    expect(blocks[1].url).toBe(`${SITE_ORIGIN}/sudoku/`);
+    expect(blocks[2].mainEntity.map((q: { name: string }) => q.name)).toEqual(entry.about!.faq.map(f => f.q));
+    expect(blocks[2].mainEntity[0].acceptedAnswer.text).toBe(entry.about!.faq[0].a);
   });
 });

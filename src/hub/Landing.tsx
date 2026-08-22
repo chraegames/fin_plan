@@ -3,7 +3,7 @@
 // behaviour on the page (theme toggle) is wired up by src/hub/main.ts.
 
 import type { CSSProperties } from 'react';
-import { CATEGORIES, HUB, SITE_NAME, toolsIn, type SiteEntry } from '../site/manifest';
+import { CATEGORIES, HUB, SITE_NAME, contentPages, liveTools, toolsIn, type SiteEntry } from '../site/manifest';
 
 const card: CSSProperties = {
   display: 'flex',
@@ -141,6 +141,11 @@ export function Landing() {
         <p style={{ fontSize: 'clamp(15px, 2.4vw, 18px)', color: 'var(--ink-3)', lineHeight: 1.55, margin: 0, maxWidth: 560 }}>
           Free, private, no accounts — everything stays on your device.
         </p>
+        <p style={{ fontSize: 15, color: 'var(--ink-2)', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>
+          {SITE_NAME} is a collection of free online tools: a retirement (FIRE) planner, a unit converter, a
+          scientific calculator, a to-do list and Sudoku puzzles. Each one runs entirely in your browser —
+          no sign-up, no ads, and nothing sent to a server.
+        </p>
       </header>
 
       {CATEGORIES.map(cat => {
@@ -176,22 +181,89 @@ export function Landing() {
         );
       })}
 
+      <section aria-labelledby="hub-guides" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h2
+            id="hub-guides"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 400,
+              fontSize: 'clamp(22px, 4vw, 28px)',
+              letterSpacing: '-0.02em',
+              color: 'var(--ink)',
+              margin: 0,
+            }}
+          >
+            Guides
+          </h2>
+          <p style={{ fontSize: 14.5, color: 'var(--ink-3)', margin: 0 }}>
+            Short reads on retirement planning, written to go with the FIRE Planner.
+          </p>
+        </div>
+        <div className="hub-grid">
+          {contentPages().map(g => (
+            <a key={g.slug} href={g.path} className="hub-card" style={card}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 18,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--ink)',
+                }}
+              >
+                {g.name}
+              </span>
+              <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink-3)' }}>{g.tagline}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
       <footer
         style={{
           borderTop: '1px solid var(--border-soft)',
           paddingTop: 20,
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px 18px',
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontSize: 13,
-          color: 'var(--ink-muted)',
+          flexDirection: 'column',
+          gap: 14,
         }}
       >
+        <nav aria-label="All tools">
+          <ul
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px 18px',
+              fontSize: 13,
+            }}
+          >
+            {liveTools().map(t => (
+              <li key={t.slug}>
+                <a href={t.path} style={{ color: 'var(--ink-2)' }}>
+                  {t.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px 18px',
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontSize: 13,
+            color: 'var(--ink-muted)',
+          }}
+        >
         <span>{SITE_NAME}</span>
         <span>Educational tools — not financial advice.</span>
         <span>Analytics are cookie-less and self-hosted.</span>
+        </div>
       </footer>
     </div>
   );
