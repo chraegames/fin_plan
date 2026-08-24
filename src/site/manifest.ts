@@ -443,6 +443,58 @@ export const PAGES: SiteEntry[] = [
       ],
     },
   },
+  {
+    slug: 'bingo',
+    path: '/bingo/',
+    kind: 'app',
+    status: 'live',
+    category: 'games',
+    name: 'Bingo caller',
+    tagline: 'Random number caller for real-life bingo — 75, 90 or 30 ball, with a flashboard and call history.',
+    title: 'Bingo number generator — free random bingo caller (75, 90 & 30 ball)',
+    description:
+      'Free bingo number generator and caller for real-life games. Draws truly random numbers one at a time, shows the B-I-N-G-O letter, tracks every call on a flashboard and can read calls aloud. 75-ball, 90-ball and 30-ball.',
+    updated: '2026-08-24',
+    about: {
+      applicationCategory: 'UtilitiesApplication',
+      intro:
+        'A bingo caller for games you play in real life. Instead of a cage and balls, tap once to draw the next number at random, see it big enough for the whole room with its B-I-N-G-O letter, and keep an ordered record of every call so disputes are settled at a glance. It does not generate cards — bring your own.',
+      features: [
+        'Truly random draws: each number is picked uniformly from the balls still in play using the browser\'s cryptographic random generator, so no number is ever repeated in a game.',
+        '75-ball (B-I-N-G-O, 1–75), 90-ball (UK / housie, 1–90) and 30-ball speed bingo.',
+        'A big current-call display with the column letter, a flashboard that lights up every called number, and a call history in order.',
+        'Undo an accidental draw, clear the board with New game, and pick up where you left off — the game is saved on your device.',
+        'Optional auto-call on a timer (5–30 seconds) and voice announcements that read each call aloud.',
+        'Keyboard-friendly: Space draws the next number, U undoes, A toggles auto-call.',
+      ],
+      faq: [
+        {
+          q: 'How are the numbers picked?',
+          a: 'Every draw picks one of the remaining numbers with equal probability using the browser\'s cryptographically secure random generator (the same one used for encryption keys), with rejection sampling so no number is favoured. A number that has been called cannot come up again until you start a new game.',
+        },
+        {
+          q: 'Which letter goes with which numbers?',
+          a: 'In 75-ball bingo B covers 1–15, I covers 16–30, N covers 31–45, G covers 46–60 and O covers 61–75. 30-ball speed bingo uses B for 1–10, I for 11–20 and N for 21–30. 90-ball bingo has no letters — numbers are called on their own.',
+        },
+        {
+          q: 'Does this make bingo cards?',
+          a: 'No. It is a caller: it replaces the ball cage and the flashboard. Use it alongside printed cards or any cards you already have.',
+        },
+        {
+          q: 'What if I draw a number by mistake?',
+          a: 'Press Undo last (or the U key) to take back the most recent call. It goes back into the pool and the flashboard and history update immediately.',
+        },
+        {
+          q: 'Can it call numbers automatically?',
+          a: 'Yes. Turn on Auto-call and pick an interval from 5 to 30 seconds; it draws a new number at that pace until you pause it or the numbers run out. Turn on Voice to have each call read aloud by your browser.',
+        },
+        {
+          q: 'Is my game saved if I close the tab?',
+          a: 'Yes. The called numbers and your settings are saved in this browser, so reopening the page resumes the same game.',
+        },
+      ],
+    },
+  },
 ];
 
 export const HUB = PAGES[0];

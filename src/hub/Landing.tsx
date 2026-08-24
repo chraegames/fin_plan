@@ -143,7 +143,7 @@ export function Landing() {
         </p>
         <p style={{ fontSize: 15, color: 'var(--ink-2)', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>
           {SITE_NAME} is a collection of free online tools: a retirement (FIRE) planner, a unit converter, a
-          scientific calculator, a to-do list and Sudoku puzzles. Each one runs entirely in your browser —
+          scientific calculator, a to-do list, Sudoku puzzles and a bingo number caller. Each one runs entirely in your browser —
           no sign-up, no ads, and nothing sent to a server.
         </p>
       </header>

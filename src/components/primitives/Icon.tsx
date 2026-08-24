@@ -23,7 +23,10 @@ export type IconName =
   | 'trend-up'
   | 'sun'
   | 'moon'
-  | 'menu';
+  | 'menu'
+  | 'play'
+  | 'pause'
+  | 'undo';
 
 interface IconProps {
   name: IconName;
@@ -113,6 +116,12 @@ export function Icon({ name, size = 14 }: IconProps) {
       return <svg width={s} height={s} viewBox={box}><path d="M13 9.5A5.5 5.5 0 1 1 6.5 3a4.5 4.5 0 0 0 6.5 6.5z" {...p} /></svg>;
     case 'menu':
       return <svg width={s} height={s} viewBox={box}><path d="M2.5 4.5h11 M2.5 8h11 M2.5 11.5h11" {...p} /></svg>;
+    case 'play':
+      return <svg width={s} height={s} viewBox={box}><path d="M4.5 3v10l8-5z" {...p} /></svg>;
+    case 'pause':
+      return <svg width={s} height={s} viewBox={box}><path d="M5 3v10M11 3v10" {...p} strokeWidth={2} /></svg>;
+    case 'undo':
+      return <svg width={s} height={s} viewBox={box}><path d="M3 6.5h6.5a3 3 0 0 1 0 6H6M3 6.5 5.5 4M3 6.5 5.5 9" {...p} /></svg>;
     default:
       return null;
   }

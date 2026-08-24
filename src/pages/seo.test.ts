@@ -38,6 +38,15 @@ describe('renderRootForPath', () => {
     expect(html).not.toContain('href="/currency-converter/"');
   });
 
+  it('prerenders the bingo caller with its About copy and same-category sibling first', () => {
+    const entry = byPath('/bingo/')!;
+    const html = renderRootForPath('/bingo/index.html');
+    expect(html).toContain('About Bingo caller');
+    for (const f of entry.about!.faq) expect(html).toContain(f.q);
+    expect(html.indexOf('href="/sudoku/"')).toBeLessThan(html.indexOf('href="/calculator/"'));
+    expect(html).not.toContain('href="/bingo/"');
+  });
+
   it('prerenders the FIRE hero + all three "what this is" sections', () => {
     const html = renderRootForPath('/fire-planner/index.html');
     expect(html).toContain('Plan your retirement');

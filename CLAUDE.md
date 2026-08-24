@@ -2,7 +2,7 @@
 
 **Chrae Lab** (`https://chraegames.cloud`) — a hub of small browser-only tools. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`.
 
-The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
+The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
 
 User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree. Most of it is about the FIRE planner because that's where the complexity is.
 
@@ -14,7 +14,7 @@ User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers +
 index.html                # hub landing (prerendered <Landing/>; src/hub/main.ts adds CSS + theme toggle)
 fire-planner/index.html   # FIRE planner app entry (src/main.tsx)
 fire-planner/<slug>/index.html   # static FIRE content guides (CSS-only entry)
-<tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku (src/tools/<tool>/main.tsx)
+<tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku, bingo (src/tools/<tool>/main.tsx)
 scripts/
   head.ts                 # buildHeadTags(entry): title/canonical/OG/JSON-LD + THEME_BOOT_SCRIPT
   prerender.tsx           # renderRootForPath + buildSitemap (build-time, Node)
@@ -150,6 +150,7 @@ else, based on activePlan:
 | `chraeLab.calculator.history` | `CALCULATOR_HISTORY_KEY` | Recent calculations (newest first, capped) |
 | `chraeLab.todo` | `TODO_KEY` | To-do lists + items |
 | `chraeLab.sudoku` | `SUDOKU_KEY` | Current Sudoku game (puzzle, solution, board, notes, clock) |
+| `chraeLab.bingo` | `BINGO_KEY` | Current Bingo caller game (variant, ordered calls) + caller settings (auto interval, voice) |
 | `financial-planner-scenarios` | legacy | Pre-profiles "single profile, many scenarios" shape |
 | `financial-planner-input` | legacy | Pre-scenarios "one plan" shape |
 | `financial-planner-plans` | legacy | Withdrawal schedules from the pre-scenarios shape |
@@ -242,6 +243,7 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 | `tools/calculator/*.test.ts` | Expression parser (precedence, right-assoc `^`, deg/rad, errors with positions), history cap |
 | `tools/todo/*.test.ts` | Reducer actions + invariants (active list always valid), due-date labels, load/save validation |
 | `tools/sudoku/*.test.ts` | Solver/uniqueness counter against a known puzzle, seeded generator (deterministic, unique solution, clue targets), conflicts; reducer (input/notes/erase/undo/hint/win), save-file validation |
+| `tools/bingo/bingo.test.ts` | B-I-N-G-O column mapping per variant, `boardRows` coverage, rejection-sampling RNG (`uniformFrom` with a fake source + `secureRandomInt` range), reducer (draw never repeats, stops when exhausted, undo), save-file validation |
 
 New engine/util/tool-logic modules should ship with a test file. Tools keep their logic in pure `.ts` modules so they're testable without a DOM.
 
@@ -257,7 +259,8 @@ FIRE:  drawer_opened, plan_created, profile_created, auto_balance_run,
        import_applied, history_opened, intro_shown, intro_dismissed
 Tools: tool_opened {tool}, converter_used {category, from, to},
        calc_evaluated {ok}, todo_created, todo_list_created,
-       sudoku_started {difficulty}, sudoku_won {difficulty, seconds, hints}
+       sudoku_started {difficulty}, sudoku_won {difficulty, seconds, hints},
+       bingo_started {variant}, bingo_finished {variant}
 Both:  theme_toggled {theme}
 ```
 
