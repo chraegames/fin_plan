@@ -25,7 +25,7 @@ src/
     prerenderPages.tsx    # manifest path → pure component rendered into #root at build time
     ToolStatic.tsx        # no-JS fallback prerendered for tool pages
   hub/
-    Landing.tsx           # pure landing page (categories → tool cards, Live / Coming soon)
+    Landing.tsx           # pure landing page (categories → live tool cards, grouped guides)
     main.ts               # hub entry: styles + analytics + vanilla theme toggle (no React)
   tools/<tool>/           # main.tsx (entry) + App.tsx + pure logic .ts + tests
   tools/tv-guide/         # multi-page guide: data.ts/logic.ts/pages.ts (pure) + components/ + pages/*View (pure) + Live.tsx + static.tsx/App.tsx/mount.tsx
@@ -69,7 +69,7 @@ Pure data, importable from Node (vite config) and the browser alike. `PAGES: Sit
 - **Tool About/FAQ copy** — `entry.about: ToolAbout { intro, features[], faq[{q,a}], applicationCategory }` is rendered by the pure `src/site/ToolAbout.tsx` in *both* render states: inside `ToolStatic` (build-time, no-JS) and below `<main>` in `ToolShell` (live), so crawlers see identical text either way, and it's the same text the `FAQPage` JSON-LD carries (Google requires parity). `ToolAbout` also renders the "More from Chrae Lab" nav (`relatedTools(entry)`: same category first) — that's the tool→tool internal-link mesh.
 - **Landing cards, breadcrumbs, ToolShell header, FIRE "Related" links** (`routeMeta.ts` filters content entries with `area === 'fire-planner'`).
 
-**Adding a tool:** add a `PAGES` entry (`status: 'soon'` until it works — the landing card then renders unlinked), create `<slug>/index.html` (copy `calculator/index.html`), `src/tools/<slug>/main.tsx` (`import '../../styles/global'; initAnalytics(); track('tool_opened', { tool }); createRoot(...)`), wrap the UI in `ToolShell`, declare any storage key in `persistence.ts`, write the `about` block (3+ features, 3+ FAQs, factual — `manifest.test.ts` enforces presence) and set `updated`, then flip to `live`. No change to `vite.config.ts`, the sitemap, or any `<head>` is needed.
+**Adding a tool:** add a `PAGES` entry (`status: 'soon'` until it works — a `soon` entry is invisible everywhere: no hub card, no Vite input, no sitemap; the hub deliberately shows no "coming soon" placeholders), create `<slug>/index.html` (copy `calculator/index.html`), `src/tools/<slug>/main.tsx` (`import '../../styles/global'; initAnalytics(); track('tool_opened', { tool }); createRoot(...)`), wrap the UI in `ToolShell`, declare any storage key in `persistence.ts`, write the `about` block (3+ features, 3+ FAQs, factual — `manifest.test.ts` enforces presence) and set `updated`, then flip to `live`. No change to `vite.config.ts`, the sitemap, or any `<head>` is needed.
 
 **Theme boot.** `THEME_BOOT_SCRIPT` (`scripts/head.ts`) runs before CSS on every page: stored `firePlannerTheme` wins, else `prefers-color-scheme`. `useTheme.readInitial()` applies the identical rule — keep the two in lockstep or pages flip theme on mount. The hub has no React; `src/hub/main.ts` toggles `data-theme` by hand and writes the same key.
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderRootForPath, buildSitemap, normalizePath } from '../../scripts/prerender';
 import { CONTENT_ROUTES, FIRE_HOME_PATH, SITE_ORIGIN } from './routeMeta';
-import { CATEGORIES, HUB, PAGES, byPath, contentPages, livePages } from '../site/manifest';
+import { CATEGORIES, HUB, PAGES, byPath, contentPages, livePages, liveTools } from '../site/manifest';
 import { ATTRIBUTES, BRANDS, GUIDE_REVIEWED, TECHNOLOGIES } from '../tools/tv-guide/data';
 import { GUIDE_PAGES } from '../tools/tv-guide/pages';
 
@@ -18,11 +18,10 @@ describe('renderRootForPath', () => {
     const html = renderRootForPath('/index.html');
     expect(html).toContain(HUB.tagline);
     for (const c of CATEGORIES) expect(html).toContain(c.name);
-    for (const p of PAGES.filter(p => p.kind === 'app')) expect(html).toContain(p.name);
-    expect(html).toContain('Coming soon');
-    // live tools are links, "soon" tools are not
+    // every live tool is a link; nothing unlinked / "coming soon" is shown
+    for (const p of liveTools()) expect(html).toContain(`href="${p.path}"`);
     expect(html).toContain(`href="${FIRE_HOME_PATH}"`);
-    expect(html).not.toContain('href="/currency-converter/"');
+    expect(html).not.toContain('Coming soon');
     // Guides section + footer nav link every content page and every live tool
     for (const g of contentPages()) expect(html).toContain(`href="${g.path}"`);
     expect(html).toContain('Guides');
@@ -37,7 +36,6 @@ describe('renderRootForPath', () => {
     expect(html).toContain('href="/calculator/"');
     expect(html).toContain('href="/"');
     expect(html).not.toContain('href="/sudoku/"');
-    expect(html).not.toContain('href="/currency-converter/"');
   });
 
   it('prerenders the bingo caller with its About copy and same-category sibling first', () => {

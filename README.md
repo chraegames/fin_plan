@@ -10,7 +10,6 @@ no accounts, no server, everything stored on your device. Live at
 | Utilities    | Unit converter (length, weight, volume, area, speed, temperature) | `/unit-converter/` |
 | Utilities    | Calculator (basic + scientific, history)       | `/calculator/`      |
 | Productivity | To-do list (multiple lists, due dates)         | `/todo/`            |
-| Utilities    | Currency converter, World clock                | coming soon         |
 | Games        | Sudoku (easy–expert, notes, hints, undo)       | `/sudoku/`          |
 | Games        | Bingo caller (75/90/30-ball, flashboard, history, auto-call, voice) | `/bingo/` |
 | Utilities    | TV buying guide (2026 panel technologies explained with animated diagrams, brand-name decoder, comparison, "help me choose") | `/tv-guide/` + `/technologies/`, `/brands/`, `/decoder/`, `/compare/` |

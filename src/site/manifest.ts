@@ -5,7 +5,7 @@
 // config / prerender plugin (Node), the pure prerendered components, and the
 // client apps alike without import cycles.
 //
-// Adding a tool = add an entry here (status 'soon' until it ships), create
+// Adding a tool = add an entry here (status 'soon' keeps it off every page until it ships), create
 // <path>/index.html + src/tools/<slug>/main.tsx, and map the path in
 // src/site/prerenderPages.tsx. Vite inputs, <head> tags, sitemap, landing-page
 // cards and breadcrumbs all derive from this file.
@@ -333,28 +333,6 @@ export const PAGES: SiteEntry[] = [
     },
   },
   {
-    slug: 'currency-converter',
-    path: '/currency-converter/',
-    kind: 'app',
-    status: 'soon',
-    category: 'utilities',
-    name: 'Currency converter',
-    tagline: 'Convert between currencies.',
-    title: 'Currency converter',
-    description: 'Convert between currencies in your browser.',
-  },
-  {
-    slug: 'world-clock',
-    path: '/world-clock/',
-    kind: 'app',
-    status: 'soon',
-    category: 'utilities',
-    name: 'World clock',
-    tagline: 'Compare times across cities and time zones.',
-    title: 'World clock and time zone converter',
-    description: 'Compare the current time across cities and time zones in your browser.',
-  },
-  {
     slug: 'todo',
     path: '/todo/',
     kind: 'app',
@@ -663,8 +641,9 @@ export function relatedTools(entry: SiteEntry): SiteEntry[] {
   ];
 }
 
+/** Live apps in a category (the hub shows no placeholders for unshipped tools). */
 export function toolsIn(category: CategoryId): SiteEntry[] {
-  return PAGES.filter(p => p.kind === 'app' && p.category === category);
+  return liveTools().filter(p => p.category === category);
 }
 
 export function byPath(path: string): SiteEntry | undefined {

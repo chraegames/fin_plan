@@ -19,55 +19,29 @@ const card: CSSProperties = {
   minHeight: 120,
 };
 
-const badge = (tone: 'live' | 'soon'): CSSProperties => ({
-  alignSelf: 'flex-start',
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  padding: '3px 8px',
-  borderRadius: 'var(--radius-pill)',
-  background: tone === 'live' ? 'var(--positive-tint)' : 'var(--surface-3)',
-  color: tone === 'live' ? 'var(--positive)' : 'var(--ink-muted)',
-});
-
-/** Live content pages grouped under their parent app, in manifest order. */
-function guideGroups(): { parent: SiteEntry; pages: SiteEntry[] }[] {
-  return liveTools()
-    .map(parent => ({ parent, pages: contentPages().filter(g => g.area === parent.slug) }))
-    .filter(g => g.pages.length > 0);
-}
-
 function ToolCard({ entry }: { entry: SiteEntry }) {
-  const body = (
-    <>
-      <span style={badge(entry.status)}>{entry.status === 'live' ? 'Live' : 'Coming soon'}</span>
+  return (
+    <a href={entry.path} className="hub-card" style={card}>
       <span
         style={{
           fontFamily: 'var(--font-display)',
           fontSize: 20,
           letterSpacing: '-0.02em',
           color: 'var(--ink)',
-          marginTop: 4,
         }}
       >
         {entry.name}
       </span>
       <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink-3)' }}>{entry.tagline}</span>
-    </>
+    </a>
   );
-  if (entry.status === 'live') {
-    return (
-      <a href={entry.path} className="hub-card" style={card}>
-        {body}
-      </a>
-    );
-  }
-  return (
-    <div aria-disabled="true" style={{ ...card, opacity: 0.7, boxShadow: 'none' }}>
-      {body}
-    </div>
-  );
+}
+
+/** Live content pages grouped under their parent app, in manifest order. */
+function guideGroups(): { parent: SiteEntry; pages: SiteEntry[] }[] {
+  return liveTools()
+    .map(parent => ({ parent, pages: contentPages().filter(g => g.area === parent.slug) }))
+    .filter(g => g.pages.length > 0);
 }
 
 export function Landing() {
@@ -155,7 +129,7 @@ export function Landing() {
         </p>
       </header>
 
-      {CATEGORIES.map(cat => {
+      {CATEGORIES.filter(cat => toolsIn(cat.id).length > 0).map(cat => {
         const tools = toolsIn(cat.id);
         return (
           <section key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -175,14 +149,9 @@ export function Landing() {
               <p style={{ fontSize: 14.5, color: 'var(--ink-3)', margin: 0 }}>{cat.blurb}</p>
             </div>
             <div className="hub-grid">
-              {tools.length === 0 ? (
-                <div aria-disabled="true" style={{ ...card, opacity: 0.7, boxShadow: 'none', justifyContent: 'center' }}>
-                  <span style={badge('soon')}>Coming soon</span>
-                  <span style={{ fontSize: 14, color: 'var(--ink-3)' }}>Nothing here yet — check back.</span>
-                </div>
-              ) : (
-                tools.map(t => <ToolCard key={t.slug} entry={t} />)
-              )}
+              {tools.map(t => (
+                <ToolCard key={t.slug} entry={t} />
+              ))}
             </div>
           </section>
         );
