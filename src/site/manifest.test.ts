@@ -61,6 +61,24 @@ describe('site manifest', () => {
       'fire-planner',
       'fire-planner/how-it-works',
     ]);
+    expect(breadcrumbs(byPath('/tv-guide/decoder/')!).map(p => p.name)).toEqual([
+      'Chrae Lab',
+      'TV buying guide',
+      'TV name decoder',
+    ]);
+  });
+
+  it('the TV guide is a utilities app whose chapters are content pages beneath it', () => {
+    const guide = byPath('/tv-guide/')!;
+    expect(guide.kind).toBe('app');
+    expect(guide.category).toBe('utilities');
+    expect(toolsIn('utilities').map(p => p.slug)).toContain('tv-guide');
+    expect(relatedTools(guide).map(p => p.slug)).not.toContain('tv-guide');
+    expect(relatedTools(guide)[0]).toBe(byPath('/unit-converter/'));
+    for (const c of contentPages().filter(p => p.area === 'tv-guide')) {
+      expect(c.path.startsWith('/tv-guide/')).toBe(true);
+      expect(c.label).toBeTruthy();
+    }
   });
 
   it('every live non-FIRE tool carries About copy with features + FAQs', () => {
@@ -82,7 +100,13 @@ describe('site manifest', () => {
     expect(liveTools().map(p => p.slug)).toContain('sudoku');
     expect(liveTools().map(p => p.slug)).not.toContain('currency-converter');
     expect(contentPages().every(p => p.kind === 'content')).toBe(true);
-    expect(contentPages()).toHaveLength(4);
+    expect(contentPages()).toHaveLength(8);
+    expect(contentPages().filter(p => p.area === 'tv-guide').map(p => p.slug)).toEqual([
+      'tv-guide/technologies',
+      'tv-guide/brands',
+      'tv-guide/decoder',
+      'tv-guide/compare',
+    ]);
     const rel = relatedTools(byPath('/calculator/')!).map(p => p.slug);
     expect(rel[0]).toBe('unit-converter'); // same category first
     expect(rel).not.toContain('calculator');

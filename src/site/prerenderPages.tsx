@@ -15,6 +15,7 @@ import { CoastFireContent } from '../pages/coast-fire-calculator/Content';
 import { FourPercentContent } from '../pages/4-percent-rule/Content';
 import { WithdrawalStrategyContent } from '../pages/retirement-withdrawal-strategy/Content';
 import { HowItWorksContent } from '../pages/how-it-works/Content';
+import { GuideStaticPage } from '../tools/tv-guide/static';
 
 const BY_SLUG: Record<string, ComponentType> = {
   '': Landing,
@@ -23,6 +24,12 @@ const BY_SLUG: Record<string, ComponentType> = {
   'fire-planner/4-percent-rule': FourPercentContent,
   'fire-planner/retirement-withdrawal-strategy': WithdrawalStrategyContent,
   'fire-planner/how-it-works': HowItWorksContent,
+  // TV buying guide: five React pages that share one pure static tree.
+  'tv-guide': () => <GuideStaticPage page="overview" />,
+  'tv-guide/technologies': () => <GuideStaticPage page="technologies" />,
+  'tv-guide/brands': () => <GuideStaticPage page="brands" />,
+  'tv-guide/decoder': () => <GuideStaticPage page="decoder" />,
+  'tv-guide/compare': () => <GuideStaticPage page="compare" />,
 };
 
 export interface PrerenderPage {

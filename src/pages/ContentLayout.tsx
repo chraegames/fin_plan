@@ -8,62 +8,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { CONTENT_ROUTES, FIRE_HOME_PATH } from './routeMeta';
 import { SITE_NAME } from '../site/manifest';
 
-const proseColor = 'var(--ink-2)';
-
-export function H2({ children }: { children: ReactNode }) {
-  return (
-    <h2
-      style={{
-        fontFamily: 'var(--font-display)',
-        fontWeight: 400,
-        fontSize: 'clamp(22px, 4vw, 30px)',
-        letterSpacing: '-0.02em',
-        lineHeight: 1.2,
-        color: 'var(--ink)',
-        margin: '8px 0 0',
-      }}
-    >
-      {children}
-    </h2>
-  );
-}
-
-export function P({ children }: { children: ReactNode }) {
-  return (
-    <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.65, color: proseColor }}>
-      {children}
-    </p>
-  );
-}
-
-export function UL({ children }: { children: ReactNode }) {
-  return (
-    <ul
-      style={{
-        margin: 0,
-        paddingLeft: 22,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        fontSize: 15.5,
-        lineHeight: 1.6,
-        color: proseColor,
-      }}
-    >
-      {children}
-    </ul>
-  );
-}
-
-export function LI({ children }: { children: ReactNode }) {
-  return <li style={{ margin: 0 }}>{children}</li>;
-}
-
-const linkStyle: CSSProperties = {
-  color: 'var(--accent-ink)',
-  textDecoration: 'underline',
-  textUnderlineOffset: 2,
-};
+export { H2, P, UL, LI, A } from '../site/Prose';
+import { linkStyle } from '../site/proseStyles';
 
 const crumbStyle: CSSProperties = {
   fontSize: 11,
@@ -73,14 +19,6 @@ const crumbStyle: CSSProperties = {
   textTransform: 'uppercase',
   textDecoration: 'none',
 };
-
-export function A({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a href={href} style={linkStyle}>
-      {children}
-    </a>
-  );
-}
 
 interface ContentLayoutProps {
   /** Current page slug, excluded from the "Related" cross-links. */

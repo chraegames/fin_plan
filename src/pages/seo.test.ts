@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { renderRootForPath, buildSitemap, normalizePath } from '../../scripts/prerender';
 import { CONTENT_ROUTES, FIRE_HOME_PATH, SITE_ORIGIN } from './routeMeta';
 import { CATEGORIES, HUB, PAGES, byPath, contentPages, livePages } from '../site/manifest';
+import { ATTRIBUTES, BRANDS, GUIDE_REVIEWED, TECHNOLOGIES } from '../tools/tv-guide/data';
+import { GUIDE_PAGES } from '../tools/tv-guide/pages';
 
 describe('normalizePath', () => {
   it('maps dev and build ctx.path forms to manifest paths', () => {
@@ -76,6 +78,65 @@ describe('renderRootForPath', () => {
     expect(html).toContain(`href="${FIRE_HOME_PATH}"`);
     // every link stays inside the site; none point at the old root-level slugs
     for (const r of CONTENT_ROUTES) expect(html).not.toContain(`href="/${r.slug}/"`);
+  });
+
+  it('hub groups guides under their parent app (FIRE and the TV guide)', () => {
+    const html = renderRootForPath('/index.html');
+    expect(html).toContain('TV buying guide');
+    expect(html.indexOf('href="/tv-guide/technologies/"')).toBeGreaterThan(html.indexOf('Guides'));
+    expect(html).toContain('href="/fire-planner/how-it-works/"');
+  });
+
+  it('prerenders the TV guide overview with the chooser fallback, chapters, changelog and About copy', () => {
+    const entry = byPath('/tv-guide/')!;
+    const html = renderRootForPath('/tv-guide/index.html');
+    expect(html).toContain('Every TV is one of two things');
+    expect(html).toContain('Help me choose');
+    for (const p of GUIDE_PAGES) expect(html).toContain(`href="${p.path}"`);
+    expect(html).toMatch(new RegExp(`<time[^>]*datetime="${GUIDE_REVIEWED}"`, 'i'));
+    expect(html).toContain('id="changelog"');
+    expect(html).toContain('About TV buying guide');
+    for (const f of entry.about!.faq) expect(html).toContain(f.q);
+    expect(html).toContain('href="/unit-converter/"');
+    expect(html).toContain('@keyframes tvg-');
+    expect(html).not.toContain('import.meta');
+  });
+
+  it('prerenders every technology (with anchors, diagrams and prose) on the technologies chapter', () => {
+    const html = renderRootForPath('/tv-guide/technologies/index.html');
+    for (const t of TECHNOLOGIES) {
+      expect(html).toContain(`id="tech-${t.id}"`);
+      expect(html).toContain(`href="#tech-${t.id}"`);
+      expect(html).toContain(t.name);
+      for (const pro of t.pros) expect(html).toContain(pro.replace(/'/g, '&#x27;'));
+    }
+    expect((html.match(/<svg/g) ?? []).length).toBeGreaterThanOrEqual(TECHNOLOGIES.length);
+    expect(html).toContain('href="/tv-guide/"');
+    expect(html).toContain('href="/"');
+    // the section nav marks the current chapter rather than omitting it
+    expect(html).toMatch(/href="\/tv-guide\/technologies\/" aria-current="page"/);
+  });
+
+  it('prerenders every brand name with its official link and technology chips', () => {
+    const html = renderRootForPath('/tv-guide/brands/index.html');
+    for (const b of BRANDS) {
+      expect(html).toContain(`id="brand-${b.id}"`);
+      expect(html).toContain(`href="${b.officialUrl}"`);
+      for (const n of b.names) expect(html).toContain(n.name.replace(/'/g, '&#x27;'));
+    }
+    expect(html).toContain('rel="noopener nofollow"');
+    expect(html).toContain('href="/tv-guide/technologies/#tech-mini-led"');
+  });
+
+  it('prerenders the decoder as full two-way tables and the compare page as the full matrix', () => {
+    const decoder = renderRootForPath('/tv-guide/decoder/index.html');
+    for (const b of BRANDS) for (const n of b.names) expect(decoder).toContain(n.name.replace(/'/g, '&#x27;'));
+    expect(decoder).toContain('Every technology and its names');
+    expect(decoder).not.toContain('<input');
+    const compare = renderRootForPath('/tv-guide/compare/index.html');
+    for (const a of ATTRIBUTES) expect(compare).toContain(a.label.replace(/&/g, '&amp;'));
+    for (const t of TECHNOLOGIES) expect(compare).toContain(`>${t.shortName}<`);
+    expect(compare).toContain('<table');
   });
 
   it('returns empty string for unknown paths (plugin leaves HTML untouched)', () => {

@@ -109,7 +109,7 @@ export const PAGES: SiteEntry[] = [
     tagline: 'Small tools that run in your browser.',
     title: 'Chrae Lab — free tools that run in your browser',
     description:
-      'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list and more. No accounts, no tracking.',
+      'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list, TV buying guide and more. No accounts, no tracking.',
     verification: SEARCH_VERIFICATION,
     updated: '2026-08-21',
     jsonLd: [
@@ -119,7 +119,7 @@ export const PAGES: SiteEntry[] = [
         name: SITE_NAME,
         url: `${SITE_ORIGIN}/`,
         description:
-          'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list and more. No accounts, no tracking.',
+          'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list, TV buying guide and more. No accounts, no tracking.',
         inLanguage: 'en',
       },
       {
@@ -494,6 +494,147 @@ export const PAGES: SiteEntry[] = [
         },
       ],
     },
+  },
+  // ─── TV buying guide (one app + four content chapters under /tv-guide/) ──
+  // Dates: keep every `updated` here equal to GUIDE_REVIEWED in
+  // src/tools/tv-guide/data.ts (data.test.ts enforces the lockstep).
+  {
+    slug: 'tv-guide',
+    path: '/tv-guide/',
+    kind: 'app',
+    status: 'live',
+    category: 'utilities',
+    name: 'TV buying guide',
+    tagline: 'OLED vs QLED vs Mini-LED, and what every brand\'s name for them really means — updated for 2026.',
+    title: 'TV buying guide 2026 — OLED, QLED, Mini-LED & RGB explained',
+    description:
+      'Plain-English guide to 2026 TV technology: how OLED and LCD panels work, what Neo QLED, QNED, ULED, Micro RGB and other brand names actually mean, pros and cons, and which type suits your room. No models, no prices.',
+    updated: '2026-08-26',
+    about: {
+      applicationCategory: 'EducationalApplication',
+      intro:
+        'A buying guide for people who want to understand what they are paying for before they walk into a store. It explains the two families every modern TV belongs to (LCD with a backlight, and self-emitting OLED), every variation you will see in 2026, and decodes the marketing names each manufacturer uses for the same technology. It deliberately does not list models, specifications or prices.',
+      features: [
+        'Technology explainers with animated layer diagrams showing where the light comes from and how colour is made.',
+        'A brand-name decoder: type a name like Neo QLED, QNED, ULED, Bravia, Micro RGB or True RGB and see the real panel technology behind it.',
+        'Brand pages for Samsung, LG, Sony, TCL, Hisense, Panasonic, Roku, Amazon Fire TV and Vizio with links to their official sites.',
+        'Side-by-side comparison of any technologies on black level, brightness, colour, viewing angle, burn-in risk, blooming, motion and typical price tier.',
+        'A short "help me choose" that turns your room, what you watch and your budget into a recommended technology and the names to look for.',
+        'Dated: every page shows when it was last reviewed, and a changelog records what changed as new technology arrives.',
+      ],
+      faq: [
+        {
+          q: 'Is QLED a type of OLED?',
+          a: 'No. QLED is an LCD with a quantum-dot colour film in front of a backlight. OLED has no backlight — each pixel makes its own light and can switch fully off. The similar names are marketing; the technologies are unrelated.',
+        },
+        {
+          q: 'Are Neo QLED, QNED, ULED and Bravia different technologies?',
+          a: 'They are brand names, not technologies. Neo QLED is Samsung\'s name for mini-LED with quantum dots; QNED is LG\'s LCD range (only some models have mini-LED); ULED is Hisense\'s umbrella for its premium LCDs; Bravia is simply Sony\'s TV brand and covers LCD and OLED alike. The decoder page maps each name to what is inside.',
+        },
+        {
+          q: 'What are RGB Mini-LED, Micro RGB and True RGB?',
+          a: 'The same new idea under three names: a mini-LED LCD whose backlight uses separate red, green and blue LEDs instead of white or blue ones, so colour is made in the backlight with no conversion loss. Samsung says Micro RGB, Sony says True RGB, Hisense and TCL say RGB Mini-LED. None of them is Micro-LED.',
+        },
+        {
+          q: 'Which is better, OLED or Mini-LED?',
+          a: 'It depends on the room. OLED wins on black level, viewing angle and motion, so it is the pick for dim rooms and film nights. Mini-LED is far brighter with no burn-in risk, so it wins in sunlit rooms, for sport and for anything that leaves static content on screen for hours. The "help me choose" on the overview page walks through the trade-off.',
+        },
+        {
+          q: 'Does this guide recommend specific models or prices?',
+          a: 'No. It has no live product data, so it stays at the level of technologies and the series names brands use for them, and links you to each manufacturer\'s official site. Use it to decide what kind of TV you want, then compare current models in independent reviews.',
+        },
+        {
+          q: 'How current is the information?',
+          a: 'Every page shows the date it was last reviewed, and the changelog on the overview lists what changed. The guide is revised as new panel technologies reach the market.',
+        },
+      ],
+    },
+  },
+  {
+    slug: 'tv-guide/technologies',
+    path: '/tv-guide/technologies/',
+    kind: 'content',
+    status: 'live',
+    area: 'tv-guide',
+    name: 'TV technologies explained',
+    label: 'Technologies',
+    tagline: 'Edge-lit to Tandem OLED: how each panel makes light and colour, with pros, cons and animated diagrams.',
+    title: 'TV panel technologies explained — LCD, QLED, Mini-LED, RGB Mini-LED, OLED & QD-OLED (2026)',
+    description:
+      'How every 2026 TV panel works, layer by layer: edge-lit and direct-lit LED, QLED, Mini-LED, RGB Mini-LED, Micro RGB, SQD-MiniLED, W-OLED, QD-OLED and Tandem OLED — with animated diagrams, pros and cons, and what each is best for.',
+    ogType: 'article',
+    updated: '2026-08-26',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: 'TV panel technologies explained — LCD, QLED, Mini-LED, RGB Mini-LED, OLED & QD-OLED',
+        description:
+          'How every 2026 TV panel works, layer by layer, with animated diagrams, pros and cons, and what each is best for.',
+        url: `${SITE_ORIGIN}/tv-guide/technologies/`,
+        datePublished: '2026-08-26',
+        dateModified: '2026-08-26',
+        author: { '@type': 'Organization', name: SITE_NAME },
+        publisher: { '@type': 'Organization', name: SITE_NAME },
+      },
+    ],
+  },
+  {
+    slug: 'tv-guide/brands',
+    path: '/tv-guide/brands/',
+    kind: 'content',
+    status: 'live',
+    area: 'tv-guide',
+    name: 'TV brand names decoded',
+    label: 'Brand names',
+    tagline: 'What Samsung, LG, Sony, TCL, Hisense and the rest actually mean by Neo QLED, QNED, Bravia, ULED, Micro RGB and more.',
+    title: 'TV brand names decoded — Neo QLED, QNED, ULED, Bravia, Micro RGB & more by manufacturer (2026)',
+    description:
+      'Brand by brand, what each TV marketing name means: Samsung Crystal UHD / QLED / Neo QLED / Micro RGB, LG QNED / OLED evo / Primary RGB Tandem, Sony Bravia, TCL Q / QM / SQD, Hisense ULED, Panasonic, Roku, Amazon Fire TV and Vizio — mapped to the real panel technology.',
+    ogType: 'article',
+    updated: '2026-08-26',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: 'TV brand names decoded — what each manufacturer\'s marketing name really means',
+        description:
+          'Brand by brand, each TV marketing name mapped to the real panel technology behind it.',
+        url: `${SITE_ORIGIN}/tv-guide/brands/`,
+        datePublished: '2026-08-26',
+        dateModified: '2026-08-26',
+        author: { '@type': 'Organization', name: SITE_NAME },
+        publisher: { '@type': 'Organization', name: SITE_NAME },
+      },
+    ],
+  },
+  {
+    slug: 'tv-guide/decoder',
+    path: '/tv-guide/decoder/',
+    kind: 'content',
+    status: 'live',
+    area: 'tv-guide',
+    name: 'TV name decoder',
+    label: 'Decoder',
+    tagline: 'Type any brand name and see the real technology — or pick a technology and see every brand\'s name for it.',
+    title: 'TV name decoder — look up any brand name and find the real panel technology',
+    description:
+      'Two-way lookup between TV marketing names and panel technologies. Search Neo QLED, QNED, ULED, Bravia, True RGB or any other name to see what is inside, or pick a technology to see what every brand calls it.',
+    updated: '2026-08-26',
+  },
+  {
+    slug: 'tv-guide/compare',
+    path: '/tv-guide/compare/',
+    kind: 'content',
+    status: 'live',
+    area: 'tv-guide',
+    name: 'Compare TV technologies',
+    label: 'Compare',
+    tagline: 'Pick up to four technologies and compare blacks, brightness, colour, viewing angle, burn-in risk, blooming, motion and price tier.',
+    title: 'Compare TV technologies side by side — OLED vs QLED vs Mini-LED vs RGB Mini-LED',
+    description:
+      'Side-by-side comparison of TV panel technologies: OLED, QD-OLED, Tandem OLED, Mini-LED, RGB Mini-LED, QLED and LED — rated on black level, brightness, colour, viewing angle, burn-in risk, blooming, motion clarity and typical price tier.',
+    updated: '2026-08-26',
   },
 ];
 

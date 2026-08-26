@@ -69,4 +69,22 @@ describe('buildHeadTags', () => {
     expect(blocks[2].mainEntity.map((q: { name: string }) => q.name)).toEqual(entry.about!.faq.map(f => f.q));
     expect(blocks[2].mainEntity[0].acceptedAnswer.text).toBe(entry.about!.faq[0].a);
   });
+
+  it('TV guide: the parent app derives WebApplication + FAQPage; chapters carry a dated Article', () => {
+    const app = buildHeadTags(byPath('/tv-guide/')!);
+    expect(find(app, t => t.attrs?.type === 'application/ld+json').map(t => JSON.parse(t.children!)['@type'])).toEqual([
+      'BreadcrumbList',
+      'WebApplication',
+      'FAQPage',
+    ]);
+    const tech = byPath('/tv-guide/technologies/')!;
+    const blocks = find(buildHeadTags(tech), t => t.attrs?.type === 'application/ld+json').map(t => JSON.parse(t.children!));
+    expect(blocks.map(b => b['@type'])).toEqual(['BreadcrumbList', 'Article']);
+    expect(blocks[0].itemListElement.map((i: { name: string }) => i.name)).toEqual(['Chrae Lab', 'TV buying guide', 'TV technologies explained']);
+    expect(blocks[1].dateModified).toBe(tech.updated);
+    expect(blocks[1].url).toBe(`${SITE_ORIGIN}/tv-guide/technologies/`);
+    expect(find(buildHeadTags(tech), t => t.attrs?.property === 'og:type')[0].attrs?.content).toBe('article');
+    const decoder = find(buildHeadTags(byPath('/tv-guide/decoder/')!), t => t.attrs?.type === 'application/ld+json');
+    expect(decoder).toHaveLength(1);
+  });
 });

@@ -13,6 +13,7 @@ no accounts, no server, everything stored on your device. Live at
 | Utilities    | Currency converter, World clock                | coming soon         |
 | Games        | Sudoku (easy–expert, notes, hints, undo)       | `/sudoku/`          |
 | Games        | Bingo caller (75/90/30-ball, flashboard, history, auto-call, voice) | `/bingo/` |
+| Utilities    | TV buying guide (2026 panel technologies explained with animated diagrams, brand-name decoder, comparison, "help me choose") | `/tv-guide/` + `/technologies/`, `/brands/`, `/decoder/`, `/compare/` |
 
 Every page is its own static HTML entry (Vite multi-page); the hub landing
 page and the FIRE content guides are prerendered at build time, and each

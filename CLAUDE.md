@@ -2,7 +2,7 @@
 
 **Chrae Lab** (`https://chraegames.cloud`) — a hub of small browser-only tools. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`.
 
-The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
+The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
 
 User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree. Most of it is about the FIRE planner because that's where the complexity is.
 
@@ -15,6 +15,7 @@ index.html                # hub landing (prerendered <Landing/>; src/hub/main.ts
 fire-planner/index.html   # FIRE planner app entry (src/main.tsx)
 fire-planner/<slug>/index.html   # static FIRE content guides (CSS-only entry)
 <tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku, bingo (src/tools/<tool>/main.tsx)
+tv-guide/<chapter>/index.html    # TV guide chapters (src/tools/tv-guide/entries/<chapter>.tsx) — see "TV buying guide"
 scripts/
   head.ts                 # buildHeadTags(entry): title/canonical/OG/JSON-LD + THEME_BOOT_SCRIPT
   prerender.tsx           # renderRootForPath + buildSitemap (build-time, Node)
@@ -27,6 +28,8 @@ src/
     Landing.tsx           # pure landing page (categories → tool cards, Live / Coming soon)
     main.ts               # hub entry: styles + analytics + vanilla theme toggle (no React)
   tools/<tool>/           # main.tsx (entry) + App.tsx + pure logic .ts + tests
+  tools/tv-guide/         # multi-page guide: data.ts/logic.ts/pages.ts (pure) + components/ + pages/*View (pure) + Live.tsx + static.tsx/App.tsx/mount.tsx
+  site/Prose.tsx          # H2/H3/P/UL/LI/A prose primitives shared by every prerendered content tree (ContentLayout re-exports them)
   main.tsx                # FIRE planner entry: boots StrictMode + analytics, mounts <App />
   App.tsx                 # FIRE planner state owner; computes routing; passes handlers down
   engine/                 # pure FIRE simulation (no React, no DOM)
@@ -198,6 +201,19 @@ All three render only when `local && !isMobile`. Handlers are passed uncondition
 
 ---
 
+## TV buying guide — `src/tools/tv-guide/`
+
+The one multi-page tool. `/tv-guide/` is a `kind: 'app'` entry (category `utilities`, has `about`); `/tv-guide/{technologies,brands,decoder,compare}/` are `kind: 'content'` entries with `area: 'tv-guide'`. Unlike the FIRE guides these content pages **do load React** — each has `tv-guide/<chapter>/index.html` → `src/tools/tv-guide/entries/<chapter>.tsx` → `mountGuide('<chapter>')`.
+
+- **Pure View / hooked Live split.** `pages/*View.tsx` are hook-free and take their state as props; with no handlers they render *expanded* (every tab panel stacked, tab strip as `#anchor` links) — that is what `static.tsx` → `prerenderPages.tsx` renders at build time, so crawlers and no-JS visitors get every word. `pages/Live.tsx` wraps each view in `useState` (tab from `location.hash`, `hashchange` synced) and passes handlers; the client `createRoot().render()` replaces the static tree (never hydrates), so the static and live markup may differ.
+- **`GuideShell`** (pure) is the chrome for both trees — 3-level crumb via `breadcrumbs()`, section nav, `UpdatedBadge`, `ToolAbout` on the overview / related-tool links on chapters. It is *not* `ToolShell` (which is hook-bound and can't be prerendered). `components/ThemeToggle.client.tsx` is the only hooked component and is imported only by `App.tsx`.
+- **Content lives in `data.ts`** (technologies, layers, attributes/ratings, brands → marketing names → tech ids, `CHANGELOG`) and `logic.ts` (decoder, `compareRows`, `recommend`). Editorial rule enforced by `data.test.ts`: series names only — no models, sizes, prices or brightness figures.
+- **Dating.** `GUIDE_REVIEWED = CHANGELOG[0].date`. Every content revision = add a `CHANGELOG` entry **and** set `updated` (plus `Article.dateModified`) on all five manifest entries to the same date; `data.test.ts` fails if they drift.
+- **Diagrams** are inline SVG (`LayerStack`, `ZoneGrid`, `RgbBacklight`) animated purely by CSS classes in `components/styles.ts` (`tvg-*`, theme-scoped vars, `prefers-reduced-motion` guard), so they animate on the static page too; React only adds the tap-to-highlight.
+- Purity gotchas: nothing reachable from `static.tsx` may import `Button`, `useTheme`, `ToolShell` or `utils/analytics` (`import.meta.env` fails `tsc -b` under `tsconfig.node.json`). `.tsx` files export components only (`react-refresh/only-export-components` is an error) — constants go in `ui.ts` / `styles.ts` / `pages.ts`.
+
+---
+
 ## UI conventions
 
 - **Inline styles + CSS variables.** No CSS modules, no Tailwind, no styled-components. Style objects are passed to JSX `style={}` and reference tokens from `styles/tokens.css`. The tokens cover colors (light + dark), shadows, radii, and font families.
@@ -244,6 +260,8 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 | `tools/todo/*.test.ts` | Reducer actions + invariants (active list always valid), due-date labels, load/save validation |
 | `tools/sudoku/*.test.ts` | Solver/uniqueness counter against a known puzzle, seeded generator (deterministic, unique solution, clue targets), conflicts; reducer (input/notes/erase/undo/hint/win), save-file validation |
 | `tools/bingo/bingo.test.ts` | B-I-N-G-O column mapping per variant, `boardRows` coverage, rejection-sampling RNG (`uniformFrom` with a fake source + `secureRandomInt` range), reducer (draw never repeats, stops when exhausted, undo), save-file validation |
+| `tools/tv-guide/data.test.ts` | Content invariants: unique ids, every layer/tech reference resolves, every current tech has a brand name, ratings 1–5, official URLs are brand roots, **no prices / inch sizes / brightness figures anywhere**, changelog newest-first and `updated` dates of all five `/tv-guide` pages equal `GUIDE_REVIEWED` |
+| `tools/tv-guide/logic.test.ts` | Decoder (normalisation, exact > prefix > contains ranking, aliases), `compareRows` best-cell marking incl. lower-is-better, `recommend` over the full answer space (budget cap, static-content → LCD, dark/movies/premium → OLED), `ruleOfThumb` 3×5 |
 
 New engine/util/tool-logic modules should ship with a test file. Tools keep their logic in pure `.ts` modules so they're testable without a DOM.
 
@@ -260,7 +278,9 @@ FIRE:  drawer_opened, plan_created, profile_created, auto_balance_run,
 Tools: tool_opened {tool}, converter_used {category, from, to},
        calc_evaluated {ok}, todo_created, todo_list_created,
        sudoku_started {difficulty}, sudoku_won {difficulty, seconds, hints},
-       bingo_started {variant}, bingo_finished {variant}
+       bingo_started {variant}, bingo_finished {variant},
+       tool_opened {tool:'tv-guide', page}, tv_guide_chooser {room,use,budget},
+       tv_guide_tab {page, tab}, tv_guide_decode, tv_guide_compare {tech}
 Both:  theme_toggled {theme}
 ```
 

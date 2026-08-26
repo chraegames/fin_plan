@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- title / description / canonical / OG / JSON-LD are injected at build
+         time from src/site/manifest.ts — see scripts/head.ts. -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f5f5f7" />
+  </head>
+  <body>
+    <!-- #root is prefilled with a static fallback at build time; the guide replaces it on mount. -->
+    <div id="root"></div>
+    <script type="module" src="/src/tools/tv-guide/entries/overview.tsx"></script>
+  </body>
+</html>

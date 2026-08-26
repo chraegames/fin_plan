@@ -31,6 +31,13 @@ const badge = (tone: 'live' | 'soon'): CSSProperties => ({
   color: tone === 'live' ? 'var(--positive)' : 'var(--ink-muted)',
 });
 
+/** Live content pages grouped under their parent app, in manifest order. */
+function guideGroups(): { parent: SiteEntry; pages: SiteEntry[] }[] {
+  return liveTools()
+    .map(parent => ({ parent, pages: contentPages().filter(g => g.area === parent.slug) }))
+    .filter(g => g.pages.length > 0);
+}
+
 function ToolCard({ entry }: { entry: SiteEntry }) {
   const body = (
     <>
@@ -143,7 +150,7 @@ export function Landing() {
         </p>
         <p style={{ fontSize: 15, color: 'var(--ink-2)', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>
           {SITE_NAME} is a collection of free online tools: a retirement (FIRE) planner, a unit converter, a
-          scientific calculator, a to-do list, Sudoku puzzles and a bingo number caller. Each one runs entirely in your browser —
+          scientific calculator, a to-do list, Sudoku puzzles, a bingo number caller and a TV buying guide. Each one runs entirely in your browser —
           no sign-up, no ads, and nothing sent to a server.
         </p>
       </header>
@@ -181,7 +188,7 @@ export function Landing() {
         );
       })}
 
-      <section aria-labelledby="hub-guides" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <section aria-labelledby="hub-guides" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <h2
             id="hub-guides"
@@ -197,26 +204,35 @@ export function Landing() {
             Guides
           </h2>
           <p style={{ fontSize: 14.5, color: 'var(--ink-3)', margin: 0 }}>
-            Short reads on retirement planning, written to go with the FIRE Planner.
+            Short reads that go with the tools — no app needed.
           </p>
         </div>
-        <div className="hub-grid">
-          {contentPages().map(g => (
-            <a key={g.slug} href={g.path} className="hub-card" style={card}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 18,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--ink)',
-                }}
-              >
-                {g.name}
-              </span>
-              <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink-3)' }}>{g.tagline}</span>
-            </a>
-          ))}
-        </div>
+        {guideGroups().map(({ parent, pages }) => (
+          <div key={parent.slug} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <h3 style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14, color: 'var(--ink-2)', margin: 0 }}>
+              <a href={parent.path} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {parent.name}
+              </a>
+            </h3>
+            <div className="hub-grid">
+              {pages.map(g => (
+                <a key={g.slug} href={g.path} className="hub-card" style={card}>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 18,
+                      letterSpacing: '-0.02em',
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    {g.name}
+                  </span>
+                  <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink-3)' }}>{g.tagline}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       <footer
