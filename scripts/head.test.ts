@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { THEME_BOOT_SCRIPT, buildHeadTags } from './head';
+import { ANTI_FLASH_STYLE, THEME_BOOT_SCRIPT, buildHeadTags } from './head';
 import { HUB, SITE_ORIGIN, byPath } from '../src/site/manifest';
 import { THEME_KEY } from '../src/utils/persistence';
 
@@ -56,6 +56,10 @@ describe('buildHeadTags', () => {
     expect(tags[0].injectTo).toBe('head-prepend');
     expect(tags[0].children).toBe(THEME_BOOT_SCRIPT);
     expect(THEME_BOOT_SCRIPT).toContain(`'${THEME_KEY}'`);
+    // first-paint backgrounds must equal --bg in tokens.css (light / dark)
+    expect(ANTI_FLASH_STYLE).toContain('#FAF9F6');
+    expect(ANTI_FLASH_STYLE).toContain('#0F1113');
+    expect(tags.some(t => t.tag === 'style' && t.children === ANTI_FLASH_STYLE)).toBe(true);
   });
 
   it('tool pages derive WebApplication + FAQPage from their About copy', () => {

@@ -24,8 +24,9 @@ src/
     manifest.ts           # THE page manifest: SITE_ORIGIN, SITE_NAME, CATEGORIES, PAGES + helpers
     prerenderPages.tsx    # manifest path → pure component rendered into #root at build time
     ToolStatic.tsx        # no-JS fallback prerendered for tool pages
+    accent.ts             # accentFor(category): per-page --accent* overrides (category accents)
   hub/
-    Landing.tsx           # pure landing page (categories → live tool cards, grouped guides)
+    Landing.tsx           # pure landing page: mono nav, hero + CSS motif, per-category card grids w/ CSS-box icons, Guides band, footer
     main.ts               # hub entry: styles + analytics + vanilla theme toggle (no React)
   tools/<tool>/           # main.tsx (entry) + App.tsx + pure logic .ts + tests
   tools/tv-guide/         # multi-page guide: data.ts/logic.ts/pages.ts (pure) + components/ + pages/*View (pure) + Live.tsx + static.tsx/App.tsx/mount.tsx
@@ -45,16 +46,16 @@ src/
     layout/               # AppBar, ToolShell, ScenarioTabs, Page, NameForm, Logo, SectionHead
     primitives/           # Button, Icon, Input variants, Popover (used everywhere)
     storyline/            # FIRE screen-level components and modals
-      Intro / IntroContent / Welcome / PartialPlan / PlanForecast / HistoryPage
+      Intro / IntroContent (+ introStyles.ts) / Welcome / PartialPlan / PlanForecast / HistoryPage
       AboutModal / ExportModal / ImportModal / ConfirmDialog
       cards/ charts/ drawers/ sections/
   styles/
-    global.ts             # the one styles entry (fonts + tokens + base) every page imports
-    tokens.css            # design tokens via CSS custom properties (light + dark)
-    base.css              # element resets, fonts, theme-bound declarations
+    global.ts             # the one styles entry (self-hosted fonts + tokens + base) every page imports
+    tokens.css            # design tokens via CSS custom properties (light + dark) — "Night Console" palette (Design/v3)
+    base.css              # element resets, selection colour, theme-bound declarations
 ```
 
-Recharts is the only runtime UI dep (used by `storyline/charts/*`; Rollup keeps it out of the tool bundles). Three Fontsource families are bundled (space-grotesk display, dm-sans body, jetbrains-mono numerics). No CSS framework, no UI kit, no router. There is no React Router — pages are separate HTML entries, and inside the FIRE app routing is just `useState` enums in `App.tsx`.
+Recharts is the only runtime UI dep (used by `storyline/charts/*`; Rollup keeps it out of the tool bundles). Three Fontsource families are bundled and self-hosted — no Google Fonts request (the site promises nothing is sent to a server): Space Grotesk (`--font-display` + `--font-sans`), Newsreader with its true italic (`--font-serif`, page h1s and the accent clause only) and IBM Plex Mono 400/500 (`--font-mono`: eyebrows, section labels, breadcrumbs, captions, numerics). No CSS framework, no UI kit, no router. There is no React Router — pages are separate HTML entries, and inside the FIRE app routing is just `useState` enums in `App.tsx`.
 
 ---
 
@@ -72,6 +73,8 @@ Pure data, importable from Node (vite config) and the browser alike. `PAGES: Sit
 **Adding a tool:** add a `PAGES` entry (`status: 'soon'` until it works — a `soon` entry is invisible everywhere: no hub card, no Vite input, no sitemap; the hub deliberately shows no "coming soon" placeholders), create `<slug>/index.html` (copy `calculator/index.html`), `src/tools/<slug>/main.tsx` (`import '../../styles/global'; initAnalytics(); track('tool_opened', { tool }); createRoot(...)`), wrap the UI in `ToolShell`, declare any storage key in `persistence.ts`, write the `about` block (3+ features, 3+ FAQs, factual — `manifest.test.ts` enforces presence) and set `updated`, then flip to `live`. No change to `vite.config.ts`, the sitemap, or any `<head>` is needed.
 
 **Theme boot.** `THEME_BOOT_SCRIPT` (`scripts/head.ts`) runs before CSS on every page: stored `firePlannerTheme` wins, else `prefers-color-scheme`. `useTheme.readInitial()` applies the identical rule — keep the two in lockstep or pages flip theme on mount. The hub has no React; `src/hub/main.ts` toggles `data-theme` by hand and writes the same key.
+
+**First-paint colour.** `ANTI_FLASH_STYLE` (`scripts/head.ts`) paints `html` in the two `--bg` values before `tokens.css` loads; `head.test.ts` pins them. The `<meta name="theme-color">` pair (light/dark via `media`) is hand-written in every `*/index.html`, and `public/manifest.webmanifest` carries the light value — if `--bg` changes, update all three places.
 
 ---
 
@@ -206,7 +209,7 @@ All three render only when `local && !isMobile`. Handlers are passed uncondition
 The one multi-page tool. `/tv-guide/` is a `kind: 'app'` entry (category `utilities`, has `about`); `/tv-guide/{technologies,brands,decoder,compare}/` are `kind: 'content'` entries with `area: 'tv-guide'`. Unlike the FIRE guides these content pages **do load React** — each has `tv-guide/<chapter>/index.html` → `src/tools/tv-guide/entries/<chapter>.tsx` → `mountGuide('<chapter>')`.
 
 - **Pure View / hooked Live split.** `pages/*View.tsx` are hook-free and take their state as props; with no handlers they render *expanded* (every tab panel stacked, tab strip as `#anchor` links) — that is what `static.tsx` → `prerenderPages.tsx` renders at build time, so crawlers and no-JS visitors get every word. `pages/Live.tsx` wraps each view in `useState` (tab from `location.hash`, `hashchange` synced) and passes handlers; the client `createRoot().render()` replaces the static tree (never hydrates), so the static and live markup may differ.
-- **`GuideShell`** (pure) is the chrome for both trees — 3-level crumb via `breadcrumbs()`, section nav, `UpdatedBadge`, `ToolAbout` on the overview / related-tool links on chapters. It is *not* `ToolShell` (which is hook-bound and can't be prerendered). `components/ThemeToggle.client.tsx` is the only hooked component and is imported only by `App.tsx`.
+- **`GuideShell`** (pure) is the chrome for both trees — a breadcrumb row (3-level crumb via `breadcrumbs()` | `UpdatedBadge` pill + theme toggle) over an underline tab bar (`.tvg-nav`; keep the `<a href aria-current="page">` attribute order, `seo.test.ts` regexes it), `ToolAbout` on the overview / related-tool links on chapters. It is *not* `ToolShell` (which is hook-bound and can't be prerendered). `components/ThemeToggle.client.tsx` is the only hooked component and is imported only by `App.tsx`. The overview uses a local `GuideSection` (mono label + rule) instead of Prose `H2`; chapter pages still use `H2`.
 - **Content lives in `data.ts`** (technologies, layers, attributes/ratings, brands → marketing names → tech ids, `CHANGELOG`) and `logic.ts` (decoder, `compareRows`, `recommend`). Editorial rule enforced by `data.test.ts`: series names only — no models, sizes, prices or brightness figures.
 - **Dating.** `GUIDE_REVIEWED = CHANGELOG[0].date`. Every content revision = add a `CHANGELOG` entry **and** set `updated` (plus `Article.dateModified`) on all five manifest entries to the same date; `data.test.ts` fails if they drift.
 - **Diagrams** are inline SVG (`LayerStack`, `ZoneGrid`, `RgbBacklight`) animated purely by CSS classes in `components/styles.ts` (`tvg-*`, theme-scoped vars, `prefers-reduced-motion` guard), so they animate on the static page too; React only adds the tap-to-highlight.
@@ -216,7 +219,8 @@ The one multi-page tool. `/tv-guide/` is a `kind: 'app'` entry (category `utilit
 
 ## UI conventions
 
-- **Inline styles + CSS variables.** No CSS modules, no Tailwind, no styled-components. Style objects are passed to JSX `style={}` and reference tokens from `styles/tokens.css`. The tokens cover colors (light + dark), shadows, radii, and font families.
+- **Inline styles + CSS variables.** No CSS modules, no Tailwind, no styled-components. Style objects are passed to JSX `style={}` and reference tokens from `styles/tokens.css`. The tokens cover colors (light + dark), shadows, radii, and font families. Pages that need hover / responsive rules (hub, FIRE intro, TV guide) inject a namespaced `<style>` string (`hub-*`, `fire-intro-*`, `tvg-*`) from a `.ts` constant.
+- **Night Console look (Design/v3).** Neutral canvas, 1px borders, 5px radii, `--shadow-card: none` (only floating UI uses `--shadow-pop`), one 150ms `background`/`border-color` hover transition on cards. Four category accents (`--cat-finance/-utilities/-productivity/-games`); `--accent` is finance teal by default and every inner page re-points the `--accent*` family at its category through `accentFor(entry.category)` (`src/site/accent.ts`) on its root element. Text on a filled accent is `--accent-contrast`, never a hardcoded white. Recurring patterns: the *section header* (mono 12.5px uppercase label + rule, optional 8px accent dot), the mono 12px breadcrumb with an `--ink-slash` separator, serif h1 with one `<em>` clause in the accent, mono 11.5px footers. Index numbers / chapter labels use `--ink-index` (contrast-checked at 10–11px), not `--ink-muted`.
 - **Primitives over re-rolling.** `Button`, `Icon`, `Input` (and `MoneyInput` / `PercentInput` / `YearInput`), `Popover`, and `EditDrawer` are the building blocks. New screens should compose these rather than introducing parallel primitives.
 - **Numeric inputs use a focus-buffered pattern** (see comment block at the top of `Input.tsx`). While focused: show raw typed text, allow mid-edit invalid states. On blur: clamp + canonicalize. The pattern matters — if you bypass it (e.g., always-controlled value with `Math.max`), backspace stops working.
 - **Modals use the focus-trap hook.** `useFocusTrap(active, ref)` (`hooks/useFocusTrap.ts`) handles tab trapping, body scroll lock, and focus restoration on close. All five modal-likes use it: AboutModal, ExportModal, ImportModal, EditDrawer, ConfirmDialog.
@@ -323,5 +327,6 @@ If you change the Intro's copy, also update the FIRE entry's `description`/`json
 - **Changing what counts as "touched"**: `App.tsx` `screen` derivation and every handler that sets `touched: true` — search for `touched: true`.
 - **Adding a localStorage key**: declare it in `persistence.ts`, plumb load via a `loadX()` helper, write via `safeSetItem`, add tests.
 - **Adding a tool or page**: see the recipe under [Site manifest](#site-manifest--srcsitemanifestts). Tool code goes in `src/tools/<slug>/`, wrapped in `components/layout/ToolShell.tsx`.
-- **Refreshing brand copy**: hub copy is `src/hub/Landing.tsx` + the hub entry in `src/site/manifest.ts`. Tool About/FAQ copy is the `about` block on each manifest entry (bump `updated` too). FIRE copy is `IntroContent.tsx` (feeds both `Intro.tsx` and the prerendered FIRE home) + the `fire-planner` manifest entry (description + JSON-LD) + `AboutModal.tsx` + `README.md`. Content-guide copy lives in `src/pages/<slug>/Content.tsx` with meta in the manifest.
+- **Refreshing brand copy**: hub copy is `src/hub/Landing.tsx` + the hub entry in `src/site/manifest.ts` (the h1 wraps the closing clause "in your browser." in an `<em>`, so `seo.test.ts` compares the tagline against tag-stripped HTML). Tool About/FAQ copy is the `about` block on each manifest entry (bump `updated` too). FIRE copy is `IntroContent.tsx` (feeds both `Intro.tsx` and the prerendered FIRE home; the static tree also carries its own breadcrumb + "Runs on this device" pill because it has no AppBar) + the `fire-planner` manifest entry (description + JSON-LD) + `AboutModal.tsx` + `README.md`. Content-guide copy lives in `src/pages/<slug>/Content.tsx` with meta in the manifest.
+- **Retuning the palette / fonts**: `styles/tokens.css` (values only — keep the token names, ~40 files consume them), then `ANTI_FLASH_STYLE` + the 16 `theme-color` metas + the webmanifest (see Theme boot). Design handoffs live in the untracked `Design/` folder (v3 = current look).
 - **Changing the domain**: `SITE_ORIGIN` in the manifest, `public/robots.txt`, and the Traefik labels in `DEPLOY.md` — nothing else hardcodes it (tests assert the old `fireplan.` host never appears in the sitemap).
