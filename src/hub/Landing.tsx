@@ -1,38 +1,170 @@
 // The Chrae Lab landing page. PURE: no hooks, no browser APIs — it is rendered
 // to a static string at build time and shipped without React. The only
 // behaviour on the page (theme toggle) is wired up by src/hub/main.ts.
+//
+// Layout follows the Design/v3 "Night Console" handoff: header with a mono
+// category nav, two-column hero with a CSS motif, one section per category
+// (fixed column counts so no row ends on an empty cell), a sunken Guides band
+// and a two-column footer. Styling is a `hub-*` class block + inline tokens;
+// every card, chip and row is a plain <a>.
 
 import type { CSSProperties } from 'react';
 import { CATEGORIES, HUB, SITE_NAME, contentPages, liveTools, toolsIn, type SiteEntry } from '../site/manifest';
+import { categoryVar } from '../site/accent';
 
-const card: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  padding: '18px 20px 20px',
-  borderRadius: 'var(--radius-xl)',
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  boxShadow: 'var(--shadow-card)',
-  color: 'inherit',
-  textDecoration: 'none',
-  minHeight: 120,
-};
+const HUB_STYLES = `
+.hub{max-width:1240px;margin:0 auto;padding:0 var(--page-pad-x)}
+.hub a:not(.hub-card):hover{color:var(--accent)}
+.hub-top{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 0;border-bottom:1px solid var(--border)}
+.hub-nav{display:flex;flex-wrap:wrap;align-items:center;gap:22px;margin-left:auto;margin-right:22px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-3)}
+.hub-nav a{color:var(--ink-3)}
+.hub-hero{padding:72px 0 56px;display:grid;grid-template-columns:1.45fr 1fr;gap:56px;align-items:start;background-image:radial-gradient(circle at 82% 12%,var(--accent-tint) 0,transparent 46%)}
+.hub-h1{font-family:var(--font-serif);font-size:clamp(46px,5.8vw,92px);line-height:0.98;letter-spacing:-0.03em;font-weight:400;margin:0 0 22px;color:var(--ink);text-wrap:pretty}
+.hub-h1 em{font-style:italic;color:var(--accent)}
+.hub-motif{height:168px;border-radius:var(--radius-md);border:1px solid var(--border-strong);background-color:var(--surface);background-image:radial-gradient(circle at 1px 1px,var(--border-strong) 1px,transparent 0);background-size:14px 14px;position:relative;overflow:hidden}
+:root[data-theme=dark] .hub-motif{background-color:#0B0C0E}
+.hub-motif-b{mix-blend-mode:multiply}
+:root[data-theme=dark] .hub-motif-b{mix-blend-mode:screen}
+.hub-section{padding:0 0 36px}
+.hub-section:last-of-type{padding-bottom:48px}
+.hub-sec-head{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.hub-sec-head h2{font-family:var(--font-mono);font-size:12.5px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;margin:0;color:var(--hub-accent,var(--ink-3))}
+.hub-sec-head p{margin:0;font-size:15px;color:var(--ink-3)}
+.hub-dot{width:8px;height:8px;border-radius:50%;background:var(--hub-accent);flex:0 0 auto;align-self:center}
+.hub-grid{display:grid;gap:14px}
+.hub-grid-1{grid-template-columns:1fr}
+.hub-grid-2{grid-template-columns:repeat(2,1fr)}
+.hub-grid-3{grid-template-columns:repeat(3,1fr)}
+.hub-card{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:22px;min-height:196px;display:flex;flex-direction:column;gap:16px;color:inherit;text-decoration:none;transition:background 150ms ease,border-color 150ms ease}
+.hub-card:hover{background:var(--surface-2);border-color:var(--hub-accent)}
+.hub-card-row{padding:24px 26px;flex-direction:row;align-items:center;gap:26px;min-height:0}
+.hub-card-row .hub-card-meta{order:2;margin-left:auto;align-items:center}
+.hub-card-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.hub-tile{width:40px;height:40px;border-radius:var(--radius-md);background:color-mix(in srgb,var(--hub-accent) 12%,transparent);color:var(--hub-accent);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.hub-idx{font-family:var(--font-mono);font-size:11px;color:var(--ink-index)}
+.hub-card h3{font-size:21px;line-height:1.15;letter-spacing:-0.02em;font-weight:500;margin:0 0 8px;color:var(--ink)}
+.hub-card p{margin:0;font-size:14.5px;line-height:1.5;color:var(--ink-3)}
+.hub-guides{background:var(--bg-soft);border-top:1px solid var(--border);padding:48px var(--page-pad-x);margin:0 calc(-1 * var(--page-pad-x))}
+.hub-guides .hub-sec-head{margin-bottom:30px}
+.hub-guide-cols{display:grid;grid-template-columns:repeat(2,1fr);gap:44px}
+.hub-guide-cols h3{font-family:var(--font-serif);font-size:22px;font-weight:400;margin:0 0 12px;color:var(--ink)}
+.hub-guide-list{display:flex;flex-direction:column}
+.hub-guide-row{display:flex;gap:18px;align-items:baseline;padding:13px 0;border-top:1px solid var(--border);color:inherit}
+.hub-guide-row:last-child{border-bottom:1px solid var(--border)}
+.hub-guide-row b{font-size:16px;font-weight:500;color:var(--ink)}
+.hub-guide-row span{font-size:14px;color:var(--ink-3);line-height:1.45}
+.hub-guide-cols-2col .hub-guide-row b{min-width:12ch}
+.hub-guide-stack .hub-guide-row{flex-direction:column;gap:4px}
+.hub-foot{padding:40px 0 48px;display:grid;grid-template-columns:1fr 1.1fr;gap:44px;align-items:start;border-top:1px solid var(--border)}
+.hub-foot ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px 24px}
+.hub-foot li a{font-size:15px;color:var(--ink-2)}
+.hub-legal{margin:0;font-family:var(--font-mono);font-size:11.5px;line-height:1.9;color:var(--ink-3)}
+.hub-sun,.hub-moon{display:block}
+:root[data-theme=dark] .hub-sun{display:none}
+:root:not([data-theme=dark]) .hub-moon{display:none}
+@media (max-width:1100px){
+  .hub-hero{grid-template-columns:1fr;gap:40px;padding:56px 0 44px}
+  .hub-grid-3{grid-template-columns:repeat(2,1fr)}
+  .hub-guide-cols,.hub-foot{grid-template-columns:1fr}
+}
+@media (max-width:720px){
+  .hub-top{flex-wrap:wrap;gap:14px;padding:18px 0}
+  .hub-nav{order:3;flex-basis:100%;gap:12px 16px;margin:0}
+  .hub-sec-head{flex-wrap:wrap;gap:8px 12px}
+  .hub-sec-head p{flex-basis:100%}
+  .hub-hero{padding:40px 0 36px}
+  .hub-grid-2,.hub-grid-3{grid-template-columns:1fr}
+  .hub-card-row{flex-direction:column;align-items:stretch;padding:22px;gap:16px}
+  .hub-card-row .hub-card-meta{order:0;margin-left:0;align-items:flex-start}
+  .hub-guides{padding:36px var(--page-pad-x)}
+  .hub-foot ul{grid-template-columns:repeat(2,1fr)}
+}
+`;
 
-function ToolCard({ entry }: { entry: SiteEntry }) {
+/** CSS-box glyph per tool (no SVG, no icon font), in the current accent. */
+function HubIcon({ slug }: { slug: string }) {
+  const bar = (h: string, extra?: CSSProperties): CSSProperties => ({ width: 5, height: h, background: 'currentColor', borderRadius: 1, display: 'block', ...extra });
+  switch (slug) {
+    case 'fire-planner':
+      return (
+        <span className="hub-tile" style={{ alignItems: 'flex-end', gap: 3, padding: 10 }}>
+          <span style={bar('38%')} />
+          <span style={bar('62%')} />
+          <span style={bar('92%')} />
+        </span>
+      );
+    case 'unit-converter':
+      return (
+        <span className="hub-tile">
+          <span style={{ width: 15, height: 15, borderRadius: 3, background: 'currentColor', display: 'block', position: 'relative', left: 4 }} />
+          <span style={{ width: 15, height: 15, borderRadius: '50%', boxShadow: 'inset 0 0 0 1.5px currentColor', display: 'block', position: 'relative', right: 4 }} />
+        </span>
+      );
+    case 'calculator':
+      return (
+        <span className="hub-tile" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 7px)', gridAutoRows: 7, gap: 5, alignContent: 'center', justifyContent: 'center' }}>
+          {[1, 0.45, 0.45, 1].map((o, i) => (
+            <span key={i} style={{ width: 7, height: 7, background: 'currentColor', borderRadius: 1.5, display: 'block', opacity: o }} />
+          ))}
+        </span>
+      );
+    case 'tv-guide':
+      return (
+        <span className="hub-tile" style={{ flexDirection: 'column', gap: 4 }}>
+          <span style={{ width: 23, height: 14, borderRadius: 2.5, background: 'currentColor', display: 'block' }} />
+          <span style={{ width: 11, height: 2, background: 'currentColor', opacity: 0.5, display: 'block' }} />
+        </span>
+      );
+    case 'todo':
+      return (
+        <span className="hub-tile" style={{ flexDirection: 'column', gap: 5 }}>
+          {[1, 0.55, 0.28].map((o, i) => (
+            <span key={i} style={{ width: 19, height: 5, borderRadius: 2, background: 'currentColor', opacity: o, display: 'block' }} />
+          ))}
+        </span>
+      );
+    case 'sudoku':
+      return (
+        <span className="hub-tile" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 6px)', gridAutoRows: 6, gap: 3, alignContent: 'center', justifyContent: 'center' }}>
+          {[1, 0.3, 0.3, 0.3, 1, 0.3, 0.3, 0.3, 1].map((o, i) => (
+            <span key={i} style={{ width: 6, height: 6, background: 'currentColor', borderRadius: 1, display: 'block', opacity: o }} />
+          ))}
+        </span>
+      );
+    case 'bingo':
+      return (
+        <span className="hub-tile">
+          <span
+            style={{
+              width: 23,
+              height: 23,
+              borderRadius: '50%',
+              background: 'currentColor',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--bg)' }}>42</span>
+          </span>
+        </span>
+      );
+    default:
+      return <span className="hub-tile" />;
+  }
+}
+
+function ToolCard({ entry, index, row }: { entry: SiteEntry; index: number; row: boolean }) {
   return (
-    <a href={entry.path} className="hub-card" style={card}>
-      <span
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 20,
-          letterSpacing: '-0.02em',
-          color: 'var(--ink)',
-        }}
-      >
-        {entry.name}
-      </span>
-      <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink-3)' }}>{entry.tagline}</span>
+    <a href={entry.path} className={row ? 'hub-card hub-card-row' : 'hub-card'}>
+      <div className="hub-card-meta">
+        <HubIcon slug={entry.slug} />
+        <span className="hub-idx">{String(index).padStart(2, '0')}</span>
+      </div>
+      <div>
+        <h3>{entry.name}</h3>
+        <p>{entry.tagline}</p>
+      </div>
     </a>
   );
 }
@@ -44,211 +176,172 @@ function guideGroups(): { parent: SiteEntry; pages: SiteEntry[] }[] {
     .filter(g => g.pages.length > 0);
 }
 
-export function Landing() {
+/** Split the tagline so its closing clause can be set in italic accent. */
+function Headline({ text }: { text: string }) {
+  const clause = 'in your browser.';
+  if (!text.endsWith(clause)) return <>{text}</>;
   return (
-    <div
-      style={{
-        maxWidth: 1040,
-        margin: '0 auto',
-        padding: 'var(--page-pad-top) var(--page-pad-x) var(--page-pad-bot)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 44,
-      }}
-    >
-      <style>{`
-        .hub-card{transition:transform .15s ease,box-shadow .15s ease}
-        .hub-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-pop)}
-        .hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
-        .hub-sun,.hub-moon{display:block}
-        :root[data-theme=dark] .hub-sun{display:none}
-        :root:not([data-theme=dark]) .hub-moon{display:none}
-      `}</style>
+    <>
+      {text.slice(0, -clause.length)}
+      <em>{clause}</em>
+    </>
+  );
+}
 
-      <header style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingTop: 'clamp(16px, 5vw, 48px)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span
-            style={{
-              fontSize: 11,
-              color: 'var(--accent-ink)',
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-            }}
-          >
-            {SITE_NAME}
-          </span>
-          <button
+export function Landing() {
+  const categories = CATEGORIES.filter(cat => toolsIn(cat.id).length > 0);
+  // Cards are numbered 01..N in display order (category order, then manifest order).
+  const indexOf = new Map(categories.flatMap(cat => toolsIn(cat.id)).map((t, i) => [t.slug, i + 1]));
+  return (
+    <div className="hub">
+      <style>{HUB_STYLES}</style>
+
+      <header className="hub-top">
+        <a href={HUB.path} style={{ display: 'flex', alignItems: 'center', gap: 11, color: 'inherit' }}>
+          <span style={{ width: 22, height: 22, borderRadius: 3, background: 'var(--accent)', display: 'block' }} aria-hidden="true" />
+          <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--ink)' }}>{SITE_NAME}</span>
+        </a>
+        <nav className="hub-nav" aria-label="Sections">
+            {categories.map(cat => (
+              <a key={cat.id} href={`#${cat.id}`}>
+                {cat.name}
+              </a>
+            ))}
+            <a href="#guides">Guides</a>
+        </nav>
+        <button
             type="button"
             data-theme-toggle
             aria-label="Toggle dark mode"
             title="Toggle dark mode"
             style={{
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
+              border: '1px solid var(--border-strong)',
               background: 'var(--surface)',
               color: 'var(--ink-2)',
               cursor: 'pointer',
             }}
           >
-            <svg className="hub-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg className="hub-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="4" />
               <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
             </svg>
-            <svg className="hub-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg className="hub-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
             </svg>
           </button>
-        </div>
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 400,
-            fontSize: 'clamp(34px, 7vw, 60px)',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.05,
-            color: 'var(--ink)',
-            margin: 0,
-            maxWidth: 720,
-          }}
-        >
-          {HUB.tagline}
-        </h1>
-        <p style={{ fontSize: 'clamp(15px, 2.4vw, 18px)', color: 'var(--ink-3)', lineHeight: 1.55, margin: 0, maxWidth: 560 }}>
-          Free, private, no accounts — everything stays on your device.
-        </p>
-        <p style={{ fontSize: 15, color: 'var(--ink-2)', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>
-          {SITE_NAME} is a collection of free online tools: a retirement (FIRE) planner, a unit converter, a
-          scientific calculator, a to-do list, Sudoku puzzles, a bingo number caller and a TV buying guide. Each one runs entirely in your browser —
-          no sign-up, no ads, and nothing sent to a server.
-        </p>
       </header>
 
-      {CATEGORIES.filter(cat => toolsIn(cat.id).length > 0).map(cat => {
+      <section className="hub-hero">
+        <div>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11.5,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: 'var(--accent)',
+              marginBottom: 26,
+            }}
+          >
+            Free · Private · No accounts
+          </div>
+          <h1 className="hub-h1">
+            <Headline text={HUB.tagline} />
+          </h1>
+          <p style={{ fontSize: 20, lineHeight: 1.45, color: 'var(--ink-2)', margin: 0, maxWidth: '34ch' }}>
+            Free, private, no accounts — everything stays on your device.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="hub-motif" aria-hidden="true">
+            <span style={{ position: 'absolute', left: 34, top: 34, width: 72, height: 72, borderRadius: '50%', background: categoryVar('finance'), display: 'block' }} />
+            <span className="hub-motif-b" style={{ position: 'absolute', left: 78, top: 58, width: 72, height: 72, borderRadius: '50%', background: categoryVar('utilities'), display: 'block' }} />
+            <span style={{ position: 'absolute', right: 26, bottom: 26, width: 52, height: 52, borderRadius: 3, boxShadow: `inset 0 0 0 1px ${categoryVar('games')}`, display: 'block' }} />
+          </div>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, lineHeight: 1.75, color: 'var(--ink-3)', margin: 0 }}>
+            {SITE_NAME} is a collection of free online tools: a retirement (FIRE) planner, a unit converter, a
+            scientific calculator, a to-do list, Sudoku puzzles, a bingo number caller and a TV buying guide. Each one runs entirely in your browser —
+            no sign-up, no ads, and nothing sent to a server.
+          </p>
+        </div>
+      </section>
+
+      {categories.map(cat => {
         const tools = toolsIn(cat.id);
+        const cols = tools.length === 1 ? 1 : tools.length === 2 ? 2 : 3;
+        const accent = { '--hub-accent': categoryVar(cat.id) } as CSSProperties;
         return (
-          <section key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 400,
-                  fontSize: 'clamp(22px, 4vw, 28px)',
-                  letterSpacing: '-0.02em',
-                  color: 'var(--ink)',
-                  margin: 0,
-                }}
-              >
-                {cat.name}
-              </h2>
-              <p style={{ fontSize: 14.5, color: 'var(--ink-3)', margin: 0 }}>{cat.blurb}</p>
+          <section key={cat.id} id={cat.id} className="hub-section" style={accent}>
+            <div className="hub-sec-head">
+              <span className="hub-dot" aria-hidden="true" />
+              <h2>{cat.name}</h2>
+              <p>{cat.blurb}</p>
             </div>
-            <div className="hub-grid">
+            <div className={`hub-grid hub-grid-${cols}`}>
               {tools.map(t => (
-                <ToolCard key={t.slug} entry={t} />
+                <ToolCard key={t.slug} entry={t} index={indexOf.get(t.slug) ?? 0} row={tools.length === 1} />
               ))}
             </div>
           </section>
         );
       })}
 
-      <section aria-labelledby="hub-guides" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <h2
-            id="hub-guides"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 400,
-              fontSize: 'clamp(22px, 4vw, 28px)',
-              letterSpacing: '-0.02em',
-              color: 'var(--ink)',
-              margin: 0,
-            }}
-          >
-            Guides
-          </h2>
-          <p style={{ fontSize: 14.5, color: 'var(--ink-3)', margin: 0 }}>
-            Short reads that go with the tools — no app needed.
-          </p>
+      <section id="guides" className="hub-guides" aria-labelledby="hub-guides">
+        <div className="hub-sec-head">
+          <h2 id="hub-guides">Guides</h2>
+          <p>Short reads that go with the tools — no app needed.</p>
         </div>
-        {guideGroups().map(({ parent, pages }) => (
-          <div key={parent.slug} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <h3 style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14, color: 'var(--ink-2)', margin: 0 }}>
-              <a href={parent.path} style={{ color: 'inherit', textDecoration: 'none' }}>
-                {parent.name}
-              </a>
-            </h3>
-            <div className="hub-grid">
-              {pages.map(g => (
-                <a key={g.slug} href={g.path} className="hub-card" style={card}>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 18,
-                      letterSpacing: '-0.02em',
-                      color: 'var(--ink)',
-                    }}
-                  >
-                    {g.name}
-                  </span>
-                  <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink-3)' }}>{g.tagline}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
+        <div className="hub-guide-cols">
+          {guideGroups().map(({ parent, pages }) => {
+            const stacked = pages.some(g => g.tagline.length > 40);
+            return (
+              <div key={parent.slug} className={stacked ? 'hub-guide-stack' : 'hub-guide-cols-2col'}>
+                <h3>
+                  <a href={parent.path} style={{ color: 'inherit' }}>
+                    {parent.name}
+                  </a>
+                </h3>
+                <div className="hub-guide-list">
+                  {pages.map(g => (
+                    <a key={g.slug} href={g.path} className="hub-guide-row">
+                      <b>{g.name}</b>
+                      <span>{g.tagline}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
-      <footer
-        style={{
-          borderTop: '1px solid var(--border-soft)',
-          paddingTop: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-        }}
-      >
+      <footer className="hub-foot">
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
+            <span style={{ width: 18, height: 18, borderRadius: 3, background: 'var(--accent)', display: 'block' }} aria-hidden="true" />
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{SITE_NAME}</span>
+          </div>
+          <p className="hub-legal">
+            Educational tools — not financial advice.
+            <br />
+            Analytics are cookie-less and self-hosted.
+          </p>
+        </div>
         <nav aria-label="All tools">
-          <ul
-            style={{
-              listStyle: 'none',
-              margin: 0,
-              padding: 0,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px 18px',
-              fontSize: 13,
-            }}
-          >
+          <ul>
             {liveTools().map(t => (
               <li key={t.slug}>
-                <a href={t.path} style={{ color: 'var(--ink-2)' }}>
-                  {t.name}
-                </a>
+                <a href={t.path}>{t.name}</a>
               </li>
             ))}
           </ul>
         </nav>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '6px 18px',
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontSize: 13,
-            color: 'var(--ink-muted)',
-          }}
-        >
-        <span>{SITE_NAME}</span>
-        <span>Educational tools — not financial advice.</span>
-        <span>Analytics are cookie-less and self-hosted.</span>
-        </div>
       </footer>
     </div>
   );

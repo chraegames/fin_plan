@@ -16,8 +16,15 @@ describe('normalizePath', () => {
 describe('renderRootForPath', () => {
   it('prerenders the hub landing with every category and tool name', () => {
     const html = renderRootForPath('/index.html');
-    expect(html).toContain(HUB.tagline);
+    // the closing clause of the tagline is wrapped in <em>, so compare text-only
+    expect(html.replace(/<[^>]+>/g, '')).toContain(HUB.tagline);
     for (const c of CATEGORIES) expect(html).toContain(c.name);
+    // header nav anchors to every populated category section + the guides band
+    for (const c of CATEGORIES) expect(html).toContain(`href="#${c.id}"`);
+    expect(html).toContain('href="#guides"');
+    expect(html).toContain('id="guides"');
+    // every live tool card carries a two-digit index, 01..N
+    for (let i = 1; i <= liveTools().length; i++) expect(html).toContain(`>${String(i).padStart(2, '0')}<`);
     // every live tool is a link; nothing unlinked / "coming soon" is shown
     for (const p of liveTools()) expect(html).toContain(`href="${p.path}"`);
     expect(html).toContain(`href="${FIRE_HOME_PATH}"`);
