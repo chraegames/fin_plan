@@ -1,4 +1,4 @@
-/* Element resets and shared utility classes for the Storyline UI.
+/* Element resets and shared utility classes for every Chrae Lab page.
    tokens.css must be imported before this file. */
 
 *,
@@ -97,6 +97,10 @@ input, select, textarea {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::selection {
+  background: var(--selection);
 }
 
 svg {

@@ -4,6 +4,7 @@
 
 import { SITE_NAME, type SiteEntry } from './manifest';
 import { ToolAbout } from './ToolAbout';
+import { accentFor } from './accent';
 
 export function ToolStatic({ entry }: { entry: SiteEntry }) {
   return (
@@ -15,6 +16,7 @@ export function ToolStatic({ entry }: { entry: SiteEntry }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 16,
+        ...accentFor(entry.category),
       }}
     >
       <a

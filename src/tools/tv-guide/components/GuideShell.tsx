@@ -10,6 +10,7 @@ import { GUIDE_STYLES } from './styles';
 import { crumb } from './ui';
 import { UpdatedBadge } from './UpdatedBadge';
 import { linkStyle } from '../../../site/proseStyles';
+import { accentFor } from '../../../site/accent';
 
 interface GuideShellProps {
   page: GuidePageId;
@@ -24,7 +25,7 @@ export function GuideShell({ page, entry, children, themeToggle, local = false }
   const trail = breadcrumbs(entry);
   const related = relatedTools(GUIDE_ENTRY);
   return (
-    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', ...accentFor(GUIDE_ENTRY.category) }}>
       <style>{GUIDE_STYLES}</style>
       <header
         style={{

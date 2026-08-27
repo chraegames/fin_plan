@@ -92,11 +92,9 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
             fontWeight: 500,
             borderRadius: 'var(--radius-md)',
             background: 'var(--accent)',
-            color: 'oklch(0.995 0.005 80)',
-            border: '1px solid var(--accent-2)',
+            color: 'var(--accent-contrast)',
+            border: '1px solid var(--accent)',
             textDecoration: 'none',
-            boxShadow:
-              '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.20 0.04 260 / 0.18)',
           }}
         >
           Open the planner →

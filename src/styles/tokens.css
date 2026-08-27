@@ -1,46 +1,61 @@
 /* ─────────────────────────────────────────────────────────────────────
- * FIRE Planner — Design tokens (Modernist v2)
+ * Chrae Lab — Design tokens ("Night Console", Design/v3)
  *
- * Drop this file into your global stylesheet, then reference the
- * variables anywhere with var(--token-name). Both light and dark
- * variants are defined — flip <html data-theme="dark"> to switch.
+ * Reference the variables anywhere with var(--token-name). Both light and
+ * dark variants are defined — flip <html data-theme="dark"> to switch.
  *
- * The design uses oklch() throughout. All modern browsers support it
- * (Chrome 111+, Safari 15.4+, Firefox 113+). For older targets, run
- * through a postcss plugin like postcss-oklab-function.
+ * Neutral canvas, one accent per category (finance teal is the brand
+ * accent), 1px borders, small radii, no card shadows. Category accents are
+ * applied per page via accentFor() in src/site/accent.ts, which overrides the
+ * --accent* family on the page root.
+ *
+ * Changing --bg? Also update ANTI_FLASH_STYLE (scripts/head.ts), the
+ * <meta name="theme-color"> in every index.html and public/manifest.webmanifest.
  * ─────────────────────────────────────────────────────────────────── */
 
-/* Light is default. Apply `data-theme="dark"` to <html> for dark mode. */
+/* Light is the CSS default. Apply `data-theme="dark"` to <html> for dark mode. */
 
 :root,
 :root[data-theme="light"] {
-  /* Fonts */
+  /* Fonts — all self-hosted via @fontsource (see styles/global.ts) */
   --font-display:  'Space Grotesk Variable', 'Space Grotesk', system-ui, sans-serif;
-  --font-sans:     'DM Sans Variable', 'DM Sans', system-ui, -apple-system, sans-serif;
-  --font-mono:     'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-sans:     'Space Grotesk Variable', 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-serif:    'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono:     'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Surfaces — cool near-white */
-  --bg:             oklch(0.985 0.004 250);     /* page background */
-  --bg-soft:        oklch(0.97 0.005 250);
-  --surface:        oklch(1 0 0);                /* cards */
-  --surface-2:      oklch(0.975 0.004 250);
-  --surface-3:      oklch(0.94 0.007 250);
-  --border:         oklch(0.91 0.008 250);
-  --border-soft:    oklch(0.94 0.006 250);
-  --border-strong:  oklch(0.78 0.012 250);
+  /* Category accents */
+  --cat-finance:      #0E8577;
+  --cat-utilities:    #4457C9;
+  --cat-productivity: #5E7A22;
+  --cat-games:        #B4501F;
 
-  /* Ink (text) — cool near-black */
-  --ink:            oklch(0.18 0.012 260);
-  --ink-2:          oklch(0.34 0.014 258);
-  --ink-3:          oklch(0.50 0.014 255);
-  --ink-muted:      oklch(0.62 0.012 252);
+  /* Surfaces — warm off-white */
+  --bg:             #FAF9F6;                     /* page background */
+  --bg-soft:        #F2F0EA;                     /* sunken bands (hub Guides) */
+  --surface:        #FFFFFF;                     /* cards, panels */
+  --surface-2:      #F3F1EB;                     /* card hover, secondary fills */
+  --surface-3:      #ECEAE4;
+  --border:         rgba(20, 22, 24, 0.13);      /* page rules, section rules */
+  --border-soft:    rgba(20, 22, 24, 0.09);
+  --border-strong:  rgba(20, 22, 24, 0.15);      /* card borders, panel dividers */
 
-  /* Brand accent — deep indigo */
-  --accent:         oklch(0.48 0.18 280);
-  --accent-2:       oklch(0.42 0.20 280);
-  --accent-soft:    oklch(0.93 0.06 280);
-  --accent-tint:    oklch(0.965 0.025 280);
-  --accent-ink:     oklch(0.40 0.18 280);
+  /* Ink (text) */
+  --ink:            #14171A;                     /* headings, primary text */
+  --ink-2:          #4B5154;                     /* body, lead text */
+  --ink-3:          #63686B;                     /* descriptions, nav, footer */
+  --ink-muted:      #6A6F72;                     /* monospace captions */
+  --ink-index:      #74797C;                     /* index numbers, chapter labels (contrast-checked at 10–11px) */
+  --ink-slash:      #A9AEB1;                     /* breadcrumb separator */
+
+  /* Brand accent — finance teal (pages override via accentFor()) */
+  --accent:         var(--cat-finance);
+  --accent-2:       #0B6E62;
+  --accent-ink:     var(--cat-finance);
+  --accent-soft:    color-mix(in srgb, var(--accent) 24%, transparent);
+  --accent-tint:    color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-contrast: #FFFFFF;                    /* label on a filled accent */
+
+  --selection:      #BFE4DD;
 
   /* Semantic colors */
   --positive:       oklch(0.55 0.13 155);        /* emerald */
@@ -55,45 +70,54 @@
   --info-soft:      oklch(0.93 0.05 245);
 
   /* Chart series */
-  --chart-bg:        oklch(1 0 0);
-  --chart-cash:      oklch(0.72 0.10 75);        /* warm wheat (unchanged for contrast) */
+  --chart-bg:        #FFFFFF;
+  --chart-cash:      oklch(0.72 0.10 75);        /* warm wheat */
   --chart-brokerage: oklch(0.55 0.18 280);       /* deep indigo */
   --chart-ira:       oklch(0.62 0.14 155);       /* emerald */
   --chart-roth:      oklch(0.62 0.14 220);       /* sky blue */
-  --chart-line:      oklch(0.18 0.012 260);
-  --chart-line-fill: oklch(0.48 0.18 280 / 0.08);
-  --chart-grid:      oklch(0.93 0.008 250);
-  --chart-label:     oklch(0.50 0.014 255);
-  --chart-marker:    oklch(0.36 0.014 258);
-  --chart-marker-bg: oklch(1 0 0);
+  --chart-line:      #14171A;
+  --chart-line-fill: rgba(14, 133, 119, 0.10);
+  --chart-grid:      rgba(20, 22, 24, 0.09);
+  --chart-label:     #63686B;
+  --chart-marker:    #4B5154;
+  --chart-marker-bg: #FFFFFF;
 
-  /* Elevation — softer & more diffuse */
-  --shadow-card: 0 1px 2px oklch(0.20 0.04 260 / 0.04),
-                 0 8px 24px oklch(0.20 0.04 260 / 0.06);
-  --shadow-pop:  0 24px 64px oklch(0.20 0.06 260 / 0.18),
-                 0 4px 12px oklch(0.20 0.04 260 / 0.08);
+  /* Elevation — cards are flat (1px border); only floating UI casts a shadow */
+  --shadow-card: none;
+  --shadow-pop:  0 16px 48px rgba(20, 22, 24, 0.16),
+                 0 2px 8px rgba(20, 22, 24, 0.08);
 }
 
 :root[data-theme="dark"] {
-  --bg:             oklch(0.155 0.010 260);
-  --bg-soft:        oklch(0.180 0.012 260);
-  --surface:        oklch(0.215 0.013 260);
-  --surface-2:      oklch(0.245 0.013 260);
-  --surface-3:      oklch(0.285 0.013 260);
-  --border:         oklch(0.30 0.014 260);
-  --border-soft:    oklch(0.26 0.013 260);
-  --border-strong:  oklch(0.40 0.014 260);
+  --cat-finance:      #5BD3C0;
+  --cat-utilities:    #9AA8FF;
+  --cat-productivity: #C3DE7A;
+  --cat-games:        #FF9E77;
 
-  --ink:            oklch(0.97 0.005 250);
-  --ink-2:          oklch(0.86 0.008 252);
-  --ink-3:          oklch(0.70 0.010 255);
-  --ink-muted:      oklch(0.58 0.012 258);
+  --bg:             #0F1113;
+  --bg-soft:        #0B0D0F;
+  --surface:        #15181B;
+  --surface-2:      #1A1E22;
+  --surface-3:      #1F2327;
+  --border:         #1E2124;
+  --border-soft:    #1A1D20;
+  --border-strong:  #23272A;
 
-  --accent:         oklch(0.72 0.18 280);
-  --accent-2:       oklch(0.78 0.18 285);
-  --accent-soft:    oklch(0.30 0.10 280);
-  --accent-tint:    oklch(0.24 0.06 280);
-  --accent-ink:     oklch(0.82 0.16 280);
+  --ink:            #EDEAE3;
+  --ink-2:          #A8ADB0;
+  --ink-3:          #8A8F92;
+  --ink-muted:      #6B6F72;
+  --ink-index:      #9A9FA2;
+  --ink-slash:      #4A4E51;
+
+  --accent:         var(--cat-finance);
+  --accent-2:       #7BDFCF;
+  --accent-ink:     var(--cat-finance);
+  --accent-soft:    color-mix(in srgb, var(--accent) 24%, transparent);
+  --accent-tint:    color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-contrast: #08090A;
+
+  --selection:      #1E4B45;
 
   --positive:       oklch(0.78 0.14 155);
   --positive-soft:  oklch(0.30 0.06 155);
@@ -106,21 +130,21 @@
   --info:           oklch(0.78 0.14 240);
   --info-soft:      oklch(0.30 0.06 240);
 
-  --chart-bg:        oklch(0.215 0.013 260);
+  --chart-bg:        #15181B;
   --chart-cash:      oklch(0.74 0.10 80);
   --chart-brokerage: oklch(0.74 0.18 280);
   --chart-ira:       oklch(0.78 0.13 155);
   --chart-roth:      oklch(0.74 0.14 220);
-  --chart-line:      oklch(0.97 0.005 250);
-  --chart-line-fill: oklch(0.72 0.18 280 / 0.10);
-  --chart-grid:      oklch(0.28 0.013 260);
-  --chart-label:     oklch(0.62 0.010 258);
-  --chart-marker:    oklch(0.86 0.010 252);
-  --chart-marker-bg: oklch(0.215 0.013 260);
+  --chart-line:      #EDEAE3;
+  --chart-line-fill: rgba(91, 211, 192, 0.10);
+  --chart-grid:      #23272A;
+  --chart-label:     #8A8F92;
+  --chart-marker:    #A8ADB0;
+  --chart-marker-bg: #15181B;
 
-  --shadow-card: 0 0 0 1px oklch(0 0 0 / 0.20) inset,
-                 0 12px 32px oklch(0 0 0 / 0.30);
-  --shadow-pop:  0 32px 80px oklch(0 0 0 / 0.55);
+  --shadow-card: none;
+  --shadow-pop:  0 24px 64px rgba(0, 0, 0, 0.55),
+                 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* ─── Spacing scale ───────────────────────────────────────────────── */
@@ -136,14 +160,14 @@
   --space-9: 48px;
   --space-10: 64px;
 
-  /* Radii */
-  --radius-sm:  6px;
-  --radius-md:  8px;
-  --radius-lg:  10px;
-  --radius-xl:  14px;
-  --radius-2xl: 16px;
-  --radius-3xl: 18px;
-  --radius-pill: 99px;
+  /* Radii — cards/panels/icon tiles 5px, pills 100px */
+  --radius-sm:  4px;
+  --radius-md:  5px;
+  --radius-lg:  6px;
+  --radius-xl:  8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
+  --radius-pill: 100px;
 
   /* Type sizes — body */
   --text-xs:    11px;
@@ -161,14 +185,14 @@
   --display-2xl: 64px;  /* welcome hero */
 
   /* Letter spacing */
-  --tracking-tight:   -0.025em;  /* large display */
+  --tracking-tight:   -0.03em;   /* serif page h1s */
   --tracking-normal:  -0.005em;  /* body */
-  --tracking-wide:     0.08em;   /* eyebrows */
-  --tracking-wider:    0.12em;   /* uppercase callouts */
+  --tracking-wide:     0.10em;   /* mono nav */
+  --tracking-wider:    0.14em;   /* mono eyebrows / section labels */
 
   /* Responsive — mobile breakpoint convention is 720px.
      Keep CSS @media queries and the useIsMobile hook in sync. */
-  --page-pad-x:   clamp(16px, 4vw, 40px);
+  --page-pad-x:   clamp(20px, 4vw, 48px);
   --page-pad-top: clamp(20px, 4vw, 32px);
   --page-pad-bot: clamp(48px, 8vw, 64px);
 }
@@ -182,4 +206,3 @@
 .num-mono {
   font-family: var(--font-mono);
 }
-

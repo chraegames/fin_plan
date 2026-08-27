@@ -459,7 +459,7 @@ function NumberPad({ counts, selectedDigit, activeDigit, notesMode, dispatch }: 
               borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
               background: sticky ? 'var(--accent)' : active ? 'var(--accent-soft)' : 'var(--surface-2)',
-              color: sticky ? 'oklch(0.995 0.005 80)' : done ? 'var(--ink-muted)' : active ? 'var(--accent-ink)' : 'var(--ink)',
+              color: sticky ? 'var(--accent-contrast)' : done ? 'var(--ink-muted)' : active ? 'var(--accent-ink)' : 'var(--ink)',
               boxShadow: sticky ? '0 0 0 2px var(--accent-soft)' : 'none',
               opacity: done ? 0.55 : 1,
               fontFamily: 'var(--font-display)',

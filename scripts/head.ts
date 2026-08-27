@@ -30,9 +30,9 @@ export const THEME_BOOT_SCRIPT =
   `if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))` +
   `document.documentElement.setAttribute('data-theme','dark')}catch(e){}`;
 
-/** Pre-CSS page background so neither theme flashes white/black before tokens.css loads. */
+/** Pre-CSS page background so neither theme flashes white/black before tokens.css loads. Must equal --bg in tokens.css. */
 export const ANTI_FLASH_STYLE =
-  'html{margin:0;background:oklch(0.985 0.004 250)}html[data-theme=dark]{background:oklch(0.155 0.010 260)}body{margin:0}';
+  'html{margin:0;background:#FAF9F6}html[data-theme=dark]{background:#0F1113}body{margin:0}';
 
 function meta(attr: 'name' | 'property', key: string, content: string): HeadTag {
   return { tag: 'meta', attrs: { [attr]: key, content }, injectTo: 'head' };

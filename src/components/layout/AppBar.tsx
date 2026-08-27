@@ -415,7 +415,7 @@ function ProfileChip({
               height: 22,
               borderRadius: 99,
               background: 'var(--accent)',
-              color: 'oklch(0.995 0.005 80)',
+              color: 'var(--accent-contrast)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

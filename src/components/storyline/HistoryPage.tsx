@@ -595,7 +595,7 @@ function CellInput({
         textAlign: 'right',
         background: entered ? 'var(--accent-tint)' : 'var(--bg-soft)',
         border: `${entered ? '1.5px' : '1px'} solid ${entered ? 'var(--accent)' : 'var(--border-soft)'}`,
-        boxShadow: entered ? '0 0 0 3px oklch(0.93 0.06 280 / 0.30)' : 'none',
+        boxShadow: entered ? '0 0 0 3px var(--accent-tint)' : 'none',
         borderRadius: 6,
         color: entered ? 'var(--ink)' : 'var(--ink-muted)',
         fontFamily: 'var(--font-mono)',

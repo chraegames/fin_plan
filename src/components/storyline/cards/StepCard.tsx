@@ -42,7 +42,7 @@ export function StepCard({ num, title, sub, done, cta, primary, onClick }: StepC
               : primary
                 ? 'var(--accent)'
                 : 'var(--surface-2)',
-            color: done || primary ? 'oklch(0.995 0.005 80)' : 'var(--ink-3)',
+            color: done ? '#FFFFFF' : primary ? 'var(--accent-contrast)' : 'var(--ink-3)',
             border: done || primary ? 'none' : '1px solid var(--border-strong)',
             display: 'flex',
             alignItems: 'center',

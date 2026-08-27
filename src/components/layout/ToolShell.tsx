@@ -10,6 +10,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { isLocalHost } from '../../utils/env';
 import { SITE_NAME, type SiteEntry } from '../../site/manifest';
 import { ToolAbout } from '../../site/ToolAbout';
+import { accentFor } from '../../site/accent';
 
 interface ToolShellProps {
   entry: SiteEntry;
@@ -25,7 +26,7 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
   const local = isLocalHost();
 
   return (
-    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', ...accentFor(entry.category) }}>
       <header
         style={{
           display: 'flex',

@@ -22,10 +22,8 @@ function variantStyle(variant: ButtonVariant, hovered: boolean): React.CSSProper
       // Filter handles primary's hover via base.css; just keep base colours.
       return {
         background: 'var(--accent)',
-        color: 'oklch(0.995 0.005 80)',
-        border: '1px solid var(--accent-2)',
-        boxShadow:
-          '0 1px 0 oklch(1 0 0 / 0.2) inset, 0 1px 2px oklch(0.20 0.04 260 / 0.18)',
+        color: 'var(--accent-contrast)',
+        border: '1px solid var(--accent)',
       };
     case 'soft':
       return {
