@@ -11,24 +11,8 @@ function longDate(iso: string): string {
 
 export function UpdatedBadge() {
   return (
-    <a
-      href={`${GUIDE_HOME}#changelog`}
-      style={{
-        alignSelf: 'flex-start',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        fontSize: 12,
-        color: 'var(--ink-3)',
-        textDecoration: 'none',
-        padding: '4px 10px',
-        borderRadius: 'var(--radius-pill)',
-        border: '1px solid var(--border-soft)',
-        background: 'var(--surface)',
-      }}
-      title="See what changed"
-    >
-      <span style={{ width: 7, height: 7, borderRadius: 99, background: 'var(--positive)' }} aria-hidden="true" />
+    <a href={`${GUIDE_HOME}#changelog`} className="tvg-updated" title="See what changed">
+      <i aria-hidden="true" />
       <span>
         Updated for {GUIDE_YEAR} · reviewed <time dateTime={GUIDE_REVIEWED}>{longDate(GUIDE_REVIEWED)}</time>
       </span>

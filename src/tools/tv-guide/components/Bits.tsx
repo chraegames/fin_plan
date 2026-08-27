@@ -25,11 +25,20 @@ export function StatusChip({ techId }: { techId: TechId }) {
   return <span className={statusChipClass(t.status)}>{STATUS_LABEL[t.status]}</span>;
 }
 
-export function Callout({ tone = 'caution', children }: { tone?: 'caution' | 'info'; children: ReactNode }) {
+export function Callout({ tone = 'caution', action, children }: { tone?: 'caution' | 'info'; action?: ReactNode; children: ReactNode }) {
+  if (tone === 'info') {
+    // The "rule" callout: accent left border, optional pill action on the right.
+    return (
+      <div className="tvg-callout info" role="note">
+        <div>{children}</div>
+        {action}
+      </div>
+    );
+  }
   return (
-    <div className={`tvg-callout${tone === 'info' ? ' info' : ''}`} role="note">
-      <span style={{ flex: '0 0 auto', marginTop: 2, color: tone === 'info' ? 'var(--accent-ink)' : 'var(--caution)' }}>
-        <Icon name={tone === 'info' ? 'info' : 'warning'} size={15} />
+    <div className="tvg-callout" role="note">
+      <span style={{ flex: '0 0 auto', marginTop: 2, color: 'var(--caution)' }}>
+        <Icon name="warning" size={15} />
       </span>
       <div>{children}</div>
     </div>

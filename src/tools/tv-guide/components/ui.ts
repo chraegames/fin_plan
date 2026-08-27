@@ -5,47 +5,47 @@ import type { CSSProperties } from 'react';
 import type { Family, TechStatus } from '../data';
 
 export const eyebrow: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: '0.12em',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11.5,
+  letterSpacing: '0.16em',
   textTransform: 'uppercase',
-  color: 'var(--accent-ink)',
+  color: 'var(--accent)',
 };
 
 export const h1: CSSProperties = {
-  fontFamily: 'var(--font-display)',
+  fontFamily: 'var(--font-serif)',
   fontWeight: 400,
-  fontSize: 'clamp(30px, 5.5vw, 48px)',
+  fontSize: 'clamp(38px, 4.6vw, 68px)',
   letterSpacing: '-0.03em',
-  lineHeight: 1.08,
+  lineHeight: 1.02,
   color: 'var(--ink)',
   margin: 0,
+  textWrap: 'pretty',
 };
 
 export const lede: CSSProperties = {
-  fontSize: 'clamp(15px, 2.4vw, 18px)',
-  color: 'var(--ink-3)',
-  lineHeight: 1.55,
+  fontSize: 16,
+  color: 'var(--ink-2)',
+  lineHeight: 1.65,
   margin: 0,
   maxWidth: 680,
 };
 
-export const small: CSSProperties = { margin: 0, fontSize: 13.5, lineHeight: 1.55, color: 'var(--ink-3)' };
+export const small: CSSProperties = { margin: 0, fontSize: 14, lineHeight: 1.55, color: 'var(--ink-3)' };
 
 export const cardTitle: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontSize: 19,
-  letterSpacing: '-0.02em',
+  fontFamily: 'var(--font-sans)',
+  fontSize: 20,
+  fontWeight: 500,
+  letterSpacing: '-0.01em',
   color: 'var(--ink)',
   margin: 0,
 };
 
 export const crumb: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  color: 'var(--accent-ink)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  color: 'var(--ink-3)',
   textDecoration: 'none',
   whiteSpace: 'nowrap',
 };

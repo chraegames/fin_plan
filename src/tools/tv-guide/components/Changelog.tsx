@@ -1,12 +1,14 @@
 // Edition history — pure. Anchored so the UpdatedBadge can link to it.
 
 import { CHANGELOG } from '../data';
-import { H2, P } from '../../../site/Prose';
+import { P } from '../../../site/Prose';
 
 export function Changelog() {
   return (
     <section id="changelog" className="tvg-section" aria-labelledby="changelog-title">
-      <H2 id="changelog-title">What changed</H2>
+      <div className="tvg-sec-head">
+        <h2 id="changelog-title">What changed</h2>
+      </div>
       <P>
         This guide is dated on purpose. New panel technologies arrive every year and brand names get reshuffled, so each
         revision is recorded here and the badge at the top of every page shows the last review date.

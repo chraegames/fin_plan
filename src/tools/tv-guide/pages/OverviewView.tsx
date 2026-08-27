@@ -2,6 +2,7 @@
 // "help me choose"; without them (prerender / no-JS) it renders the same
 // questions as prose plus the rule-of-thumb matrix.
 
+import type { ReactNode } from 'react';
 import { FAMILIES, GUIDE_YEAR, TECHNOLOGIES, TECH_BY_ID, type Family, type TechId } from '../data';
 import {
   CHOOSER_OPTIONS,
@@ -18,8 +19,8 @@ import { GUIDE_PAGES, brandHref, guidePage, techHref } from '../pages';
 import { Changelog } from '../components/Changelog';
 import { LayerStack } from '../components/LayerStack';
 import { Callout, StatusChip, TechChip } from '../components/Bits';
-import { H2, P } from '../../../site/Prose';
-import { cardTitle, eyebrow, h1, lede, small } from '../components/ui';
+import { P } from '../../../site/Prose';
+import { FAMILY_LABEL, cardTitle, eyebrow, h1, lede, small } from '../components/ui';
 
 export interface ChooserProps {
   answers: Partial<ChooserAnswers>;
@@ -44,23 +45,33 @@ function FamilyCard({ family }: { family: Family }) {
   const f = FAMILIES.find(x => x.id === family)!;
   const techs = techsInFamily(family);
   return (
-    <div className="tvg-card" style={{ gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className={`tvg-chip tvg-chip-${family}`}>{family === 'lcd' ? 'LCD' : 'OLED'}</span>
-        <h3 style={cardTitle}>{f.name}</h3>
+    <div className="tvg-card tvg-family">
+      <div className="tvg-family-head">
+        <span className={`tvg-family-label ${family}`}>{FAMILY_LABEL[family]}</span>
+        <span className="tvg-family-note">↑ to the viewer</span>
       </div>
       <LayerStack layers={TECH_BY_ID[FAMILY_STACK[family]].layers} idPrefix={`ov-${family}`} compact />
-      <p style={{ ...small, color: 'var(--ink-2)', fontSize: 14.5 }}>{f.blurb}</p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        {techs.map((t, i) => (
-          <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {i > 0 && <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>→</span>}
-            <TechChip techId={t.id} />
-          </span>
+      <h3 className="tvg-family-title">{f.name}</h3>
+      <p style={{ ...small, color: 'var(--ink-2)', fontSize: 14.5, lineHeight: 1.6 }}>{f.blurb}</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {techs.map(t => (
+          <TechChip key={t.id} techId={t.id} />
         ))}
       </div>
-      <p style={small}>Older → newer. Every name on a box belongs to one of these.</p>
+      <p className="tvg-caption">Older → newer. Every name on a box belongs to one of these.</p>
     </div>
+  );
+}
+
+/** Section with the mono label + rule header pattern. */
+function GuideSection({ id, label, children }: { id: string; label: string; children: ReactNode }) {
+  return (
+    <section className="tvg-section" aria-labelledby={id}>
+      <div className="tvg-sec-head">
+        <h2 id={id}>{label}</h2>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -212,9 +223,13 @@ function ChooserStatic() {
 export function OverviewView({ chooser }: OverviewViewProps) {
   return (
     <>
-      <header style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={eyebrow}>TV buying guide · {GUIDE_YEAR} edition</div>
-        <h1 style={h1}>Every TV is one of two things. The rest is branding.</h1>
+      <header className="tvg-hero">
+        <div>
+          <div style={{ ...eyebrow, marginBottom: 20 }}>TV buying guide · {GUIDE_YEAR} edition</div>
+          <h1 style={h1}>
+            Every TV is one of two things. <em>The rest is branding.</em>
+          </h1>
+        </div>
         <p style={lede}>
           Neo QLED, QNED, ULED, Bravia, Micro RGB, True RGB, SQD — the names multiply every year, but underneath there are still just two kinds of panel: an LCD with a
           backlight, or an OLED that lights itself. This guide explains each variation with diagrams, decodes what every brand calls it, and helps you pick the kind that suits
@@ -222,31 +237,32 @@ export function OverviewView({ chooser }: OverviewViewProps) {
         </p>
       </header>
 
-      <section className="tvg-section" aria-labelledby="two-families">
-        <H2 id="two-families">The two families</H2>
+      <GuideSection id="two-families" label="The two families">
         <div className="tvg-cols">
           <FamilyCard family="lcd" />
           <FamilyCard family="oled" />
         </div>
-        <Callout tone="info">
-          <b>The one rule that survives all the marketing:</b> QLED, Mini-LED, RGB and "Micro RGB" are all LCDs — they differ in the backlight and colour layer. OLED, QD-OLED and
-          Tandem OLED are all OLEDs — they differ in how the pixel makes colour and how bright it gets.{' '}
-          <a href={guidePage('technologies').path} style={{ color: 'var(--accent-ink)' }}>
-            See every layer →
-          </a>
+        <Callout
+          tone="info"
+          action={
+            <a href={guidePage('technologies').path} className="tvg-callout-cta">
+              See every layer →
+            </a>
+          }
+        >
+          <strong>The one rule that survives all the marketing:</strong> QLED, Mini-LED, RGB and "Micro RGB" are all LCDs — they differ in the backlight and colour layer. OLED,
+          QD-OLED and Tandem OLED are all OLEDs — they differ in how the pixel makes colour and how bright it gets.
         </Callout>
-      </section>
+      </GuideSection>
 
-      <section className="tvg-section" aria-labelledby="choose">
-        <H2 id="choose">Help me choose</H2>
+      <GuideSection id="choose" label="Help me choose">
         {chooser ? <ChooserLive {...chooser} /> : <ChooserStatic />}
-      </section>
+      </GuideSection>
 
-      <section className="tvg-section" aria-labelledby="quick-picks">
-        <H2 id="quick-picks">Quick picks by situation</H2>
+      <GuideSection id="quick-picks" label="Quick picks by situation">
         <div className="tvg-cards">
           {QUICK_PICKS.map(q => (
-            <div key={q.title} className="tvg-card">
+            <div key={q.title} className="tvg-card" style={{ gap: 10 }}>
               <h3 style={cardTitle}>{q.title}</h3>
               <p style={small}>{q.who}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -255,7 +271,7 @@ export function OverviewView({ chooser }: OverviewViewProps) {
                 ))}
               </div>
               <p style={{ ...small, color: 'var(--ink-2)' }}>{q.note}</p>
-              <p style={{ ...small, fontSize: 12.5 }}>
+              <p className="tvg-caption" style={{ lineHeight: 1.6 }}>
                 Names to look for:{' '}
                 {q.techs
                   .flatMap(id => namesForTech(id))
@@ -266,12 +282,11 @@ export function OverviewView({ chooser }: OverviewViewProps) {
             </div>
           ))}
         </div>
-      </section>
+      </GuideSection>
 
-      <section className="tvg-section" aria-labelledby="chapters">
-        <H2 id="chapters">Read the guide</H2>
-        <div className="tvg-cards">
-          {GUIDE_PAGES.filter(p => p.id !== 'overview').map(p => {
+      <GuideSection id="chapters" label="Read the guide">
+        <div className="tvg-cards tvg-cards-4">
+          {GUIDE_PAGES.filter(p => p.id !== 'overview').map((p, i) => {
             const blurb: Record<string, string> = {
               technologies: `All ${TECHNOLOGIES.length} panel types, layer by layer, with animated diagrams, strengths, trade-offs and what each is best for.`,
               brands: 'Brand by brand: what each marketing name means and which technology is inside.',
@@ -279,15 +294,17 @@ export function OverviewView({ chooser }: OverviewViewProps) {
               compare: 'Put up to four technologies side by side on blacks, brightness, colour, angles, burn-in, halo, motion and price tier.',
             };
             return (
-              <a key={p.id} href={p.path} className="tvg-card">
-                <span style={eyebrow}>Chapter</span>
-                <span style={cardTitle}>{p.navLabel}</span>
-                <span style={small}>{blurb[p.id]}</span>
+              <a key={p.id} href={p.path} className="tvg-card tvg-chapter">
+                <span className="tvg-chapter-label">Chapter {String(i + 1).padStart(2, '0')}</span>
+                <div>
+                  <h3>{p.navLabel}</h3>
+                  <p>{blurb[p.id]}</p>
+                </div>
               </a>
             );
           })}
         </div>
-      </section>
+      </GuideSection>
 
       <Changelog />
     </>
