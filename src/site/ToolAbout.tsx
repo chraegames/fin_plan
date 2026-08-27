@@ -8,14 +8,17 @@
 import type { CSSProperties } from 'react';
 import { HUB, relatedTools, type SiteEntry } from './manifest';
 
+// Section-label pattern (mono uppercase + rule), matching the hub / guide headers.
 const h2: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontWeight: 400,
-  fontSize: 'clamp(20px, 3.5vw, 24px)',
-  letterSpacing: '-0.02em',
-  lineHeight: 1.2,
-  color: 'var(--ink)',
+  fontFamily: 'var(--font-mono)',
+  fontWeight: 500,
+  fontSize: 12.5,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-3)',
   margin: 0,
+  paddingBottom: 12,
+  borderBottom: '1px solid var(--border)',
 };
 
 const h3: CSSProperties = {
@@ -40,15 +43,14 @@ export function ToolAbout({ entry }: { entry: SiteEntry }) {
   return (
     <div
       style={{
-        borderTop: '1px solid var(--border-soft)',
-        paddingTop: 28,
+        paddingTop: 8,
         display: 'flex',
         flexDirection: 'column',
-        gap: 28,
+        gap: 36,
       }}
     >
       {about && (
-        <section aria-labelledby="tool-about" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <section aria-labelledby="tool-about" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h2 id="tool-about" style={h2}>
             About {entry.name}
           </h2>
@@ -76,17 +78,7 @@ export function ToolAbout({ entry }: { entry: SiteEntry }) {
       )}
 
       <nav aria-label="More tools" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--ink-3)',
-            fontWeight: 600,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-          }}
-        >
-          More from {HUB.name}
-        </div>
+        <div style={h2}>More from {HUB.name}</div>
         <ul
           style={{
             listStyle: 'none',
@@ -94,8 +86,8 @@ export function ToolAbout({ entry }: { entry: SiteEntry }) {
             padding: 0,
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '6px 18px',
-            fontSize: 14,
+            gap: '8px 22px',
+            fontSize: 15,
           }}
         >
           {related.map(t => (

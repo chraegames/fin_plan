@@ -35,7 +35,7 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
           padding: '0 clamp(12px, 3vw, 32px)',
           height: 56,
           background: local ? '#f59e0b' : 'var(--bg)',
-          borderBottom: local ? '1px solid #b45309' : '1px solid var(--border-soft)',
+          borderBottom: local ? '1px solid #b45309' : '1px solid var(--border)',
           position: 'sticky',
           top: 0,
           zIndex: 30,
@@ -45,18 +45,18 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
           <a
             href="/"
             style={{
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: local ? '#1c1917' : 'var(--accent-ink)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              color: local ? '#1c1917' : 'var(--ink-3)',
               textDecoration: 'none',
               whiteSpace: 'nowrap',
             }}
           >
             {SITE_NAME}
           </a>
-          <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>/</span>
+          <span aria-hidden="true" style={{ color: local ? '#b45309' : 'var(--ink-slash)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+            /
+          </span>
           <h1
             style={{
               fontFamily: 'var(--font-display)',
@@ -114,10 +114,10 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
           display: 'flex',
           flexWrap: 'wrap',
           gap: '6px 18px',
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontSize: 13,
-          color: 'var(--ink-muted)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11.5,
+          lineHeight: 1.9,
+          color: 'var(--ink-3)',
         }}
       >
         <span>{SITE_NAME}</span>

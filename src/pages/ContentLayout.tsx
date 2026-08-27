@@ -12,12 +12,19 @@ export { H2, P, UL, LI, A } from '../site/Prose';
 import { linkStyle } from '../site/proseStyles';
 
 const crumbStyle: CSSProperties = {
-  fontSize: 11,
-  color: 'var(--accent-ink)',
-  fontWeight: 600,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  color: 'var(--ink-3)',
   textDecoration: 'none',
+};
+
+const sectionLabel: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12.5,
+  fontWeight: 500,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-3)',
 };
 
 interface ContentLayoutProps {
@@ -42,11 +49,13 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
         paddingTop: 'clamp(40px, 8vw, 80px)',
       }}
     >
-      <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <a href="/" style={crumbStyle}>
           {SITE_NAME}
         </a>
-        <span style={{ color: 'var(--ink-muted)', fontSize: 11 }}>/</span>
+        <span aria-hidden="true" style={{ ...crumbStyle, color: 'var(--ink-slash)' }}>
+          /
+        </span>
         <a href={FIRE_HOME_PATH} style={crumbStyle}>
           FIRE Planner
         </a>
@@ -55,11 +64,12 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
       <header style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h1
           style={{
-            fontFamily: 'var(--font-display)',
+            fontFamily: 'var(--font-serif)',
             fontWeight: 400,
-            fontSize: 'clamp(30px, 6vw, 52px)',
+            fontSize: 'clamp(38px, 4.6vw, 68px)',
             letterSpacing: '-0.03em',
-            lineHeight: 1.1,
+            lineHeight: 1.02,
+            textWrap: 'pretty',
             color: 'var(--ink)',
             margin: 0,
           }}
@@ -69,8 +79,8 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
         <p
           style={{
             fontSize: 'clamp(15px, 2.4vw, 18px)',
-            color: 'var(--ink-3)',
-            lineHeight: 1.55,
+            color: 'var(--ink-2)',
+            lineHeight: 1.6,
             margin: 0,
           }}
         >
@@ -107,25 +117,15 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
 
       <nav
         style={{
-          borderTop: '1px solid var(--border-soft)',
+          borderTop: '1px solid var(--border)',
           paddingTop: 20,
           display: 'flex',
           flexDirection: 'column',
-          gap: 10,
+          gap: 12,
         }}
         aria-label="Related guides"
       >
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--ink-3)',
-            fontWeight: 600,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Related
-        </div>
+        <div style={sectionLabel}>Related</div>
         <ul
           style={{
             listStyle: 'none',
@@ -148,9 +148,8 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
 
       <p
         style={{
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontSize: 13,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11.5,
           color: 'var(--ink-muted)',
           margin: 0,
         }}

@@ -22,11 +22,9 @@ export function ToolStatic({ entry }: { entry: SiteEntry }) {
       <a
         href="/"
         style={{
-          fontSize: 11,
-          color: 'var(--accent-ink)',
-          fontWeight: 600,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 12,
+          color: 'var(--ink-3)',
           textDecoration: 'none',
         }}
       >
@@ -34,21 +32,21 @@ export function ToolStatic({ entry }: { entry: SiteEntry }) {
       </a>
       <h1
         style={{
-          fontFamily: 'var(--font-display)',
+          fontFamily: 'var(--font-serif)',
           fontWeight: 400,
-          fontSize: 'clamp(30px, 6vw, 52px)',
+          fontSize: 'clamp(38px, 4.6vw, 68px)',
           letterSpacing: '-0.03em',
-          lineHeight: 1.1,
+          lineHeight: 1.02,
           color: 'var(--ink)',
           margin: 0,
         }}
       >
         {entry.name}
       </h1>
-      <p style={{ fontSize: 'clamp(15px, 2.4vw, 18px)', color: 'var(--ink-3)', lineHeight: 1.55, margin: 0 }}>
+      <p style={{ fontSize: 'clamp(15px, 2.4vw, 18px)', color: 'var(--ink-2)', lineHeight: 1.55, margin: 0 }}>
         {entry.description}
       </p>
-      <p style={{ fontSize: 14, color: 'var(--ink-muted)', margin: 0 }}>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, lineHeight: 1.75, color: 'var(--ink-muted)', margin: 0 }}>
         This tool needs JavaScript to run. Nothing is sent to a server — it works entirely in your
         browser.
       </p>
