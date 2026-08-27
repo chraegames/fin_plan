@@ -57,6 +57,7 @@ describe('renderRootForPath', () => {
   it('prerenders the FIRE hero + all three "what this is" sections', () => {
     const html = renderRootForPath('/fire-planner/index.html');
     expect(html).toContain('Plan your retirement');
+    expect(html).toContain('Runs on this device');
     expect(html).toContain('What you can do');
     expect(html).toContain('How it works');
     expect(html).toContain('Your data');

@@ -1,9 +1,8 @@
 // Shared marketing copy for the FIRE Planner landing surface.
 //
 // This is the SINGLE SOURCE for the home-page hero + "what this is" copy. It
-// feeds three places:
-//   1. The interactive <Intro> screen (composes the pieces below + a CTA and a
-//      collapsible accordion around <IntroSections>).
+// feeds two places:
+//   1. The interactive <Intro> screen (same hero with a CTA, same panels).
 //   2. The build-time prerendered HTML injected into #root (scripts/prerender.tsx
 //      renders <IntroContent/> to a static string so crawlers / no-JS visitors
 //      get real content on the first byte).
@@ -11,150 +10,143 @@
 // Everything here is PURE: no hooks, no analytics, no browser APIs — so it can be
 // rendered to a string in the Vite build (Node) context. Keep it that way.
 
-const sectionBody: React.CSSProperties = {
-  margin: 0,
-  fontSize: 13.5,
-  color: 'var(--ink-2)',
-  lineHeight: 1.6,
-};
+import type { ReactNode } from 'react';
+import { HUB, SITE_NAME } from '../../site/manifest';
+import { INTRO_STYLES } from './introStyles';
 
-export function IntroHeader() {
+/** Decorative "projection" bar chart: accumulation in the accent, drawdown in coral. */
+function ProjectionPanel() {
+  const bars: { h: number; alpha?: number; drawdown?: boolean }[] = [
+    { h: 16, alpha: 0.25 },
+    { h: 24, alpha: 0.34 },
+    { h: 33, alpha: 0.45 },
+    { h: 44, alpha: 0.58 },
+    { h: 55, alpha: 0.74 },
+    { h: 68 },
+    { h: 80 },
+    { h: 92, drawdown: true },
+    { h: 100, drawdown: true },
+  ];
   return (
-    <header style={{ textAlign: 'center' }}>
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--accent-ink)',
-          fontWeight: 600,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          marginBottom: 14,
-        }}
-      >
-        FIRE Planner
+    <div className="fire-intro-panel" aria-hidden="true">
+      <div className="fire-intro-caption">
+        <span>Projection</span>
+        <span>Year by year</span>
       </div>
-      <h1
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 400,
-          fontSize: 'clamp(34px, 7.5vw, 64px)',
-          letterSpacing: '-0.03em',
-          lineHeight: 1.1,
-          color: 'var(--ink)',
-          margin: 0,
-          maxWidth: 720,
-          marginLeft: 'auto',
-          marginRight: 'auto',
-        }}
-      >
-        Plan your retirement,{' '}
-        <em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>in your browser.</em>
-      </h1>
-      <p
-        style={{
-          fontSize: 'clamp(14px, 2.5vw, 17px)',
-          color: 'var(--ink-3)',
-          lineHeight: 1.55,
-          margin: '20px auto 0',
-          maxWidth: 560,
-        }}
-      >
-        Free, private, browser-only. No signup, no server — your data never leaves
-        this device.
-      </p>
+      <div className="fire-intro-bars">
+        {bars.map((b, i) => (
+          <i key={i} className={b.drawdown ? 'drawdown' : undefined} style={{ height: `${b.h}%`, opacity: b.alpha }} />
+        ))}
+      </div>
+      <div className="fire-intro-rule" />
+      <div className="fire-intro-legend">
+        <span>
+          <i />
+          Accumulation
+        </span>
+        <span>
+          <i className="drawdown" />
+          Drawdown
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface IntroHeaderProps {
+  /** Rendered under the lead paragraph (the live screen's "Get started"). */
+  cta?: ReactNode;
+}
+
+export function IntroHeader({ cta }: IntroHeaderProps) {
+  return (
+    <header className="fire-intro-hero">
+      <div>
+        <div className="fire-intro-eyebrow">FIRE Planner</div>
+        <h1 className="fire-intro-h1">
+          Plan your retirement, <em>in your browser.</em>
+        </h1>
+        <p className="fire-intro-lead">
+          Free, private, browser-only. No signup, no server — your data never leaves
+          this device.
+        </p>
+        {cta && <div className="fire-intro-cta">{cta}</div>}
+      </div>
+      <ProjectionPanel />
     </header>
   );
 }
 
-// The three "what this is" paragraphs. Rendered inline (always visible) on the
-// prerendered home page, and inside the collapsible accordion in <Intro>.
+// The three "what this is" panels, always visible on both the prerendered home
+// page and the live <Intro>.
 export function IntroSections() {
   return (
-    <>
-      <p style={sectionBody}>
-        <strong style={{ color: 'var(--ink)' }}>What you can do.</strong>{' '}
-        Project income, expenses, investment growth, illustrative federal taxes, and
-        withdrawals across a configurable horizon. Compare scenarios side-by-side,
-        record actuals year by year as life happens, and let an optimizer pick a
-        tax-efficient withdrawal schedule.
-      </p>
-      <p style={sectionBody}>
-        <strong style={{ color: 'var(--ink)' }}>How it works.</strong>{' '}
-        Everything runs in your browser — the simulation, the optimizer, the
-        charts. There is no server-side computation. Plans persist in this browser's
-        localStorage so they're here when you come back.
-      </p>
-      <p style={sectionBody}>
-        <strong style={{ color: 'var(--ink)' }}>Your data.</strong>{' '}
-        No account, no server, no tracking of personal information. Export and import
-        plans as JSON files you control. Clearing your browser data erases everything
-        — nothing is kept anywhere else.
-      </p>
-    </>
+    <section className="fire-intro-what" aria-labelledby="fire-what-this-is">
+      <div className="fire-intro-sec-head">
+        <h2 id="fire-what-this-is">What this is</h2>
+      </div>
+      <div className="fire-intro-grid">
+        <div className="fire-intro-card">
+          <h3>What you can do.</h3>
+          <p>
+            Project income, expenses, investment growth, illustrative federal taxes, and
+            withdrawals across a configurable horizon. Compare scenarios side-by-side,
+            record actuals year by year as life happens, and let an optimizer pick a
+            tax-efficient withdrawal schedule.
+          </p>
+        </div>
+        <div className="fire-intro-card">
+          <h3>How it works.</h3>
+          <p>
+            Everything runs in your browser — the simulation, the optimizer, the
+            charts. There is no server-side computation. Plans persist in this browser's
+            localStorage so they're here when you come back.
+          </p>
+        </div>
+        <div className="fire-intro-card">
+          <h3>Your data.</h3>
+          <p>
+            No account, no server, no tracking of personal information. Export and import
+            plans as JSON files you control. Clearing your browser data erases everything
+            — nothing is kept anywhere else.
+          </p>
+        </div>
+      </div>
+      <IntroDisclaimer />
+    </section>
   );
 }
 
 export function IntroDisclaimer() {
+  return <p className="fire-intro-disclaimer">Educational tool — not financial advice.</p>;
+}
+
+/** The static tree has no <AppBar>, so it carries its own breadcrumb row. */
+function StaticHeaderRow() {
   return (
-    <p
-      style={{
-        textAlign: 'center',
-        fontFamily: 'var(--font-display)',
-        fontStyle: 'italic',
-        fontSize: 13,
-        color: 'var(--ink-muted)',
-        margin: 0,
-      }}
-    >
-      Educational tool — not financial advice.
-    </p>
+    <div className="fire-intro-top">
+      <nav className="fire-intro-crumb" aria-label="Breadcrumb">
+        <a href={HUB.path}>{SITE_NAME}</a>
+        <i>/</i>
+        <b aria-current="page">FIRE Planner</b>
+      </nav>
+      <span className="fire-intro-pill">
+        <i aria-hidden="true" />
+        Runs on this device
+      </span>
+    </div>
   );
 }
 
-// The static, fully-expanded landing view used for build-time prerendering.
-// Unlike <Intro>, the "what this is" sections are always visible here so crawlers
-// and no-JS visitors see the substance (the live Intro keeps them in a collapsed
-// accordion by default). On mount, App's createRoot render replaces this markup.
+// The static landing view used for build-time prerendering. On mount, App's
+// createRoot render replaces this markup with <AppBar> + <Intro>.
 export function IntroContent() {
   return (
-    <div
-      style={{
-        maxWidth: 760,
-        margin: '0 auto',
-        padding: 'var(--page-pad-top) var(--page-pad-x) var(--page-pad-bot)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 32,
-        paddingTop: 'clamp(48px, 10vw, 96px)',
-      }}
-    >
+    <div className="fire-intro">
+      <style>{INTRO_STYLES}</style>
+      <StaticHeaderRow />
       <IntroHeader />
-      <section
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
-          boxShadow: 'var(--shadow-card)',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: 'var(--font-sans)',
-            fontSize: 15,
-            fontWeight: 500,
-            color: 'var(--ink)',
-          }}
-        >
-          What this is
-        </h2>
-        <IntroSections />
-      </section>
-      <IntroDisclaimer />
+      <IntroSections />
     </div>
   );
 }

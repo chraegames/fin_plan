@@ -77,23 +77,22 @@ export function AppBar({
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 20, minWidth: 0 }}>
         {!isMobile && (
-          <a
-            href="/"
-            title={`Back to ${SITE_NAME}`}
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: local ? '#1c1917' : 'var(--accent-ink)',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-              paddingRight: 20,
-              borderRight: `1px solid ${local ? '#b45309' : 'var(--border)'}`,
-            }}
-          >
-            {SITE_NAME}
-          </a>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+            <a
+              href="/"
+              title={`Back to ${SITE_NAME}`}
+              style={{
+                color: local ? '#1c1917' : 'var(--ink-3)',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {SITE_NAME}
+            </a>
+            <span aria-hidden="true" style={{ color: local ? '#b45309' : 'var(--ink-slash)' }}>
+              /
+            </span>
+          </span>
         )}
         <button
           onClick={onGoPlan}
@@ -149,6 +148,28 @@ export function AppBar({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {rightSlot}
+        {minimal && !isMobile && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 12px',
+              marginRight: 6,
+              borderRadius: 'var(--radius-pill)',
+              background: local ? '#1c1917' : 'var(--accent-tint)',
+              color: local ? '#fbbf24' : 'var(--accent)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', display: 'block' }} />
+            Runs on this device
+          </span>
+        )}
         {/* Theme toggle survives `minimal` mode — the intro screen is the
             user's first impression and they should be able to flip the
             theme before engaging. */}
