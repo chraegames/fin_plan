@@ -12,6 +12,7 @@ no accounts, no server, everything stored on your device. Live at
 | Productivity | To-do list (multiple lists, due dates)         | `/todo/`            |
 | Games        | Sudoku (easy–expert, notes, hints, undo)       | `/sudoku/`          |
 | Games        | Bingo caller (75/90/30-ball, flashboard, history, auto-call, voice) | `/bingo/` |
+| Games        | Go — two-player online Go (quick match or room code, 9×9/13×13/19×19, peer-to-peer over WebRTC) | `/go/` |
 | Utilities    | TV buying guide (2026 panel technologies explained with animated diagrams, brand-name decoder, comparison, "help me choose") | `/tv-guide/` + `/technologies/`, `/brands/`, `/decoder/`, `/compare/` |
 
 Every page is its own static HTML entry (Vite multi-page); the hub landing

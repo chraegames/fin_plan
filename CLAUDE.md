@@ -2,7 +2,7 @@
 
 **Chrae Lab** (`https://chraegames.cloud`) — a hub of small browser-only tools. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`.
 
-The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
+The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/go/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
 
 User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree. Most of it is about the FIRE planner because that's where the complexity is.
 
@@ -14,7 +14,7 @@ User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers +
 index.html                # hub landing (prerendered <Landing/>; src/hub/main.ts adds CSS + theme toggle)
 fire-planner/index.html   # FIRE planner app entry (src/main.tsx)
 fire-planner/<slug>/index.html   # static FIRE content guides (CSS-only entry)
-<tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku, bingo (src/tools/<tool>/main.tsx)
+<tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku, bingo, go (src/tools/<tool>/main.tsx)
 tv-guide/<chapter>/index.html    # TV guide chapters (src/tools/tv-guide/entries/<chapter>.tsx) — see "TV buying guide"
 scripts/
   head.ts                 # buildHeadTags(entry): title/canonical/OG/JSON-LD + THEME_BOOT_SCRIPT
@@ -29,6 +29,7 @@ src/
     Landing.tsx           # pure landing page: mono nav, hero + CSS motif, per-category card grids w/ CSS-box icons, Guides band, footer
     main.ts               # hub entry: styles + analytics + vanilla theme toggle (no React)
   tools/<tool>/           # main.tsx (entry) + App.tsx + pure logic .ts + tests
+  tools/go/               # online Go: go.ts (rules) + match.ts (pairing/session state machine) + net.ts (Trystero / BroadcastChannel transports) — see "Go"
   tools/tv-guide/         # multi-page guide: data.ts/logic.ts/pages.ts (pure) + components/ + pages/*View (pure) + Live.tsx + static.tsx/App.tsx/mount.tsx
   site/Prose.tsx          # H2/H3/P/UL/LI/A prose primitives shared by every prerendered content tree (ContentLayout re-exports them)
   main.tsx                # FIRE planner entry: boots StrictMode + analytics, mounts <App />
@@ -157,6 +158,7 @@ else, based on activePlan:
 | `chraeLab.todo` | `TODO_KEY` | To-do lists + items |
 | `chraeLab.sudoku` | `SUDOKU_KEY` | Current Sudoku game (puzzle, solution, board, notes, clock) |
 | `chraeLab.bingo` | `BINGO_KEY` | Current Bingo caller game (variant, ordered calls) + caller settings (auto interval, voice) |
+| `chraeLab.go` | `GO_KEY` | Preferred Go board size only — games are never persisted |
 | `financial-planner-scenarios` | legacy | Pre-profiles "single profile, many scenarios" shape |
 | `financial-planner-input` | legacy | Pre-scenarios "one plan" shape |
 | `financial-planner-plans` | legacy | Withdrawal schedules from the pre-scenarios shape |
@@ -201,6 +203,17 @@ If you change the brackets, also update: README "What it models" section, About 
 3. `↻ Welcome` button — sets `seenIntro = true`, then finds-or-creates an untouched "Default" scenario in the active profile and switches to it. **Non-destructive.** Other profiles/scenarios preserved. (It used to call `freshStart()` and wiped everything — that bug is fixed; don't reintroduce.)
 
 All three render only when `local && !isMobile`. Handlers are passed unconditionally from `App.tsx` (the props are optional on `AppBar`); UI gating happens entirely in `AppBar.tsx`.
+
+---
+
+## Go — `src/tools/go/`
+
+The one tool that talks to anything outside the browser. Two people play against each other; there is still no server of ours.
+
+- **Transport.** [Trystero](https://github.com/dmotz/trystero) (default Nostr strategy, `appId: 'chrae-lab-go'`) introduces the two browsers through public Nostr relays and opens a direct WebRTC data channel; every game message then travels peer to peer. It is `import()`ed lazily in `net.ts` (≈60 KB chunk, only when a game starts). `?local=1` swaps in a `BroadcastChannel` transport so two tabs on localhost can play offline — that is what the e2e check uses. Known limits (documented in the FAQ): strict NAT with no TURN fails to connect, peers see each other's IP, no reconnection.
+- **Layers.** `go.ts` — pure rules (captures, no suicide, simple ko via `koPoint`, two passes end, area scoring + 7.5 komi, no dead-stone marking). `match.ts` — pure session state machine: `step(session, event, ctx) → { session, effects }`; effects are `join`/`leave`/`send`/`matched`/`finished` and `App.tsx` runs them against the `Transport`. Every network callback comes back in as an event, so both sides validate every move with the same code and nobody is the authority. `net.ts` — the two transports. `Board.tsx` — pure SVG.
+- **Pairing.** Quick match: lobby room `lobby-<size>`; on `peerJoin` the lower `selfId` sends `invite {gameId, size, yourColor}`, the other replies `accept` and both move to `game-<id>`; anyone else gets `busy`. Room code: host sits in `game-<CODE>` (4 chars from an I/O/0/1-free alphabet, `?room=CODE` link auto-joins). In the game room the host sends `ready {size, yourColor}` to the first peer; the guest starts on `ready`. Moves carry the move number they apply to; stale/out-of-turn ones are ignored, an illegal one ends the session as out of sync.
+- **Gotchas.** A peer leaving the *lobby* while you are `inviting` is the normal move to the game room, not a disconnect (`peerLeave` is ignored in that phase). The Trystero transport waits for in-flight sends before `room.leave()` so `accept` is not dropped. The `?room=` auto-join effect is guarded by a ref — StrictMode's double effect would otherwise leave and re-enter the room, which the host sees as "opponent left". Transport callbacks are guarded by `room === r` so a room you already left cannot feed stale events.
 
 ---
 
@@ -264,6 +277,8 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 | `tools/todo/*.test.ts` | Reducer actions + invariants (active list always valid), due-date labels, load/save validation |
 | `tools/sudoku/*.test.ts` | Solver/uniqueness counter against a known puzzle, seeded generator (deterministic, unique solution, clue targets), conflicts; reducer (input/notes/erase/undo/hint/win), save-file validation |
 | `tools/bingo/bingo.test.ts` | B-I-N-G-O column mapping per variant, `boardRows` coverage, rejection-sampling RNG (`uniformFrom` with a fake source + `secureRandomInt` range), reducer (draw never repeats, stops when exhausted, undo), save-file validation |
+| `tools/go/go.test.ts` | Rules: coordinates/star points, group liberties, single + multi-group capture, suicide refused, capture-with-no-liberties allowed, simple ko then retake after a tempo, two passes end + score, area scoring (empty board = komi, wall split, neutral regions), prefs parsing |
+| `tools/go/match.test.ts` | Room-code alphabet/normalising; two sessions wired back to back: lobby pairing (lower id invites, `busy` for a third), room-code host/guest with `ready`, mirrored moves/passes/resign, stale move numbers ignored, illegal incoming move → out of sync, opponent leaving → abandon win, cancel/reset leave the room |
 | `tools/tv-guide/data.test.ts` | Content invariants: unique ids, every layer/tech reference resolves, every current tech has a brand name, ratings 1–5, official URLs are brand roots, **no prices / inch sizes / brightness figures anywhere**, changelog newest-first and `updated` dates of all five `/tv-guide` pages equal `GUIDE_REVIEWED` |
 | `tools/tv-guide/logic.test.ts` | Decoder (normalisation, exact > prefix > contains ranking, aliases), `compareRows` best-cell marking incl. lower-is-better, `recommend` over the full answer space (budget cap, static-content → LCD, dark/movies/premium → OLED), `ruleOfThumb` 3×5 |
 
@@ -283,6 +298,7 @@ Tools: tool_opened {tool}, converter_used {category, from, to},
        calc_evaluated {ok}, todo_created, todo_list_created,
        sudoku_started {difficulty}, sudoku_won {difficulty, seconds, hints},
        bingo_started {variant}, bingo_finished {variant},
+       go_matched {mode, size}, go_finished {size, result},
        tool_opened {tool:'tv-guide', page}, tv_guide_chooser {room,use,budget},
        tv_guide_tab {page, tab}, tv_guide_decode, tv_guide_compare {tech}
 Both:  theme_toggled {theme}

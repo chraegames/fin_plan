@@ -22,6 +22,7 @@ export const CALCULATOR_HISTORY_KEY = 'chraeLab.calculator.history';
 export const TODO_KEY = 'chraeLab.todo';
 export const SUDOKU_KEY = 'chraeLab.sudoku';
 export const BINGO_KEY = 'chraeLab.bingo';
+export const GO_KEY = 'chraeLab.go';
 const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
 const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';

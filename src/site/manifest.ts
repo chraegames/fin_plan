@@ -473,6 +473,58 @@ export const PAGES: SiteEntry[] = [
       ],
     },
   },
+  {
+    slug: 'go',
+    path: '/go/',
+    kind: 'app',
+    status: 'live',
+    category: 'games',
+    name: 'Go',
+    tagline: 'Play Go online against another person — quick match or a private room, 9×9 to 19×19, no account.',
+    title: 'Play Go online with a friend — free two-player Go board (9×9, 13×13, 19×19)',
+    description:
+      'Free online Go for two people. Get paired with whoever is waiting, or create a room and send a friend the link. 9×9, 13×13 and 19×19 boards, captures, ko and area scoring. Moves travel directly between the two browsers — no account, no server storing your game.',
+    updated: '2026-09-02',
+    about: {
+      applicationCategory: 'GameApplication',
+      intro:
+        'A two-player Go board for people in different places. Pick a board size and press Find an opponent to be paired with the next person waiting, or create a room and send a friend the four-letter code. The board enforces the rules — captures, suicide, ko — and scores the game when both players pass.',
+      features: [
+        'Quick match: the first two people waiting on the same board size are paired automatically. Colours are drawn at random.',
+        'Private rooms: create a room to get a four-letter code and a share link; the game starts the moment your friend opens it.',
+        '9×9, 13×13 and 19×19 boards with star points, a last-move marker and a hover preview of your stone.',
+        'Rules enforced on both sides: captures are removed, suicide is refused, and simple ko stops an immediate retake.',
+        'Two consecutive passes end the game with area scoring (stones plus surrounded territory) and 7.5 komi; either player can resign.',
+        'Peer-to-peer: after the two browsers are introduced, every move goes straight from one to the other over WebRTC. Nothing is stored on a server.',
+      ],
+      faq: [
+        {
+          q: 'How does the matching work without a server?',
+          a: 'Each browser announces itself on public Nostr relays under a room name — the lobby for your board size, or your private room code. When two browsers see each other they exchange connection details through the relays and open a direct WebRTC channel. From then on the relays are out of the picture and moves travel browser to browser.',
+        },
+        {
+          q: 'What leaves my device?',
+          a: 'The connection handshake (which includes your public IP address) passes through public relays and reaches your opponent, as with any peer-to-peer call. The moves themselves go directly to the other player. Nothing is stored anywhere: close the tab and the game is gone.',
+        },
+        {
+          q: 'It says it is looking for an opponent but nobody comes.',
+          a: 'Quick match only pairs people who are waiting at the same time on the same board size. Create a room instead and send a friend the link — the game starts as soon as they open it.',
+        },
+        {
+          q: 'We both see each other but the game never starts.',
+          a: 'Some networks (strict corporate firewalls, some mobile carriers) block direct peer-to-peer connections. There is no relay server to fall back on, so try a different network, a phone hotspot, or a different browser.',
+        },
+        {
+          q: 'How is the game scored?',
+          a: 'Area scoring: each player counts their stones on the board plus the empty points surrounded only by their stones, and White adds 7.5 komi. Dead stones are not marked automatically, so capture anything you think is dead before you pass. Two passes in a row end the game.',
+        },
+        {
+          q: 'What happens if my opponent leaves?',
+          a: 'The game ends and you are recorded as the winner. There is no reconnection — if either tab closes or the connection drops, start a new game.',
+        },
+      ],
+    },
+  },
   // ─── TV buying guide (one app + four content chapters under /tv-guide/) ──
   // Dates: keep every `updated` here equal to GUIDE_REVIEWED in
   // src/tools/tv-guide/data.ts (data.test.ts enforces the lockstep).
