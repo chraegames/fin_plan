@@ -35,9 +35,10 @@
   --surface:        #FFFFFF;                     /* cards, panels */
   --surface-2:      #F3F1EB;                     /* card hover, secondary fills */
   --surface-3:      #ECEAE4;
-  --border:         rgba(20, 22, 24, 0.13);      /* page rules, section rules */
-  --border-soft:    rgba(20, 22, 24, 0.09);
-  --border-strong:  rgba(20, 22, 24, 0.15);      /* card borders, panel dividers */
+  --border:         rgba(20, 22, 24, 0.16);      /* page rules, section rules */
+  --border-soft:    rgba(20, 22, 24, 0.11);
+  --border-strong:  rgba(20, 22, 24, 0.24);      /* card borders, control outlines */
+  --key-highlight:  rgba(255, 255, 255, 0.85);   /* 1px inset top line on keys/buttons */
 
   /* Ink (text) */
   --ink:            #14171A;                     /* headings, primary text */
@@ -94,21 +95,26 @@
   --cat-productivity: #C3DE7A;
   --cat-games:        #FF9E77;
 
+  /* Elevation ladder: each step is a clearly visible luminance jump so
+     cards read as lifted off the page and keys/buttons as lifted off cards
+     (the first cut of this palette had them within ~3% of each other and
+     every control looked flat). --bg is pinned by ANTI_FLASH_STYLE. */
   --bg:             #0F1113;
   --bg-soft:        #0B0D0F;
-  --surface:        #15181B;
-  --surface-2:      #1A1E22;
-  --surface-3:      #1F2327;
-  --border:         #1E2124;
-  --border-soft:    #1A1D20;
-  --border-strong:  #23272A;
+  --surface:        #191D21;
+  --surface-2:      #23282D;
+  --surface-3:      #2C3238;
+  --border:         #2A3036;
+  --border-soft:    #242930;
+  --border-strong:  #3A4148;
+  --key-highlight:  rgba(255, 255, 255, 0.06);
 
   --ink:            #EDEAE3;
-  --ink-2:          #A8ADB0;
-  --ink-3:          #8A8F92;
-  --ink-muted:      #6B6F72;
-  --ink-index:      #9A9FA2;
-  --ink-slash:      #4A4E51;
+  --ink-2:          #B5BABD;
+  --ink-3:          #979CA0;
+  --ink-muted:      #7C8185;
+  --ink-index:      #A0A5A8;
+  --ink-slash:      #4F5457;
 
   --accent:         var(--cat-finance);
   --accent-2:       #7BDFCF;
@@ -130,17 +136,17 @@
   --info:           oklch(0.78 0.14 240);
   --info-soft:      oklch(0.30 0.06 240);
 
-  --chart-bg:        #15181B;
+  --chart-bg:        #191D21;
   --chart-cash:      oklch(0.74 0.10 80);
   --chart-brokerage: oklch(0.74 0.18 280);
   --chart-ira:       oklch(0.78 0.13 155);
   --chart-roth:      oklch(0.74 0.14 220);
   --chart-line:      #EDEAE3;
   --chart-line-fill: rgba(91, 211, 192, 0.10);
-  --chart-grid:      #23272A;
-  --chart-label:     #8A8F92;
-  --chart-marker:    #A8ADB0;
-  --chart-marker-bg: #15181B;
+  --chart-grid:      #2A3036;
+  --chart-label:     #979CA0;
+  --chart-marker:    #B5BABD;
+  --chart-marker-bg: #191D21;
 
   --shadow-card: none;
   --shadow-pop:  0 24px 64px rgba(0, 0, 0, 0.55),

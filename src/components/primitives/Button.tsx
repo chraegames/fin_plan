@@ -26,21 +26,27 @@ function variantStyle(variant: ButtonVariant, hovered: boolean): React.CSSProper
         border: '1px solid var(--accent)',
       };
     case 'soft':
+      // Tinted toggle/secondary action: a translucent accent fill with an
+      // accent border so it still reads as a control on dark surfaces.
       return {
-        background: hovered ? 'var(--accent-tint)' : 'var(--accent-soft)',
+        background: hovered ? 'var(--accent-soft)' : 'var(--accent-tint)',
         color: 'var(--accent-ink)',
-        border: '1px solid transparent',
+        border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)',
       };
     case 'outline':
+      // The workhorse secondary button: one step lighter than the card it
+      // sits on, a strong border and full-ink label, plus a 1px inset top
+      // highlight so it reads as a key rather than a flat rectangle.
       return {
-        background: hovered ? 'var(--surface-2)' : 'var(--surface)',
-        color: 'var(--ink-2)',
-        border: `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border)'}`,
+        background: hovered ? 'var(--surface-3)' : 'var(--surface-2)',
+        color: 'var(--ink)',
+        border: '1px solid var(--border-strong)',
+        boxShadow: 'inset 0 1px 0 var(--key-highlight)',
       };
     case 'ghost':
       return {
         background: hovered ? 'var(--surface-2)' : 'transparent',
-        color: hovered ? 'var(--ink)' : 'var(--ink-3)',
+        color: hovered ? 'var(--ink)' : 'var(--ink-2)',
         border: '1px solid transparent',
       };
     case 'danger':
@@ -82,7 +88,7 @@ export function Button({
     transition:
       'background-color 140ms ease, color 140ms ease, border-color 140ms ease, opacity 140ms ease, filter 140ms ease',
     whiteSpace: 'nowrap',
-    opacity: disabled ? 0.55 : 1,
+    opacity: disabled ? 0.4 : 1,
     ...sizeStyles[size],
     ...variantStyle(variant, effectiveHover),
     ...style,

@@ -56,11 +56,14 @@ const SCI_KEYS: Key[] = [
   { label: 'n!', insert: '!', tone: 'op', aria: 'Factorial' },
 ];
 
+// Every key is one elevation step above the panel with a strong border and
+// an inset top highlight, so the keypad reads as keys in both themes.
+const keyLift: CSSProperties = { border: '1px solid var(--border-strong)', boxShadow: 'inset 0 1px 0 var(--key-highlight)' };
 const toneStyle: Record<KeyTone, CSSProperties> = {
-  digit: { background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--border-soft)' },
-  op: { background: 'var(--accent-soft)', color: 'var(--accent-ink)', border: '1px solid transparent' },
-  fn: { background: 'var(--surface-2)', color: 'var(--ink-2)', border: '1px solid var(--border-soft)' },
-  clear: { background: 'var(--surface-2)', color: 'var(--ink-2)', border: '1px solid var(--border-soft)' },
+  digit: { ...keyLift, background: 'var(--surface-2)', color: 'var(--ink)' },
+  op: { background: 'var(--accent-soft)', color: 'var(--accent-ink)', border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)' },
+  fn: { ...keyLift, background: 'var(--surface-3)', color: 'var(--ink-2)' },
+  clear: { ...keyLift, background: 'var(--surface-3)', color: 'var(--ink-2)' },
   equals: {
     background: 'var(--accent)',
     color: 'var(--accent-contrast)',
@@ -144,7 +147,7 @@ function Segmented<T extends string>({
       style={{
         display: 'inline-flex',
         background: 'var(--surface-2)',
-        border: '1px solid var(--border-soft)',
+        border: '1px solid var(--border-strong)',
         borderRadius: 'var(--radius-md)',
         padding: 2,
         gap: 2,
@@ -168,9 +171,8 @@ function Segmented<T extends string>({
               letterSpacing: '0.02em',
               cursor: 'pointer',
               border: '1px solid transparent',
-              background: active ? 'var(--surface)' : 'transparent',
-              color: active ? 'var(--ink)' : 'var(--ink-3)',
-              boxShadow: active ? 'var(--shadow-card)' : 'none',
+              background: active ? 'var(--accent)' : 'transparent',
+              color: active ? 'var(--accent-contrast)' : 'var(--ink-2)',
             }}
           >
             {o.label}

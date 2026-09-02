@@ -363,7 +363,7 @@ function CallCard({ game, isMobile }: { game: GameState; isMobile: boolean }) {
           boxShadow:
             current != null
               ? '0 2px 0 oklch(1 0 0 / 0.25) inset, 0 -10px 24px oklch(0 0 0 / 0.18) inset, 0 12px 28px oklch(0.2 0.04 260 / 0.22)'
-              : 'inset 0 0 0 2px var(--border)',
+              : 'inset 0 0 0 2px var(--border-strong)',
           userSelect: 'none',
         }}
       >
@@ -584,7 +584,8 @@ function Flashboard({ game, transposed }: { game: GameState; transposed: boolean
           fontWeight: on ? 700 : 500,
           fontSize: transposed ? 15 : 'clamp(12px, 1.6vw, 16px)',
           background: on ? colVar(c) : 'var(--surface-2)',
-          color: on ? 'var(--bingo-ink-on)' : 'var(--ink-muted)',
+          color: on ? 'var(--bingo-ink-on)' : 'var(--ink-3)',
+          boxShadow: on ? 'none' : 'inset 0 0 0 1px var(--border-strong)',
           outline: isCurrent ? '2px solid var(--ink)' : 'none',
           outlineOffset: 1,
           ['--bingo-ring' as string]: colVar(c),
