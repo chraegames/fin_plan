@@ -99,17 +99,16 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
         }}
       >
         {children}
-        <div style={{ marginTop: 40 }}>
-          <ToolAbout entry={entry} />
-        </div>
       </main>
+
+      <ToolAbout entry={entry} />
 
       <footer
         style={{
-          maxWidth,
+          maxWidth: 1040,
           width: '100%',
           margin: '0 auto',
-          padding: '0 var(--page-pad-x) 28px',
+          padding: '20px var(--page-pad-x) 28px',
           boxSizing: 'border-box',
           display: 'flex',
           flexWrap: 'wrap',

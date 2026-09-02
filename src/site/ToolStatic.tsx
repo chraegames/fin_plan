@@ -8,48 +8,49 @@ import { accentFor } from './accent';
 
 export function ToolStatic({ entry }: { entry: SiteEntry }) {
   return (
-    <div
-      style={{
-        maxWidth: 720,
-        margin: '0 auto',
-        padding: 'clamp(40px, 8vw, 80px) var(--page-pad-x) var(--page-pad-bot)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        ...accentFor(entry.category),
-      }}
-    >
-      <a
-        href="/"
+    <div style={accentFor(entry.category)}>
+      <div
         style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 12,
-          color: 'var(--ink-3)',
-          textDecoration: 'none',
+          maxWidth: 720,
+          margin: '0 auto',
+          padding: 'clamp(40px, 8vw, 80px) var(--page-pad-x) 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
         }}
       >
-        {SITE_NAME}
-      </a>
-      <h1
-        style={{
-          fontFamily: 'var(--font-serif)',
-          fontWeight: 400,
-          fontSize: 'clamp(38px, 4.6vw, 68px)',
-          letterSpacing: '-0.03em',
-          lineHeight: 1.02,
-          color: 'var(--ink)',
-          margin: 0,
-        }}
-      >
-        {entry.name}
-      </h1>
-      <p style={{ fontSize: 'clamp(15px, 2.4vw, 18px)', color: 'var(--ink-2)', lineHeight: 1.55, margin: 0 }}>
-        {entry.description}
-      </p>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, lineHeight: 1.75, color: 'var(--ink-muted)', margin: 0 }}>
-        This tool needs JavaScript to run. Nothing is sent to a server — it works entirely in your
-        browser.
-      </p>
+        <a
+          href="/"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            color: 'var(--ink-3)',
+            textDecoration: 'none',
+          }}
+        >
+          {SITE_NAME}
+        </a>
+        <h1
+          style={{
+            fontFamily: 'var(--font-serif)',
+            fontWeight: 400,
+            fontSize: 'clamp(38px, 4.6vw, 68px)',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.02,
+            color: 'var(--ink)',
+            margin: 0,
+          }}
+        >
+          {entry.name}
+        </h1>
+        <p style={{ fontSize: 'clamp(15px, 2.4vw, 18px)', color: 'var(--ink-2)', lineHeight: 1.55, margin: 0 }}>
+          {entry.description}
+        </p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, lineHeight: 1.75, color: 'var(--ink-muted)', margin: 0 }}>
+          This tool needs JavaScript to run. Nothing is sent to a server — it works entirely in your
+          browser.
+        </p>
+      </div>
       <ToolAbout entry={entry} />
     </div>
   );

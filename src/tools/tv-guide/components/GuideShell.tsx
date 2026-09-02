@@ -29,7 +29,7 @@ export function GuideShell({ page, entry, children, themeToggle, local = false }
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', ...accentFor(GUIDE_ENTRY.category) }}>
       <style>{GUIDE_STYLES}</style>
 
-      <div className="tvg-wrap" style={{ flex: 1 }}>
+      <div className="tvg-wrap" style={{ flex: 1, ...(page === 'overview' ? { paddingBottom: 0 } : null) }}>
         <header className="tvg-head">
           <div className={local ? 'tvg-head-row tvg-local' : 'tvg-head-row'}>
             <nav aria-label="Breadcrumb" className="tvg-crumb">
@@ -60,10 +60,8 @@ export function GuideShell({ page, entry, children, themeToggle, local = false }
 
         <main style={{ display: 'flex', flexDirection: 'column', gap: 44 }}>{children}</main>
 
-        <div>
-          {page === 'overview' ? (
-            <ToolAbout entry={entry} />
-          ) : (
+        {page !== 'overview' && (
+          <div>
             <nav
               aria-label="More tools"
               style={{ borderTop: '1px solid var(--border)', paddingTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}
@@ -100,9 +98,13 @@ export function GuideShell({ page, entry, children, themeToggle, local = false }
                 </li>
               </ul>
             </nav>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
+      {page === 'overview' && <ToolAbout entry={entry} />}
+
+      <div className="tvg-wrap" style={{ paddingTop: 20 }}>
         <footer className="tvg-foot">
           <span>{SITE_NAME}</span>
           <span>Independent and not affiliated with any manufacturer. No models, specifications or prices — only how the technologies work.</span>
