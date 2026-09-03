@@ -88,3 +88,7 @@ request.
 ## License
 
 This is a personal project; treat it as such. Use at your own risk.
+
+### Magic Tower 魔塔
+
+A Tower of the Sorcerer / 魔塔 puzzle-RPG at `/magic-tower/`: ten playthroughs of 99 generated floors, deterministic combat with a live damage manual, keys, gems, potions, Breach Stones that punch through floors into sealed vaults, and a blessing after every boss. Every tower is generated from a seed and proven solvable before you play it; saves stay in your browser.

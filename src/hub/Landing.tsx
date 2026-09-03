@@ -149,6 +149,14 @@ function HubIcon({ slug }: { slug: string }) {
           </span>
         </span>
       );
+    case 'magic-tower':
+      return (
+        <span className="hub-tile" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 6px)', gridAutoRows: 6, gap: 2, alignContent: 'center', justifyContent: 'center' }}>
+          {[0.3, 1, 0.3, 0.3, 1, 0.3, 1, 1, 1].map((o, i) => (
+            <span key={i} style={{ width: 6, height: 6, background: 'currentColor', borderRadius: 1, display: 'block', opacity: o }} />
+          ))}
+        </span>
+      );
     default:
       return <span className="hub-tile" />;
   }

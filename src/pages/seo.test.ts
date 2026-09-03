@@ -45,6 +45,14 @@ describe('renderRootForPath', () => {
     expect(html).not.toContain('href="/sudoku/"');
   });
 
+  it('prerenders Magic Tower with its About copy and a games sibling', () => {
+    const html = renderRootForPath('/magic-tower/index.html');
+    expect(html).toContain('About Magic Tower');
+    expect(html).toContain('魔塔');
+    expect(html).toContain('href="/sudoku/"');
+    expect(html).not.toContain('href="/magic-tower/"');
+  });
+
   it('prerenders the bingo caller with its About copy and same-category sibling first', () => {
     const entry = byPath('/bingo/')!;
     const html = renderRootForPath('/bingo/index.html');

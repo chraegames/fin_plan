@@ -2,7 +2,7 @@
 
 **Chrae Lab** (`https://chraegames.cloud`) — a hub of small browser-only tools. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`.
 
-The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/go/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
+The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/go/`, `/magic-tower/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
 
 User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree. Most of it is about the FIRE planner because that's where the complexity is.
 
@@ -14,7 +14,7 @@ User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers +
 index.html                # hub landing (prerendered <Landing/>; src/hub/main.ts adds CSS + theme toggle)
 fire-planner/index.html   # FIRE planner app entry (src/main.tsx)
 fire-planner/<slug>/index.html   # static FIRE content guides (CSS-only entry)
-<tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku, bingo, go (src/tools/<tool>/main.tsx)
+<tool>/index.html         # one per tool: unit-converter, calculator, todo, sudoku, bingo, go, magic-tower (src/tools/<tool>/main.tsx)
 tv-guide/<chapter>/index.html    # TV guide chapters (src/tools/tv-guide/entries/<chapter>.tsx) — see "TV buying guide"
 scripts/
   head.ts                 # buildHeadTags(entry): title/canonical/OG/JSON-LD + THEME_BOOT_SCRIPT
@@ -30,6 +30,7 @@ src/
     main.ts               # hub entry: styles + analytics + vanilla theme toggle (no React)
   tools/<tool>/           # main.tsx (entry) + App.tsx + pure logic .ts + tests
   tools/go/               # online Go: go.ts (rules) + match.ts (pairing/session state machine) + net.ts (Trystero / BroadcastChannel transports) — see "Go"
+  tools/magic-tower/      # 魔塔: combat.ts + floorgen.ts (generator) + zonesim.ts/solver.ts/policies.ts (verification) + game.ts (reducer) + sprites/render — see "Magic Tower"
   tools/tv-guide/         # multi-page guide: data.ts/logic.ts/pages.ts (pure) + components/ + pages/*View (pure) + Live.tsx + static.tsx/App.tsx/mount.tsx
   site/Prose.tsx          # H2/H3/P/UL/LI/A prose primitives shared by every prerendered content tree (ContentLayout re-exports them)
   main.tsx                # FIRE planner entry: boots StrictMode + analytics, mounts <App />
@@ -159,6 +160,8 @@ else, based on activePlan:
 | `chraeLab.sudoku` | `SUDOKU_KEY` | Current Sudoku game (puzzle, solution, board, notes, clock) |
 | `chraeLab.bingo` | `BINGO_KEY` | Current Bingo caller game (variant, ordered calls) + caller settings (auto interval, voice) |
 | `chraeLab.go` | `GO_KEY` | Preferred Go board size only — games are never persisted |
+| `chraeLab.magicTower` | `MAGIC_TOWER_KEY` | Magic Tower save slots (`auto`, `s1`–`s3`): seed, loop, hero, per-floor diffs — the tower is regenerated on load |
+| `chraeLab.magicTower.meta` | `MAGIC_TOWER_META_KEY` | Magic Tower unlocks (`unlockedLoop`), codex, per-loop records |
 | `financial-planner-scenarios` | legacy | Pre-profiles "single profile, many scenarios" shape |
 | `financial-planner-input` | legacy | Pre-scenarios "one plan" shape |
 | `financial-planner-plans` | legacy | Withdrawal schedules from the pre-scenarios shape |
@@ -216,6 +219,18 @@ The one tool that talks to anything outside the browser. Two people play against
 - **Gotchas.** A peer leaving the *lobby* while you are `inviting` is the normal move to the game room, not a disconnect (`peerLeave` is ignored in that phase). The Trystero transport waits for in-flight sends before `room.leave()` so `accept` is not dropped. The `?room=` auto-join effect is guarded by a ref — StrictMode's double effect would otherwise leave and re-enter the room, which the host sees as "opponent left". Transport callbacks are guarded by `room === r` so a room you already left cannot feed stale events.
 
 ---
+
+## Magic Tower — `src/tools/magic-tower/`
+
+A 魔塔 / Tower of the Sorcerer puzzle-RPG: ten loops (周目) × 99 procedurally generated floors, bilingual labels, our own pixel art. The design rationale lives in the plan the tool was built from; the contracts that matter for changing it:
+
+- **Combat is one function.** `combat.ts#getDamageInfo(hero, monster, ctx)` is the only place damage is computed (classic formula + mota-js ability conventions + perk hooks). The generator, the solver, the manual and the reducer all call it.
+- **Fixed puzzle, not adaptive.** A tower is `{ seed, loop }`; nothing in generation reads the player's actual state. Zones are generated **one at a time** (`floorgen.ts#generateZone`) when the previous boss dies and the blessing is chosen, from the *calibration hero* (`heroForZone`: the previous zone's proof-line hero plus the chosen perks). Same seed + same perk picks ⇒ same tower; saves store only the seed, the perks and per-floor diffs, and `App.tsx` regenerates zones on load (in a module Worker, `worker.ts`).
+- **Soundness by construction, difficulty by calibration.** `buildZone` lays out floors (BSP rooms → wings behind a door/guard, gem pockets, vaults, hatches, backtrack keys), then `walkLine` drives `ZoneSim` along the intended collector line and **back-solves each monster's stats when the line reaches it** (`statMonster`), so that line survives with the zone's slack target. `calibrateToExpert` then runs the staged solver (`solver.ts`: exhaustive per-floor search with dominance pruning + return-and-open macros) and re-tunes the boss to the expert line, which becomes the stored proof (`ZoneInfo.line`). `statLoose` stats the trap monsters last (they never carry zone/aura abilities that could change the line).
+- **Validation.** `validate.ts#validateTower` = structural invariants + the stored line replayed through the real reducer (`game.ts`) + six naive policies (`policies.ts`) + template detection. `npm run mt:validate -- --seeds 20 --loops 1-10` prints the distribution report; `tower.test.ts` runs a small version in CI and the full sweep with `MT_SLOW=1`.
+- **Sim ⇄ reducer parity rules.** Movement over reachable tiles is free; stairs/holes change floor only on a *deliberate* step (`step(state, to, final)`) so routes may pass over them; items are auto-collected in the sim and explicit `take` actions in the ledger; `ZoneSim.ords` ordinal maps are append-only because the generator adds guards mid-walk. If you change a rule in `game.ts`, mirror it in `zonesim.ts` — the replay test will tell you if you forgot.
+- **Breach rules** (`game.ts#breachTarget`): needs a stone; destination = physically adjacent floor (`floorAbove`/`floorBelow` respect the loop topology; a hatch tile breaches to `floor.hatch.to`); landing must be open floor or a vault centre; a boss floor's ceiling is sealed until its boss dies; the hole is recorded in both floors' diffs and is a two-way passage (`useTile` when standing on it).
+- **Adding an ability / perk / template**: ability → `types.ts` union, `combat.ts`, `i18n.ts`, monster affinities, loop table; perk → `perks.ts` (must be a monotone bonus; hooks in `combat.ts`/`items.ts`); template → `floorgen.ts#detectTemplates`.
 
 ## TV buying guide — `src/tools/tv-guide/`
 
@@ -279,6 +294,12 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 | `tools/bingo/bingo.test.ts` | B-I-N-G-O column mapping per variant, `boardRows` coverage, rejection-sampling RNG (`uniformFrom` with a fake source + `secureRandomInt` range), reducer (draw never repeats, stops when exhausted, undo), save-file validation |
 | `tools/go/go.test.ts` | Rules: coordinates/star points, group liberties, single + multi-group capture, suicide refused, capture-with-no-liberties allowed, simple ko then retake after a tempo, two passes end + score, area scoring (empty board = komi, wall split, neutral regions), prefs parsing |
 | `tools/go/match.test.ts` | Room-code alphabet/normalising; two sessions wired back to back: lobby pairing (lower id invites, `busy` for a third), room-code host/guest with `ready`, mirrored moves/passes/resign, stale move numbers ignored, illegal incoming move → out of sync, opponent leaving → abandon win, cancel/reset leave the room |
+| `tools/magic-tower/combat.test.ts` | Base formula, every ability (先攻/魔攻/坚固/连击/吸血/破甲/反击/模仿/净化/固伤/自爆/无敌 ± cross, aura/support), breakpoints, perk hooks, phased bosses |
+| `tools/magic-tower/layout.test.ts` | Every archetype connected, rooms + gaps cover the open tiles, wing candidates really cut off, mirroring |
+| `tools/magic-tower/game.test.ts` | Reducer: walking/pickups, only winnable fights, keys + undo, stairs alignment, breach → two-way hole, planRoute, boss seal + perk draft |
+| `tools/magic-tower/save.test.ts` | Save-file validation (shape, `genVersion`), round-trip, meta defaults |
+| `tools/magic-tower/sprites.test.ts` | Every sprite is 16×16 with a complete palette; every monster has a sprite |
+| `tools/magic-tower/tower.test.ts` | Generates towers and runs `validateTower`: structure, sim + reducer ledger replay, templates (slow part gated by `MT_SLOW=1`) |
 | `tools/tv-guide/data.test.ts` | Content invariants: unique ids, every layer/tech reference resolves, every current tech has a brand name, ratings 1–5, official URLs are brand roots, **no prices / inch sizes / brightness figures anywhere**, changelog newest-first and `updated` dates of all five `/tv-guide` pages equal `GUIDE_REVIEWED` |
 | `tools/tv-guide/logic.test.ts` | Decoder (normalisation, exact > prefix > contains ranking, aliases), `compareRows` best-cell marking incl. lower-is-better, `recommend` over the full answer space (budget cap, static-content → LCD, dark/movies/premium → OLED), `ruleOfThumb` 3×5 |
 
@@ -299,6 +320,7 @@ Tools: tool_opened {tool}, converter_used {category, from, to},
        sudoku_started {difficulty}, sudoku_won {difficulty, seconds, hints},
        bingo_started {variant}, bingo_finished {variant},
        go_matched {mode, size}, go_finished {size, result},
+       mt_run_started {loop}, mt_perk {id}, mt_loop_cleared {loop, steps},
        tool_opened {tool:'tv-guide', page}, tv_guide_chooser {room,use,budget},
        tv_guide_tab {page, tab}, tv_guide_decode, tv_guide_compare {tech}
 Both:  theme_toggled {theme}
@@ -332,6 +354,7 @@ If you change the Intro's copy, also update the FIRE entry's `description`/`json
 - **Keep the prerender tree pure.** Anything reachable from `scripts/prerender.tsx` (Landing, ToolStatic, IntroContent, ContentLayout, page components) must avoid hooks, browser APIs, and CSS imports — it renders to a string at build time. See [SEO surface](#seo-surface--build-time-prerender).
 - **Don't `hydrateRoot` any page.** The prerendered `#root` is intentionally *replaced* by `createRoot().render()`, not hydrated — the server has no localStorage, so hydration would mismatch.
 - **Don't put `<title>` or meta tags in an `index.html`.** They're generated from the manifest; a hand-written one would duplicate. Keep the literal `<div id="root"></div>` too — the prerender plugin string-replaces it and throws if it's gone.
+- **Don't make Magic Tower adaptive.** Nothing in `floorgen.ts` may read the player's actual HP/stats; the user's stance is a fixed puzzle where getting stuck is allowed and save slots are the safety net.
 - **Don't link to `/` from inside the FIRE app expecting the planner.** `/` is the hub now; the planner is `FIRE_HOME_PATH` (`/fire-planner/`).
 
 ---

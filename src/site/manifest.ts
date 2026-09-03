@@ -525,6 +525,54 @@ export const PAGES: SiteEntry[] = [
       ],
     },
   },
+  {
+    slug: 'magic-tower',
+    path: '/magic-tower/',
+    kind: 'app',
+    status: 'live',
+    category: 'games',
+    name: 'Magic Tower',
+    tagline: '魔塔 — ten towers of 99 generated floors. Every fight is arithmetic; every floor is a puzzle.',
+    title: 'Magic Tower 魔塔 — free online puzzle RPG, 10 × 99 generated floors',
+    description:
+      'Play Magic Tower (魔塔 / Tower of the Sorcerer) online for free. Ten playthroughs of 99 procedurally generated floors, deterministic combat with a live damage manual, keys, gems, potions, vaults you can only reach by breaching the floor, and blessings after every boss. Saves stay on your device.',
+    updated: '2026-09-03',
+    about: {
+      applicationCategory: 'GameApplication',
+      intro:
+        'A Magic Tower (魔塔, the Chinese classic descended from Tower of the Sorcerer) that builds itself. Ten towers of 99 floors are generated from a seed, and each one is proven solvable before you set foot in it: the generator walks its own solution line and checks that a careless line fails. Combat is pure arithmetic with no dice — the monster manual tells you exactly what a fight costs before you commit, so the whole game is deciding what to fight, in what order, and where to spend keys, gems and potions.',
+      features: [
+        'Ten playthroughs of 99 floors. Each tower adds new monster abilities (first strike 先攻, magic 魔攻, sturdy 坚固, vampire 吸血 and more), new rules and new puzzle types; one of them is climbed fifty floors up and forty-nine down.',
+        'Deterministic combat exactly as in the classic: you hit for ATK − DEF, the monster hits back, damage is known in advance. The manual shows every monster on the floor, what it will cost you, and the ATK or DEF that would make it cheaper.',
+        'Breach Stones 穿层石: a scarce item that punches through the ceiling or the floor onto the same square of the next level. It skips a guard, or opens a vault 密室 — a sealed room with no door.',
+        'Route ledger: click any tile to see every fight, door and pickup on the way and your stats afterwards before you move.',
+        'A blessing after every zone boss, elites with combined abilities, keys that must sometimes be carried back to an earlier floor, and a solvability check that runs on every tower.',
+        'Saves in your browser: an autosave after every step plus three manual slots. Getting stuck is part of the genre — that is what the slots are for.',
+      ],
+      faq: [
+        {
+          q: 'How does combat work?',
+          a: 'Each turn you deal your ATK minus the monster’s DEF; if that is zero you cannot fight it at all. The monster deals its ATK minus your DEF back after every one of your hits except the last. Special abilities change the sum: first strike adds one hit, magic ignores your DEF, sturdy monsters take only one damage per hit, and so on. The manual does this arithmetic for you.',
+        },
+        {
+          q: 'Is every tower really beatable?',
+          a: 'Yes. Floors are generated from a dependency graph (which key opens which door, which gem makes which monster affordable) and the generator then walks a full solution line through the zone, setting each monster’s numbers as it goes so that line survives. A search then looks for a stronger line and re-tunes the boss to it, and six naive strategies are checked to make sure the obvious way through fails. What is not guaranteed is that your line works: spend the wrong key or fight the wrong monster and you can get stuck, exactly as in the classic.',
+        },
+        {
+          q: 'What are Breach Stones and vaults?',
+          a: 'A Breach Stone lets you punch through the ceiling or the floor and land on the same square of the next level, as long as that square is open. The hole stays as a two-way passage. Vaults are sealed rooms with no door that hold one valuable item; the only way in is to breach from the aligned square on the floor below. Each zone boss drops one stone, so where you use it is the decision.',
+        },
+        {
+          q: 'What changes between the ten towers?',
+          a: 'Nothing carries over but the unlock. Each tower adds abilities, rules and puzzle types: elites, magic and sturdy monsters, a tower with a false summit where the true path goes down from floor one, keys that turn to gold at every boss, mirrored floors, counter-attacks, zones that cost HP to walk past, auras that make kill order matter, and invincible monsters that need the cross.',
+        },
+        {
+          q: 'Where is my game saved?',
+          a: 'In this browser only. There is an autosave after every move and three manual slots. Only the seed and what you changed are stored; the tower is rebuilt from them when you load.',
+        },
+      ],
+    },
+  },
   // ─── TV buying guide (one app + four content chapters under /tv-guide/) ──
   // Dates: keep every `updated` here equal to GUIDE_REVIEWED in
   // src/tools/tv-guide/data.ts (data.test.ts enforces the lockstep).
