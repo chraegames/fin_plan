@@ -245,6 +245,17 @@ export interface FloorDiff {
   dug: number[];
 }
 
+/** A message the UI renders in the current language (log lines, toasts). */
+export interface Msg {
+  k: string;
+  /** Monster/item/perk id when the message names one. */
+  id?: string;
+  n?: number;
+  m?: number;
+  x?: number;
+  s?: string;
+}
+
 export interface Snapshot {
   hero: Hero;
   floor: number;
@@ -266,7 +277,7 @@ export interface Run {
   /** Perk ids offered after a boss; null when no draft is pending. */
   pendingDraft: PerkId[] | null;
   history: Snapshot[];
-  log: string[];
+  log: Msg[];
   steps: number;
   status: 'playing' | 'dead' | 'won';
   /** Zone index of the last defeated zone boss (−1 none). */

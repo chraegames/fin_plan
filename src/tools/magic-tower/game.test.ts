@@ -45,7 +45,7 @@ describe('reducer', () => {
     let s = start(tower([f1]));
     s = gameReducer(s, { type: 'move', dir: 2 });
     expect(s.run.pos).toBe(0);
-    expect(s.toast).toMatch(/too much/);
+    expect(s.toast?.k).toBe('tooStrong');
     s = gameReducer(s, { type: 'move', dir: 1 });
     expect(s.run.hero.hp).toBe(60);
     expect(s.run.hero.gold).toBe(3);

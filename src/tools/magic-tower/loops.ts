@@ -10,6 +10,7 @@ export interface LoopDef {
   en: string;
   zh: string;
   blurb: string;
+  blurbZh: string;
   topology: Topology;
   /** Abilities the generator may use (cumulative). */
   abilities: Ability[];
@@ -55,6 +56,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 1, en: 'The First Tower', zh: '初塔', topology: 'up',
     blurb: 'The classic climb. Learn the numbers.',
+    blurbZh: '经典攀登。先学会算数。',
     abilities: ['first', 'hit2'],
     templates: ['breakpointGate', 'keyChoice', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base },
@@ -62,6 +64,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 2, en: 'Arcane Tide', zh: '魔潮', topology: 'up',
     blurb: 'Magic ignores your armour; sturdy shells ignore your sword. Elites appear.',
+    blurbZh: '魔攻无视你的护甲，坚固无视你的剑。精英登场。',
     abilities: ['first', 'hit2', 'magic', 'sturdy'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 1, holyWater: true },
@@ -69,6 +72,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 3, en: 'The Hollow Tower', zh: '空心塔', topology: 'hollow',
     blurb: 'Fifty floors up to a false summit. The crown is below.',
+    blurbZh: '五十层直上假顶。王冠在下方。',
     abilities: ['first', 'hit2', 'magic', 'sturdy', 'vamp'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 1, holyWater: true },
@@ -76,6 +80,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 4, en: 'Chains', zh: '锁链', topology: 'up',
     blurb: 'Keys you carry past a boss turn to gold. A locksmith sells more — for a price.',
+    blurbZh: '带过首领的钥匙会变成金币。锁匠有售——价格不菲。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 1, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true },
@@ -83,6 +88,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 5, en: 'Mirror Realm', zh: '镜界', topology: 'up',
     blurb: 'Floors come in mirrored pairs. Mimics wear your own numbers.',
+    blurbZh: '楼层成对镜像。模仿者与你同攻同防。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak', 'mimic', 'zone'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 2, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true, mirror: true, equipment: true },
@@ -90,6 +96,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 6, en: 'Backlash', zh: '反噬', topology: 'up',
     blurb: 'Your own strength is turned against you. Shops become trade posts.',
+    blurbZh: '你的力量反噬自身。商店变成交易所。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak', 'mimic', 'zone', 'counter', 'selfDestruct'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 2, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true, equipment: true, bombs: true, tradePost: true },
@@ -97,6 +104,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 7, en: 'Sentinels', zh: '哨兵', topology: 'up',
     blurb: 'Corridors bleed. Walk wide, or walk fast.',
+    blurbZh: '走廊会流血。绕远，或者走快。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak', 'mimic', 'zone', 'counter', 'selfDestruct', 'purify'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 2, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true, equipment: true, bombs: true, shieldAmulet: true },
@@ -104,6 +112,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 8, en: 'Choir', zh: '唱诗', topology: 'up',
     blurb: 'Auras and supporters: kill order is everything. Two blessings per boss.',
+    blurbZh: '光环与支援：击杀顺序决定一切。每个首领两次祝福。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak', 'mimic', 'zone', 'counter', 'selfDestruct', 'purify', 'aura', 'support'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 2, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true, equipment: true, bombs: true, shieldAmulet: true, twoPerks: true },
@@ -111,6 +120,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 9, en: 'Relics', zh: '圣物', topology: 'up',
     blurb: 'Some things cannot be killed without the cross. Potions are thin.',
+    blurbZh: '有些东西没有十字架杀不死。药水变薄。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak', 'mimic', 'zone', 'counter', 'selfDestruct', 'purify', 'aura', 'support', 'invincible', 'fixed'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 2, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true, equipment: true, bombs: true, shieldAmulet: true, twoPerks: true, cross: true, potionMult: 0.8 },
@@ -118,6 +128,7 @@ export const LOOPS: LoopDef[] = [
   {
     n: 10, en: 'The Last Tower', zh: '终塔', topology: 'fold',
     blurb: 'Everything at once, and a fold in the middle of the climb.',
+    blurbZh: '一切同时到来，攀登途中还有一处折叠。',
     abilities: ['first', 'hit2', 'hit3', 'magic', 'sturdy', 'vamp', 'armorBreak', 'mimic', 'zone', 'counter', 'selfDestruct', 'purify', 'aura', 'support', 'invincible', 'fixed'],
     templates: ['breakpointGate', 'sturdyVsMagic', 'keyChoice', 'holyWaterTiming', 'levelUpTiming', 'justEnough', 'vaultTradeoff', 'backtrackKey'],
     flags: { ...base, elites: true, eliteAffixes: 3, holyWater: true, keyToGold: true, locksmith: true, pickaxe: true, equipment: true, bombs: true, shieldAmulet: true, twoPerks: true, cross: true, potionMult: 0.8, bossPhases: 4 },

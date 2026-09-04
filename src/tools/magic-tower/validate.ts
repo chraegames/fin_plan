@@ -10,6 +10,7 @@ import { EMPTY_STATE, reach } from './path';
 import { POLICIES, runPolicy, type PolicyId } from './policies';
 import { FLOORS, N, T, neighbours, type Action, type Hero, type KeyColor, type TemplateId, type Tower } from './types';
 import { ZoneSim } from './zonesim';
+import { msg } from './strings';
 
 export interface ZoneReport {
   zone: number;
@@ -129,14 +130,14 @@ function applyViaReducer(state: GameState, a: Action): GameState | string {
       const next = gameReducer(state, { type: 'walkPath', path });
       const d = diffOf(next.run, f.n);
       const done = a.t === 'take' ? d.taken.includes(a.at) : a.t === 'fight' ? d.killed.includes(a.at) : d.opened.includes(a.at);
-      if (!done) return `${a.t} ${a.at}: refused (${next.toast ?? 'no toast'})`;
+      if (!done) return `${a.t} ${a.at}: refused (${next.toast ? msg(next.toast, 'en') : 'no toast'})`;
       return next;
     }
     case 'stairs': {
       const target = a.to > f.n ? f.exit : f.entry;
       const next = walkOnto(state, target);
       if (typeof next === 'string') return `stairs to ${a.to}: ${next}`;
-      if (next.run.floor !== a.to) return `stairs to ${a.to}: ended on ${next.run.floor} (${next.toast ?? ''})`;
+      if (next.run.floor !== a.to) return `stairs to ${a.to}: ended on ${next.run.floor} (${next.toast ? msg(next.toast, 'en') : ''})`;
       return next;
     }
     case 'hole': {
@@ -151,11 +152,11 @@ function applyViaReducer(state: GameState, a: Action): GameState | string {
         const path = planRoute(state, a.at);
         if (!path.length) return `breach ${a.at}: unreachable`;
         cur = gameReducer(state, { type: 'walkPath', path });
-        if (cur.run.pos !== a.at) return `breach ${a.at}: could not stand there (${cur.toast ?? ''})`;
+        if (cur.run.pos !== a.at) return `breach ${a.at}: could not stand there (${cur.toast ? msg(cur.toast, 'en') : ''})`;
       }
       const dir = a.to > f.n ? (f.dir === 1 ? 'up' : 'down') : f.dir === 1 ? 'down' : 'up';
       cur = gameReducer(cur, { type: 'breach', dir: f.hatch && f.hatch.at === a.at ? 'down' : dir });
-      if (cur.run.floor !== a.to) return `breach ${a.at}: ended on ${cur.run.floor} (${cur.toast ?? ''})`;
+      if (cur.run.floor !== a.to) return `breach ${a.at}: ended on ${cur.run.floor} (${cur.toast ? msg(cur.toast, 'en') : ''})`;
       return cur;
     }
     case 'holyWater':
@@ -242,7 +243,7 @@ export function replayLedger(tower: Tower): { ok: boolean; error?: string; zoneH
           state = gameReducer(state, { type: 'walkPath', path: p2 });
         }
         state = gameReducer(state, { type: 'breach', dir: 'down' });
-        if (state.run.floor !== first) return { ok: false, error: `zone ${z}: hatch breach failed (${state.toast ?? ''})`, zoneHeroes, state };
+        if (state.run.floor !== first) return { ok: false, error: `zone ${z}: hatch breach failed (${state.toast ? msg(state.toast, 'en') : ''})`, zoneHeroes, state };
       }
     }
   }

@@ -6,13 +6,11 @@ import { applyFight, canWin, getDamageInfo, getPhasedDamage, type FightCtx } fro
 import { KEY_GOLD, START_HERO, cloneHero, locksmithPrice, shopAtk, shopDef, shopHp, shopPrice } from './curves';
 import { afterKill, applyItem, drinkHolyWater, spendKey } from './items';
 import { floorDir, hatchSource, loopDef } from './loops';
-import { monsterDef } from './monsters';
-import { ITEM_LABEL, bi } from './i18n';
 import { draftPerks } from './perks';
 import { frontier, pathTo, reach, standable, zoneCosts, type FloorState } from './path';
 import {
   DX, DY, FLOORS, GEN_VERSION, IDX, T, XY, inBounds, isBossFloor, neighbours, zoneOf,
-  type Dir, type Floor, type FloorDiff, type KeyColor, type PerkId, type Run, type Snapshot, type Tower,
+  type Dir, type Floor, type FloorDiff, type KeyColor, type Msg, type PerkId, type Run, type Snapshot, type Tower,
 } from './types';
 
 export interface GameState {
@@ -21,7 +19,7 @@ export interface GameState {
   /** NPC the hero is standing next to and just bumped (UI opens a panel); null otherwise. */
   npcOpen: number | null;
   /** Transient message for the UI (latest). */
-  toast: string | null;
+  toast: Msg | null;
 }
 
 export type GameAction =
@@ -112,7 +110,7 @@ function pushHistory(run: Run): Run {
   return { ...run, history: history.length > UNDO_MAX ? history.slice(history.length - UNDO_MAX) : history };
 }
 
-function log(run: Run, msg: string): Run {
+function log(run: Run, msg: Msg): Run {
   const l = [...run.log, msg];
   return { ...run, log: l.length > 60 ? l.slice(l.length - 60) : l };
 }
@@ -209,7 +207,7 @@ interface StepResult {
   run: Run;
   ok: boolean;
   npcOpen?: number;
-  toast?: string;
+  toast?: Msg;
 }
 
 function arrive(run: Run, tower: Tower, n: number, pos: number): Run {
@@ -224,7 +222,7 @@ function pickUp(run: Run, f: Floor, at: number): Run {
   const flags = loopDef(run.loop).flags;
   let r = { ...run, hero: applyItem(run.hero, it, flags.potionMult) };
   r = withDiff(r, f.n, d => d.taken.push(at));
-  return log(r, `Picked up ${bi(ITEM_LABEL[it.kind])}${it.value && it.kind !== 'stone' ? ` +${it.value}` : ''}`);
+  return log(r, { k: 'pickup', s: it.kind, n: it.value && it.kind !== 'stone' ? it.value : undefined });
 }
 
 /**
@@ -243,7 +241,7 @@ function step(state: GameState, to: number, final = true): StepResult {
 
   const zc = zoneCosts(f, st);
   const stepCost = zc ? zc[to] : 0;
-  if (stepCost >= run.hero.hp) return { run, ok: false, toast: 'That step would kill you.' };
+  if (stepCost >= run.hero.hp) return { run, ok: false, toast: { k: 'stepKill' } };
 
   // Monster
   const m = f.mons[to];
@@ -251,13 +249,13 @@ function step(state: GameState, to: number, final = true): StepResult {
     const ctx = fightCtx(tower, run, f.n, to);
     if (!canWin(run.hero, m, ctx)) {
       const info = getDamageInfo(run.hero, m, ctx);
-      return { run, ok: false, toast: info.damage == null ? `${monsterDef(m.id).en} cannot be hurt yet.` : `${monsterDef(m.id).en} would deal ${info.damage} — too much.` };
+      return { run, ok: false, toast: info.damage == null ? { k: 'cannotHurt', id: m.id } : { k: 'tooStrong', id: m.id, n: info.damage } };
     }
     const before = run.hero.hp;
     let hero = afterKill(applyFight(run.hero, m, ctx));
     run = { ...run, hero };
     run = withDiff(run, f.n, d => d.killed.push(to));
-    run = log(run, `Defeated ${monsterDef(m.id).en} ${monsterDef(m.id).zh} (−${before - hero.hp + (hero.hp - before > 0 ? 0 : 0)} HP, +${m.gold} gold, +${m.exp} exp)`);
+    run = log(run, { k: 'defeated', id: m.id, n: Math.max(0, before - hero.hp), m: m.gold, x: m.exp });
     if (m.boss) {
       const zone = zoneOf(f.n);
       run = { ...run, bossesDown: Math.max(run.bossesDown, zone) };
@@ -265,11 +263,11 @@ function step(state: GameState, to: number, final = true): StepResult {
         const k = run.hero.keys;
         const gold = k.y * KEY_GOLD.y + k.b * KEY_GOLD.b + k.r * KEY_GOLD.r;
         hero = { ...run.hero, gold: run.hero.gold + gold, keys: { y: 0, b: 0, r: 0 } };
-        run = log({ ...run, hero }, `The chains take your keys: +${gold} gold.`);
+        run = log({ ...run, hero }, { k: 'chains', n: gold });
       }
       if (m.boss === 'final') {
         run = { ...run, status: 'won' };
-        return { run, ok: true, toast: 'The tower is yours.' };
+        return { run, ok: true, toast: { k: 'yours' } };
       }
       const draft = draftFor(run, zone);
       if (draft.length) run = { ...run, pendingDraft: draft };
@@ -281,7 +279,7 @@ function step(state: GameState, to: number, final = true): StepResult {
   const door = f.doors[to];
   if (door && !st.isOpened(to)) {
     const h = spendKey(run.hero, door);
-    if (!h) return { run, ok: false, toast: 'Locked. You need a key.' };
+    if (!h) return { run, ok: false, toast: { k: 'locked' } };
     run = withDiff({ ...run, hero: h }, f.n, d => d.opened.push(to));
     return { run, ok: true };
   }
@@ -319,12 +317,12 @@ function traverse(run: Run, tower: Tower, f: Floor, to: number): StepResult {
     return { run, ok: true };
   }
   if (to === f.exit && (b === T.StairUp || b === T.StairDown)) {
-    if (isBossFloor(f.n) && run.bossesDown < zoneOf(f.n)) return { run, ok: true, toast: 'The stairs are sealed while the boss lives.' };
+    if (isBossFloor(f.n) && run.bossesDown < zoneOf(f.n)) return { run, ok: true, toast: { k: 'sealedBoss' } };
     if (f.n >= FLOORS) return { run, ok: true };
     const next = tower.floors[f.n];
-    if (!next) return { run, ok: true, toast: 'The tower is still shifting above…' };
+    if (!next) return { run, ok: true, toast: { k: 'shifting' } };
     // Hatch-entered floors are not connected by stairs.
-    if (hatchSource(loopDef(tower.loop).topology, next.n) != null) return { run, ok: true, toast: 'A false summit. The way on is below.' };
+    if (hatchSource(loopDef(tower.loop).topology, next.n) != null) return { run, ok: true, toast: { k: 'falseSummit' } };
     run = arrive(run, tower, next.n, next.entry);
     return { run, ok: true };
   }
@@ -406,9 +404,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'breach': {
       const { run } = state;
-      if (run.status !== 'playing' || run.hero.stones <= 0) return { ...state, toast: 'No Breach Stone.' };
+      if (run.status !== 'playing' || run.hero.stones <= 0) return { ...state, toast: { k: 'noStone' } };
       const to = breachTarget(state, action.dir);
-      if (to == null) return { ...state, toast: action.dir === 'up' ? 'Solid ceiling here.' : 'Solid floor here.' };
+      if (to == null) return { ...state, toast: { k: action.dir === 'up' ? 'solidUp' : 'solidDown' } };
       const f = currentFloor(state);
       let r = pushHistory(run);
       r = { ...r, hero: { ...r.hero, stones: r.hero.stones - 1 } };
@@ -416,7 +414,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       r = withDiff(r, to, d => d.holes.push(r.pos));
       r = arrive(r, state.tower, to, r.pos);
       r = pickUp(r, state.tower.floors[to - 1], r.pos);
-      r = log(r, `Breached ${action.dir} into ${state.tower.floors[to - 1].label}.`);
+      r = log(r, { k: 'breached', s: state.tower.floors[to - 1].label, n: action.dir === 'up' ? 1 : 0 });
       return { ...state, run: r, npcOpen: null, toast: null };
     }
     case 'teleport': {
@@ -435,12 +433,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const n = run.hero.shopBuys + 1;
       let price = shopPrice(n, npc.tier);
       if (run.hero.perks.includes('merchant')) price = Math.round(price * 0.75);
-      if (run.hero.gold < price) return { ...state, toast: `Not enough gold (${price}).` };
+      if (run.hero.gold < price) return { ...state, toast: { k: 'notEnoughGold', n: price } };
       const h = { ...run.hero, gold: run.hero.gold - price, shopBuys: n };
       if (action.what === 'atk') h.atk += shopAtk(npc.tier);
       else if (action.what === 'def') h.def += shopDef(npc.tier);
       else h.hp += shopHp(npc.tier);
-      return { ...state, run: log({ ...pushHistory(run), hero: h }, `Bought ${action.what.toUpperCase()} for ${price} gold.`), toast: null };
+      return { ...state, run: log({ ...pushHistory(run), hero: h }, { k: 'bought', s: action.what, n: price }), toast: null };
     }
     case 'locksmith': {
       const { run } = state;
@@ -450,7 +448,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (!npc || npc.kind !== 'locksmith') return state;
       const n = run.hero.locksmithBuys + 1;
       const price = locksmithPrice(n, npc.tier) * (action.color === 'y' ? 1 : action.color === 'b' ? 2 : 4);
-      if (run.hero.gold < price) return { ...state, toast: `Not enough gold (${price}).` };
+      if (run.hero.gold < price) return { ...state, toast: { k: 'notEnoughGold', n: price } };
       const keys = { ...run.hero.keys, [action.color]: run.hero.keys[action.color] + 1 };
       const h = { ...run.hero, gold: run.hero.gold - price, locksmithBuys: n, keys };
       return { ...state, run: { ...pushHistory(run), hero: h }, toast: null };
@@ -459,31 +457,31 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const { run } = state;
       if (run.hero.holyWater <= 0) return state;
       const r = { ...pushHistory(run), hero: drinkHolyWater(run.hero) };
-      return { ...state, run: log(r, `Holy water: +${r.hero.hp - run.hero.hp} HP.`), toast: null };
+      return { ...state, run: log(r, { k: 'holy', n: r.hero.hp - run.hero.hp }), toast: null };
     }
     case 'bomb': {
       const { run } = state;
-      if (run.hero.bombs <= 0) return { ...state, toast: 'No bombs.' };
+      if (run.hero.bombs <= 0) return { ...state, toast: { k: 'noBombs' } };
       const { x, y } = XY(run.pos);
       const nx = x + DX[action.dir], ny = y + DY[action.dir];
       if (!inBounds(nx, ny)) return state;
       const t = IDX(nx, ny);
       const f = currentFloor(state);
       const m = f.mons[t];
-      if (!m || m.boss || diffOf(run, f.n).killed.includes(t)) return { ...state, toast: 'Nothing to bomb there.' };
+      if (!m || m.boss || diffOf(run, f.n).killed.includes(t)) return { ...state, toast: { k: 'nothingToBomb' } };
       let r = { ...pushHistory(run), hero: { ...run.hero, bombs: run.hero.bombs - 1 } };
       r = withDiff(r, f.n, d => d.killed.push(t));
-      return { ...state, run: log(r, `Bombed ${monsterDef(m.id).en}.`), toast: null };
+      return { ...state, run: log(r, { k: 'bombed', id: m.id }), toast: null };
     }
     case 'pickaxe': {
       const { run } = state;
-      if (run.hero.pickaxes <= 0) return { ...state, toast: 'No pickaxe.' };
+      if (run.hero.pickaxes <= 0) return { ...state, toast: { k: 'noPickaxe' } };
       const { x, y } = XY(run.pos);
       const nx = x + DX[action.dir], ny = y + DY[action.dir];
       if (!inBounds(nx, ny)) return state;
       const t = IDX(nx, ny);
       const f = currentFloor(state);
-      if (f.base[t] !== T.Wall || diffOf(run, f.n).dug.includes(t)) return { ...state, toast: 'Only plain walls can be dug.' };
+      if (f.base[t] !== T.Wall || diffOf(run, f.n).dug.includes(t)) return { ...state, toast: { k: 'onlyWalls' } };
       let r = { ...pushHistory(run), hero: { ...run.hero, pickaxes: run.hero.pickaxes - 1 } };
       r = withDiff(r, f.n, d => d.dug.push(t));
       return { ...state, run: r, toast: null };
@@ -492,7 +490,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const { run } = state;
       if (!run.pendingDraft || !run.pendingDraft.includes(action.id)) return state;
       const hero = { ...run.hero, perks: [...run.hero.perks, action.id] };
-      return { ...state, run: log({ ...run, hero, pendingDraft: null }, `Blessing chosen: ${action.id}.`), toast: null };
+      return { ...state, run: log({ ...run, hero, pendingDraft: null }, { k: 'blessing', s: action.id }), toast: null };
     }
     case 'undo': {
       const { run } = state;

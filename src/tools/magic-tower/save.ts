@@ -76,7 +76,7 @@ export function parseSaveFile(raw: string | null): SaveFile {
     const slots: SaveFile['slots'] = {};
     for (const id of SLOTS) {
       const s = o.slots[id];
-      if (s && validRun(s.run) && isNum(s.savedAt)) slots[id] = { run: { ...s.run, history: [] }, savedAt: s.savedAt };
+      if (s && validRun(s.run) && isNum(s.savedAt)) slots[id] = { run: { ...s.run, history: [], log: Array.isArray(s.run.log) ? s.run.log.filter(l => l && typeof l === 'object' && typeof (l as { k?: unknown }).k === 'string') : [] }, savedAt: s.savedAt };
     }
     return { v: 1, slots };
   } catch {

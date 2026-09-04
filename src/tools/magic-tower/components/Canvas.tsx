@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GameState } from '../game';
-import { CELL, drawFloor, tileAt, type Fx } from '../render';
+import type { Overlay } from '../overlay';
+import { drawFloor, tileAt, type Fx } from '../render';
 import { buildAtlas, type Atlas } from '../sprites';
 import { H, W } from '../types';
 
@@ -9,6 +10,7 @@ interface Props {
   route: number[];
   hover: number;
   floats: Fx['floats'];
+  overlays: Map<number, Overlay>;
   onHover: (tile: number) => void;
   onTap: (tile: number) => void;
 }
@@ -19,31 +21,44 @@ function atlas(): Atlas {
   return atlasCache;
 }
 
-export function Canvas({ state, route, hover, floats, onHover, onTap }: Props) {
+export function Canvas({ state, route, hover, floats, overlays, onHover, onTap }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const fx = useMemo<Fx>(() => ({ floats, route, hover, hollow: { up: false, down: false } }), [floats, route, hover]);
+  const [px, setPx] = useState(0);
+  const fx = useMemo<Fx>(() => ({ floats, route, hover, overlays }), [floats, route, hover, overlays]);
 
+  // Track the displayed size so the backing store can match it × DPR.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width ?? el.clientWidth;
+      setPx(Math.round(w * (window.devicePixelRatio || 1)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !px) return;
     const ctx = el.getContext('2d');
     if (!ctx) return;
+    const cell = px / W;
     let raf = 0;
     const loop = () => {
-      drawFloor(ctx, atlas(), state, fx, performance.now());
-      const live = fx.floats.some(f => performance.now() - f.born < 900);
-      if (live) raf = requestAnimationFrame(loop);
+      drawFloor(ctx, atlas(), state, fx, performance.now(), cell);
+      if (fx.floats.some(f => performance.now() - f.born < 900)) raf = requestAnimationFrame(loop);
     };
     loop();
     return () => cancelAnimationFrame(raf);
-  }, [state, fx]);
+  }, [state, fx, px]);
 
   return (
     <canvas
       ref={ref}
       className="mt-canvas"
-      width={W * CELL}
-      height={H * CELL}
+      width={px || W * 32}
+      height={px ? Math.round((px * H) / W) : H * 32}
       role="img"
       aria-label={`Floor ${state.tower.floors[state.run.floor - 1].label}`}
       onMouseMove={e => onHover(tileAt(e.currentTarget, e.clientX, e.clientY))}

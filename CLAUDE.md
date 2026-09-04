@@ -162,6 +162,7 @@ else, based on activePlan:
 | `chraeLab.go` | `GO_KEY` | Preferred Go board size only — games are never persisted |
 | `chraeLab.magicTower` | `MAGIC_TOWER_KEY` | Magic Tower save slots (`auto`, `s1`–`s3`): seed, loop, hero, per-floor diffs — the tower is regenerated on load |
 | `chraeLab.magicTower.meta` | `MAGIC_TOWER_META_KEY` | Magic Tower unlocks (`unlockedLoop`), codex, per-loop records |
+| `chraeLab.magicTower.lang` | `MAGIC_TOWER_LANG_KEY` | Magic Tower UI language (`'en'` \| `'zh'`); the game shows one language at a time |
 | `financial-planner-scenarios` | legacy | Pre-profiles "single profile, many scenarios" shape |
 | `financial-planner-input` | legacy | Pre-scenarios "one plan" shape |
 | `financial-planner-plans` | legacy | Withdrawal schedules from the pre-scenarios shape |
@@ -230,6 +231,7 @@ A 魔塔 / Tower of the Sorcerer puzzle-RPG: ten loops (周目) × 99 procedural
 - **Validation.** `validate.ts#validateTower` = structural invariants + the stored line replayed through the real reducer (`game.ts`) + six naive policies (`policies.ts`) + template detection. `npm run mt:validate -- --seeds 20 --loops 1-10` prints the distribution report; `tower.test.ts` runs a small version in CI and the full sweep with `MT_SLOW=1`.
 - **Sim ⇄ reducer parity rules.** Movement over reachable tiles is free; stairs/holes change floor only on a *deliberate* step (`step(state, to, final)`) so routes may pass over them; items are auto-collected in the sim and explicit `take` actions in the ledger; `ZoneSim.ords` ordinal maps are append-only because the generator adds guards mid-walk. If you change a rule in `game.ts`, mirror it in `zonesim.ts` — the replay test will tell you if you forgot.
 - **Breach rules** (`game.ts#breachTarget`): needs a stone; destination = physically adjacent floor (`floorAbove`/`floorBelow` respect the loop topology; a hatch tile breaches to `floor.hatch.to`); landing must be open floor or a vault centre; a boss floor's ceiling is sealed until its boss dies; the hole is recorded in both floors' diffs and is a two-way passage (`useTile` when standing on it).
+- **UI.** One classic-style *game frame* (`styles.ts` `.mt-frame`: dark, gold-bordered, fixed palette in both themes) holds the `SidePanel` (stats in pixel style), the board `Canvas` (backing store = displayed size × DPR so sprites and the number overlays stay crisp; `overlay.ts` computes the damage / gain numbers per tile) and the `Toolbar`. The monster manual is a popup (M toggles) rendered as a table by `components/Manual.tsx` from `manual.ts` (grouped by identical monsters; "Cheaper with" = the smallest ATK/DEF that lowers the cost and the cost at that value). All game copy is single-language via `strings.ts` (`t(lang, key)`, `msg(m, lang)` for reducer messages, which are structured `Msg` objects, not strings).
 - **Adding an ability / perk / template**: ability → `types.ts` union, `combat.ts`, `i18n.ts`, monster affinities, loop table; perk → `perks.ts` (must be a monotone bonus; hooks in `combat.ts`/`items.ts`); template → `floorgen.ts#detectTemplates`.
 
 ## TV buying guide — `src/tools/tv-guide/`

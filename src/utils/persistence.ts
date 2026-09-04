@@ -25,6 +25,7 @@ export const BINGO_KEY = 'chraeLab.bingo';
 export const GO_KEY = 'chraeLab.go';
 export const MAGIC_TOWER_KEY = 'chraeLab.magicTower';
 export const MAGIC_TOWER_META_KEY = 'chraeLab.magicTower.meta';
+export const MAGIC_TOWER_LANG_KEY = 'chraeLab.magicTower.lang';
 const OLD_SCENARIOS_KEY = 'financial-planner-scenarios';
 const OLD_INPUT_KEY = 'financial-planner-input';
 const OLD_PLANS_KEY = 'financial-planner-plans';
