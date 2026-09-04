@@ -131,8 +131,11 @@ server {
     }
 
     # /some/page/index.html is the same document as /some/page/ — collapse
-    # the duplicate so crawlers only ever see the canonical form.
-    location ~ ^(.*/)index\.html$ {
+    # the duplicate so crawlers only ever see the canonical form. This must
+    # test $request_uri (what the client asked for): the `index` directive
+    # internally re-requests /page/index.html, and a `location` regex would
+    # match that internal request too and 301 every page to itself.
+    if ($request_uri ~ ^([^?]*/)index\.html(\?|$)) {
         return 301 $1;
     }
 
