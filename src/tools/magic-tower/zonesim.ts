@@ -6,7 +6,7 @@
 // vault breaches, holy water and shop purchases.
 
 import { applyFight, canWin, type FightCtx } from './combat';
-import { shopAtk, shopDef, shopHp, shopPrice } from './curves';
+import { KEY_GOLD, shopAtk, shopDef, shopHp, shopPrice } from './curves';
 import { afterKill, applyItem, drinkHolyWater, spendKey } from './items';
 import { loopDef } from './loops';
 import { frontier, reach, type FloorState, type Reach } from './path';
@@ -195,23 +195,34 @@ export class ZoneSim {
     return { auraPct: auraPct || undefined, supporters: supporters || undefined };
   }
 
-  /** Pick up every reachable item except holy water (which is a deliberate action). */
+  /**
+   * Pick up every reachable item except holy water (a deliberate action),
+   * walking to each one in turn — cheapest first from where the hero stands —
+   * so the recorded takes and their zone costs match what the game charges.
+   */
   autoTake(): void {
     const f = this.floor;
-    const r = this.reach();
     const flags = loopDef(this.tower.loop).flags;
-    let took = false;
-    for (const k in f.items) {
-      const i = Number(k);
-      if (this.isTaken(this.fi, i) || r.cost[i] === Infinity) continue;
-      const it = f.items[i];
-      if (it.kind === 'holyWater') continue;
-      this.setTaken(this.fi, i);
-      this.hero = applyItem(this.hero, it, flags.potionMult);
-      this.pushLine({ t: 'take', floor: f.n, at: i });
-      took = true;
+    for (;;) {
+      const r = this.reach();
+      let best = -1;
+      let bestCost = Infinity;
+      for (const k in f.items) {
+        const i = Number(k);
+        if (this.isTaken(this.fi, i) || r.cost[i] === Infinity || f.items[i].kind === 'holyWater') continue;
+        if (r.cost[i] < bestCost || (r.cost[i] === bestCost && i < best)) {
+          best = i;
+          bestCost = r.cost[i];
+        }
+      }
+      if (best < 0) return;
+      if (bestCost >= this.hero.hp) return; // walking there would kill us
+      this.setTaken(this.fi, best);
+      this.hero = applyItem({ ...this.hero, hp: this.hero.hp - bestCost }, f.items[best], flags.potionMult);
+      this.pos = best;
+      this.pushLine({ t: 'take', floor: f.n, at: best });
+      this.invalidate();
     }
-    if (took) this.invalidate();
   }
 
   bossDead(): boolean {
@@ -287,7 +298,8 @@ export class ZoneSim {
       }
     }
     // Vault breaches: from a reachable tile aligned with a neighbouring floor's vault centre.
-    if (this.hero.stones > 0) {
+    const onStairs = this.pos === f.entry || this.pos === f.exit;
+    if (this.hero.stones > 0 && !onStairs) {
       for (const d of [-1, 1]) {
         const j = this.fi + d;
         if (j < 0 || j >= this.floors.length) continue;
@@ -295,7 +307,7 @@ export class ZoneSim {
         const g = this.floors[j];
         for (const v of g.vaults) {
           if (this.isTaken(j, v) || this.isHole(j, v)) continue;
-          if (r.cost[v] === Infinity) continue;
+          if (r.cost[v] === Infinity || v === f.entry || v === f.exit) continue;
           out.push({ action: { t: 'breach', floor: f.n, at: v, to: g.n }, cost: r.cost[v], value: 8 });
         }
       }
@@ -329,7 +341,13 @@ export class ZoneSim {
         if (h0.hp <= 0 || !canWin(h0, m, ctx)) return false;
         this.hero = afterKill(applyFight(h0, m, ctx));
         this.setKilled(this.fi, a.at);
-        this.pos = a.at;
+        this.pos = fr.via;
+        if (m.boss && flags.keyToGold) {
+          // Loop 4+ "Chains": keys carried past a boss turn to gold (mirrors game.ts).
+          const k = this.hero.keys;
+          const gold = k.y * KEY_GOLD.y + k.b * KEY_GOLD.b + k.r * KEY_GOLD.r;
+          this.hero = { ...this.hero, gold: this.hero.gold + gold, keys: { y: 0, b: 0, r: 0 } };
+        }
         break;
       }
       case 'door': {
@@ -341,7 +359,7 @@ export class ZoneSim {
         if (!h || h.hp <= 0) return false;
         this.hero = h;
         this.setOpened(this.fi, a.at);
-        this.pos = a.at;
+        this.pos = fr.via;
         break;
       }
       case 'stairs': {

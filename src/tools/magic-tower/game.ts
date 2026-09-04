@@ -195,6 +195,7 @@ export function breachTarget(state: GameState, dir: 'up' | 'down'): number | nul
   const { tower, run } = state;
   const f = currentFloor(state);
   if (dir === 'down' && f.hatch && f.hatch.at === run.pos) return f.hatch.to;
+  if (run.pos === f.entry || run.pos === f.exit) return null; // no breaching from the stairs
   const to = dir === 'up' ? floorAbove(tower, f.n) : floorBelow(tower, f.n);
   if (to == null) return null;
   if (dir === 'up' && isBossFloor(f.n) && run.bossesDown < zoneOf(f.n)) return null; // sealed ceiling

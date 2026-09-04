@@ -121,7 +121,9 @@ function applyViaReducer(state: GameState, a: Action): GameState | string {
     case 'take':
     case 'fight':
     case 'door': {
-      if (a.t === 'take' && diffOf(state.run, f.n).taken.includes(a.at)) return state;
+      // A take of the tile we stand on is already done (landing on a vault item); never use the tile.
+      if (a.t === 'take' && state.run.pos === a.at) return state;
+      // Already picked up while walking past: still stand on it so positions stay aligned with the sim.
       const path = planRoute(state, a.at);
       if (!path.length) return `${a.t} ${a.at}: unreachable`;
       const next = gameReducer(state, { type: 'walkPath', path });
@@ -171,6 +173,36 @@ function applyViaReducer(state: GameState, a: Action): GameState | string {
     default:
       return `unsupported action ${(a as Action).t}`;
   }
+}
+
+/**
+ * Replay one zone's line through the reducer from a synthetic run standing at
+ * the zone's entry with `heroIn`. Used by the generator as an acceptance test
+ * so every stored line is verified against the real rules, not the sim model.
+ */
+export function replayZone(tower: Tower, zone: number, heroIn: Hero): { ok: boolean; error?: string; hero: Hero } {
+  const info = tower.zones[zone];
+  const first = info.floors[0];
+  let state = initialState(tower.seed, tower.loop, tower);
+  const run = { ...state.run, hero: cloneHero(heroIn), floor: first, pos: tower.floors[first - 1].entry, visited: [first], bossesDown: zone - 1 };
+  const hs = hatchSource(loopDef(tower.loop).topology, first);
+  if (hs != null) {
+    const at = tower.floors[hs - 1].hatch!.at;
+    run.diffs = { [hs]: { taken: [], killed: [], opened: [], holes: [at], dug: [] }, [first]: { taken: [], killed: [], opened: [], holes: [at], dug: [] } };
+  }
+  state = { ...state, run };
+  for (const a of info.line) {
+    const r = applyViaReducer(state, a);
+    if (typeof r === 'string') return { ok: false, error: r, hero: state.run.hero };
+    state = r;
+    if (state.run.status === 'won') break;
+    if (state.run.pendingDraft) state = { ...state, run: { ...state.run, pendingDraft: null } };
+  }
+  const f = currentFloor(state);
+  const bossDead = Object.keys(f.mons).map(Number).every(i => !f.mons[i].boss || diffOf(state.run, f.n).killed.includes(i));
+  if (state.run.floor !== info.floors[info.floors.length - 1] || !bossDead) return { ok: false, error: `zone ${zone}: ended on ${state.run.floor}, boss dead ${bossDead}`, hero: state.run.hero };
+  if (state.run.status !== 'won' && !planRoute(state, f.exit).length && state.run.pos !== f.exit) return { ok: false, error: `zone ${zone}: exit unreachable`, hero: state.run.hero };
+  return { ok: true, hero: state.run.hero };
 }
 
 /** Replay all zones' lines from the start through the reducer. */

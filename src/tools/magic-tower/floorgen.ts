@@ -5,7 +5,7 @@
 // intended line is therefore true by construction; the solver and the naive
 // policies (run by the caller) measure how hard and how non-obvious it is.
 
-import { getDamageInfo } from './combat';
+import { getDamageInfo, type FightCtx } from './combat';
 import {
   START_HERO, bluePotion, cloneHero, equipValue, gemValue, healingBudget, monsterCount, redPotion, slackTarget, zoneTier,
 } from './curves';
@@ -22,6 +22,7 @@ import { ZoneSim } from './zonesim';
 import { solveZone } from './solver';
 import { holyWaterHeal, potionHeal } from './items';
 import { draftPerks } from './perks';
+import { replayZone } from './validate';
 import { floorsOfZone } from './curves';
 
 // ─── Plans (structure pass output) ──────────────────────────────────────
@@ -163,7 +164,7 @@ function placeholder(rng: Rng, f: number, role: MonsterRole, loop: LoopDef, onLi
  * Back-solve a monster's HP/ATK/DEF so that fighting it now costs ≈ target HP.
  * Mutates `m`. Always leaves the fight winnable with `hero.hp - target > 0`.
  */
-export function statMonster(rng: Rng, m: MonsterInst, hero: Hero, target: number, f: number, loopMultV: number): void {
+export function statMonster(rng: Rng, m: MonsterInst, hero: Hero, target: number, f: number, loopMultV: number, ctx: FightCtx = {}): void {
   const has = (a: Ability) => m.abilities.includes(a);
   const reserve = Math.max(40, Math.floor(hero.hp * 0.05));
   target = Math.max(0, Math.min(target, hero.hp - reserve));
@@ -211,7 +212,7 @@ export function statMonster(rng: Rng, m: MonsterInst, hero: Hero, target: number
   void loopMultV;
   // Verify and nudge so the fight is winnable and not above target.
   for (let k = 0; k < 12; k++) {
-    const info = getDamageInfo(hero, m);
+    const info = getDamageInfo(hero, m, ctx);
     if (info.damage == null) {
       m.def = Math.max(0, m.def - Math.max(1, Math.ceil(hero.atk * 0.1)));
       if (m.def === 0 && hero.atk <= 0) break;
@@ -770,7 +771,7 @@ function walkLine(rng: Rng, loop: LoopDef, tower: Tower, zone: number, heroIn: H
       u.tag = 'justEnough';
       justEnoughDone = true;
     }
-    statMonster(rng, m, sim.hero, target, f.n, 1);
+    statMonster(rng, m, sim.hero, target, f.n, 1, sim.fightCtx(u.lock));
     void fr;
     const o2 = sim.options().find(x => x.action.t === 'fight' && x.action.at === u.lock);
     if (!o2) return false;
@@ -988,6 +989,12 @@ export function generateZone(seed: number, loop: LoopDef, tower: Tower, zone: nu
     info.heroOut = cloneHero(sim.hero);
     info.lineSlack = sim.hero.hp / Math.max(1, ZoneSim.zoneHealing(tower, zone));
     calibrateToExpert(rng, loop, tower, zone, heroIn, info);
+    // Acceptance: the stored line must replay through the real game rules.
+    const rep = replayZone(tower, zone, heroIn);
+    if (!rep.ok) {
+      genDebug.reasons.push(`reducer replay: ${rep.error}`);
+      continue;
+    }
     info.templates = detectTemplates(tower, zone);
     return { hero: info.heroOut, attempts: attempt + 1 };
   }
@@ -1011,7 +1018,10 @@ export function hasZone(tower: Tower, zone: number): boolean {
 /** Hero the next zone is calibrated for: the previous zone's line hero plus the drafted perk. */
 export function heroForZone(tower: Tower, zone: number, perks: PerkId[]): Hero {
   const base = zone === 0 ? cloneHero(START_HERO) : cloneHero(tower.zones[zone - 1].heroOut);
-  return { ...base, perks: [...perks] };
+  // A hatch-entered zone costs the stone spent breaching the hatch.
+  const first = floorsOfZone(zone)[0];
+  const stones = hatchSource(loopDef(tower.loop).topology, first) != null ? Math.max(0, base.stones - 1) : base.stones;
+  return { ...base, stones, perks: [...perks] };
 }
 
 /** Generate every zone up front (tests, CLI). Perks are drafted as in the game. */
