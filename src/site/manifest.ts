@@ -111,7 +111,7 @@ export const PAGES: SiteEntry[] = [
     description:
       'Small, free, private tools that run entirely in your browser: a retirement planner, unit converter, calculator, to-do list, TV buying guide and more. No accounts, no tracking.',
     verification: SEARCH_VERIFICATION,
-    updated: '2026-08-21',
+    updated: '2026-09-03',
     jsonLd: [
       {
         '@context': 'https://schema.org',

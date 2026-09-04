@@ -130,12 +130,25 @@ server {
         try_files $uri =404;
     }
 
+    # /some/page/index.html is the same document as /some/page/ — collapse
+    # the duplicate so crawlers only ever see the canonical form.
+    location ~ ^(.*/)index\.html$ {
+        return 301 $1;
+    }
+
     # index.html and other unhashed files → never cache.
     # Every page is its own <dir>/index.html (hub, /fire-planner/, each tool),
-    # so $uri/ resolves them; unknown paths fall back to the hub.
+    # so $uri/ resolves them. This is a multi-page site, not an SPA: unknown
+    # paths must be a real 404 (serving the hub there is a "soft 404" that
+    # wastes crawl budget and confuses Search Console).
     location / {
         add_header Cache-Control "no-cache, must-revalidate";
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/ =404;
+    }
+    error_page 404 /404.html;
+    location = /404.html {
+        internal;
+        add_header Cache-Control "no-cache, must-revalidate";
     }
 
     gzip on;
@@ -189,7 +202,7 @@ npm run build
 rsync -avz --delete dist/ deploy@<VPS_IP>:/opt/fin_plan/dist/
 ```
 
-That's it. The `dist/` is bind-mounted read-only into nginx, so the new files are served immediately — no container restart needed. The long-cache `/assets/*` headers are safe because Vite hashes every filename, and `index.html`'s `no-cache` header ensures browsers always pick up the new hashes.
+That's it. The `dist/` is bind-mounted read-only into nginx, so the new files are served immediately — no container restart needed. (If you changed `nginx.conf`, reload it: `docker exec fin_plan nginx -s reload`.) The long-cache `/assets/*` headers are safe because Vite hashes every filename, and `index.html`'s `no-cache` header ensures browsers always pick up the new hashes.
 
 **Optional convenience** — add an `~/.ssh/config` alias so you can type a short name instead of the IP:
 ```
