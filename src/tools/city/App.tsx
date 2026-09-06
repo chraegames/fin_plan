@@ -1,31 +1,82 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ToolShell } from '../../components/layout/ToolShell';
+import { ConfirmDialog } from '../../components/storyline/ConfirmDialog';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { byPath } from '../../site/manifest';
+import { track } from '../../utils/analytics';
+import { TICKS_PER_MONTH } from './constants';
+import { createSimClient, type SimClient } from './client';
+import type { Snapshot, SnapshotLayers } from './protocol';
 import type { InputHandlers } from './render/input';
 import type { CityRenderer, TerrainData } from './render/renderer';
 import { Viewport } from './render/Viewport';
-import { generateTerrain } from './sim/terrain';
+import { randomSeed } from './rng';
+import { clearSave, loadSave, writeSave } from './save';
+import { Advisor } from './ui/Advisor';
+import { BudgetPanel } from './ui/BudgetPanel';
+import { Inspector } from './ui/Inspector';
 import { CITY_STYLES } from './ui/styles';
-import type { XY } from './types';
+import { Toolbar } from './ui/Toolbar';
+import { TopBar } from './ui/TopBar';
+import { canPlopAt, plopRect } from './ui/validity';
+import { isLocalHost } from '../../utils/env';
+import { densifyActions, findSite, serviceActions, townActions } from './sim/scenario';
+import { type Action, type ActionFail, type AdvisorMsg, type Density, type HudStats, type OverlayKind, type Rect, type Speed, type Tool, type XY } from './types';
 
 const entry = byPath('/city/')!;
+const HUD_INTERVAL = 250;
+const SAVE_INTERVAL = 5000;
+
+const FAIL_TEXT: Record<ActionFail, string> = {
+  funds: 'Not enough money.',
+  terrain: 'Cannot build there: water or too steep.',
+  occupied: 'That spot is not free.',
+  bounds: 'Out of bounds.',
+  noop: 'Nothing to do there.',
+};
+
+function modeFor(tool: Tool): 'pan' | 'point' | 'rect' | 'line' {
+  switch (tool.kind) {
+    case 'inspect':
+      return 'pan';
+    case 'road':
+    case 'line':
+      return 'line';
+    case 'plop':
+    case 'fire':
+      return 'point';
+    default:
+      return 'rect';
+  }
+}
 
 export default function App() {
-  const [terrain] = useState<TerrainData>(() => {
-    const t = generateTerrain(1);
-    return { seed: 1, height: t.height, sea: t.sea, water: t.water };
-  });
-  const [hover, setHover] = useState<XY | null>(null);
+  const isMobile = useIsMobile();
+  const [terrain, setTerrain] = useState<TerrainData | null>(null);
+  const [hud, setHud] = useState<HudStats | null>(null);
+  const [layers, setLayers] = useState<SnapshotLayers | null>(null);
+  const [messages, setMessages] = useState<AdvisorMsg[]>([]);
+  const [tool, setTool] = useState<Tool>({ kind: 'inspect' });
+  const [density, setDensity] = useState<Density>(1);
+  const [overlay, setOverlay] = useState<OverlayKind>('none');
+  const [speed, setSpeed] = useState<Speed>(1);
+  const [paint, setPaint] = useState(false);
+  const [selected, setSelected] = useState<XY | null>(null);
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [confirmNew, setConfirmNew] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  const clientRef = useRef<SimClient | null>(null);
   const rendererRef = useRef<CityRenderer | null>(null);
-  const handlersRef = useRef<InputHandlers>({
-    getMode: () => 'pan',
-    getPaint: () => false,
-    onHover: () => {},
-    onTap: () => {},
-    onDragPreview: () => {},
-    onDragEnd: () => {},
-    onDragCancel: () => {},
-  });
+  const toolRef = useRef(tool);
+  const paintRef = useRef(paint);
+  const terrainRef = useRef<TerrainData | null>(null);
+  const hoverRef = useRef<XY | null>(null);
+  const lastHudAt = useRef(0);
+  const lastSaveAt = useRef(0);
+  const lastSavedTick = useRef(-1);
+  const toastTimer = useRef(0);
 
   useEffect(() => {
     const el = document.createElement('style');
@@ -35,34 +86,328 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    handlersRef.current = {
-      getMode: () => 'pan',
-      getPaint: () => false,
-      onHover: t => {
-        setHover(t);
-        rendererRef.current?.setCursor(t ? { x0: t.x, y0: t.y, x1: t.x, y1: t.y } : null);
-      },
-      onTap: () => {},
-      onDragPreview: () => {},
-      onDragEnd: () => {},
-      onDragCancel: () => {},
-    };
+    toolRef.current = tool;
+    rendererRef.current?.setCursor(null);
+  }, [tool]);
+  useEffect(() => {
+    paintRef.current = paint;
+  }, [paint]);
+  useEffect(() => {
+    rendererRef.current?.setOverlay(overlay);
+  }, [overlay]);
+  useEffect(() => {
+    clientRef.current?.setSpeed(speed);
+  }, [speed]);
+
+  const showToast = useCallback((text: string) => {
+    setToast(text);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2200);
   }, []);
+
+  const save = useCallback((force = false) => {
+    const client = clientRef.current;
+    if (!client) return;
+    const now = performance.now();
+    if (!force && now - lastSaveAt.current < SAVE_INTERVAL) return;
+    lastSaveAt.current = now;
+    client.requestSave().then(file => {
+      if (!writeSave(file)) setSaveFailed(true);
+      else track('city_saved');
+    });
+  }, []);
+
+  // ─── sim client lifecycle ─────────────────────────────────────────
+  useEffect(() => {
+    const client = createSimClient();
+    clientRef.current = client;
+    client.onTerrain(t => {
+      terrainRef.current = t;
+      setTerrain(t);
+    });
+    client.onError(m => console.error('City sim:', m));
+    client.onSnapshot((snap: Snapshot) => {
+      const r = rendererRef.current;
+      if (r) {
+        r.applySnapshot(snap);
+        setLayers(r.layers); // stable reference; Inspector re-reads it on every HUD update
+      }
+      client.recycle(snap.buf);
+      const now = performance.now();
+      const month = snap.tick % TICKS_PER_MONTH === 0;
+      if (month || now - lastHudAt.current >= HUD_INTERVAL || snap.hud.tick === 0) {
+        lastHudAt.current = now;
+        setHud(snap.hud);
+        setMessages(snap.messages);
+      }
+      if (month && snap.tick !== lastSavedTick.current && snap.tick > 0) {
+        lastSavedTick.current = snap.tick;
+        save();
+        if (snap.tick % (TICKS_PER_MONTH * 12) === 0) track('city_month', { population: snap.hud.totals.population });
+      }
+    });
+    const saved = loadSave();
+    if (saved) {
+      client.init(saved.seed, saved);
+      track('city_loaded');
+    } else {
+      const seed = randomSeed();
+      client.init(seed);
+      track('city_started', { seed });
+    }
+    client.setSpeed(1);
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') save(true);
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      client.dispose();
+      clientRef.current = null;
+    };
+  }, [save]);
+
+  // ─── actions ──────────────────────────────────────────────────────
+  const dispatch = useCallback(
+    (a: Action) => {
+      const client = clientRef.current;
+      if (!client) return;
+      client.send(a).then(r => {
+        if (!r.ok && r.reason) showToast(FAIL_TEXT[r.reason]);
+        else if (r.ok && a.type === 'disaster') track('city_disaster', { kind: a.kind });
+      });
+    },
+    [showToast],
+  );
+
+  const cursorFor = useCallback((t: Tool, a: XY, b: XY): { rect: Rect; ok: boolean } => {
+    const r = rendererRef.current;
+    const g = terrainRef.current;
+    if (t.kind === 'plop') {
+      const ok = !!(r && g && r.hasSnapshot && canPlopAt(r.layers, g, t.plop, a));
+      return { rect: plopRect(t.plop, a), ok };
+    }
+    if (t.kind === 'road' || t.kind === 'line') return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
+    return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
+  }, []);
+
+  const handlersRef = useRef<InputHandlers>({
+    getMode: () => 'pan',
+    getPaint: () => false,
+    onHover: () => {},
+    onTap: () => {},
+    onDragPreview: () => {},
+    onDragEnd: () => {},
+    onDragCancel: () => {},
+  });
+  useEffect(() => {
+    handlersRef.current = {
+      getMode: () => modeFor(toolRef.current),
+      getPaint: () => paintRef.current,
+      onHover: t => {
+        hoverRef.current = t;
+        const r = rendererRef.current;
+        if (!r) return;
+        const tool = toolRef.current;
+        if (!t || tool.kind === 'inspect') {
+          r.setCursor(null);
+          return;
+        }
+        const c = cursorFor(tool, t, t);
+        r.setCursor(c.rect, c.ok);
+      },
+      onTap: t => {
+        const tool = toolRef.current;
+        switch (tool.kind) {
+          case 'inspect':
+            setSelected(t);
+            break;
+          case 'plop':
+            dispatch({ type: 'plop', plop: tool.plop, at: t });
+            break;
+          case 'fire':
+            dispatch({ type: 'disaster', kind: 'fire', at: t });
+            break;
+          case 'road':
+            dispatch({ type: 'road', from: t, to: t });
+            break;
+          case 'line':
+            dispatch({ type: 'line', from: t, to: t });
+            break;
+          case 'zone':
+            dispatch({ type: 'zone', zone: tool.zone, density: tool.density, rect: { x0: t.x, y0: t.y, x1: t.x, y1: t.y } });
+            break;
+          case 'dezone':
+            dispatch({ type: 'dezone', rect: { x0: t.x, y0: t.y, x1: t.x, y1: t.y } });
+            break;
+          case 'bulldoze':
+            dispatch({ type: 'bulldoze', rect: { x0: t.x, y0: t.y, x1: t.x, y1: t.y } });
+            break;
+        }
+      },
+      onDragPreview: (a, b) => {
+        const r = rendererRef.current;
+        if (!r) return;
+        const tool = toolRef.current;
+        if (tool.kind === 'road' || tool.kind === 'line') r.setCursorLine(a, b);
+        else {
+          const c = cursorFor(tool, a, b);
+          r.setCursor(c.rect, c.ok);
+        }
+      },
+      onDragEnd: (a, b) => {
+        const tool = toolRef.current;
+        const rect: Rect = { x0: a.x, y0: a.y, x1: b.x, y1: b.y };
+        switch (tool.kind) {
+          case 'zone':
+            dispatch({ type: 'zone', zone: tool.zone, density: tool.density, rect });
+            break;
+          case 'dezone':
+            dispatch({ type: 'dezone', rect });
+            break;
+          case 'bulldoze':
+            dispatch({ type: 'bulldoze', rect });
+            break;
+          case 'road':
+            dispatch({ type: 'road', from: a, to: b });
+            break;
+          case 'line':
+            dispatch({ type: 'line', from: a, to: b });
+            break;
+          default:
+            break;
+        }
+        rendererRef.current?.setCursor(null);
+      },
+      onDragCancel: () => rendererRef.current?.setCursor(null),
+    };
+  }, [cursorFor, dispatch]);
+
+  // localhost debug hook (drives e2e screenshots and tuning)
+  useEffect(() => {
+    if (!isLocalHost()) return;
+    const w = window as unknown as { __city?: unknown };
+    w.__city = {
+      dispatch: (a: Action) => dispatch(a),
+      dispatchAll: (as: Action[]) => as.forEach(a => dispatch(a)),
+      fastForward: (ticks: number) => clientRef.current?.fastForward(ticks),
+      terrain: () => terrainRef.current,
+      layers: () => rendererRef.current?.layers ?? null,
+      lookAt: (x: number, z: number, dist: number, yaw = 0.6, pitch = 0.8) => rendererRef.current?.rig.setPose({ tx: x, tz: z, dist, yaw, pitch }, true),
+      scenario: { findSite, townActions, serviceActions, densifyActions },
+      setSpeed: (s: Speed) => setSpeed(s),
+    };
+    return () => {
+      delete w.__city;
+    };
+  }, [dispatch]);
+
+  // hotkeys
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case 'Escape':
+          setTool({ kind: 'inspect' });
+          setSelected(null);
+          setBudgetOpen(false);
+          break;
+        case 'r':
+          setTool({ kind: 'zone', zone: 1, density });
+          break;
+        case 'c':
+          setTool({ kind: 'zone', zone: 2, density });
+          break;
+        case 'i':
+          setTool({ kind: 'zone', zone: 3, density });
+          break;
+        case 't':
+          setTool({ kind: 'road' });
+          break;
+        case 'b':
+          setTool({ kind: 'bulldoze' });
+          break;
+        case 'p':
+          setSpeed(s => (s === 0 ? 1 : 0));
+          break;
+        case '1':
+        case '2':
+        case '3':
+          setSpeed(Number(e.key) as Speed);
+          break;
+        case '0':
+          setSpeed(0);
+          break;
+      }
+    };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, [density]);
+
+  const onTool = useCallback((t: Tool) => {
+    setTool(t);
+    setSelected(null);
+  }, []);
+  const onDensity = useCallback((d: Density) => {
+    setDensity(d);
+    setTool(t => (t.kind === 'zone' ? { ...t, density: d } : t));
+  }, []);
+
+  const newCity = useCallback(() => {
+    setConfirmNew(false);
+    const client = clientRef.current;
+    if (!client) return;
+    clearSave();
+    lastSavedTick.current = -1;
+    setHud(null);
+    setSelected(null);
+    setTerrain(null);
+    const seed = randomSeed();
+    client.init(seed);
+    client.setSpeed(speed);
+    track('city_started', { seed });
+  }, [speed]);
 
   return (
     <ToolShell entry={entry} layout="full">
       <div className="city-root">
         <div className="city-hud">
-          <div className="city-panel city-topbar">
-            <div className="city-stat">
-              <span>Tile</span>
-              <span>{hover ? `${hover.x}, ${hover.y}` : '—'}</span>
-            </div>
-          </div>
+          <TopBar hud={hud} speed={speed} overlay={overlay} onSpeed={setSpeed} onOverlay={setOverlay} onBudget={() => setBudgetOpen(o => !o)} onNewCity={() => setConfirmNew(true)} compact={isMobile} />
+          {isMobile && (
+            <label className="city-panel city-paint" style={{ padding: '6px 8px' }}>
+              <input type="checkbox" checked={paint} onChange={e => setPaint(e.target.checked)} /> paint
+            </label>
+          )}
         </div>
-        <Viewport terrain={terrain} rendererRef={rendererRef} handlersRef={handlersRef} panCursor />
-        <div className="city-hint">Drag to pan · right-drag to orbit · wheel to zoom · WASD / Q E</div>
+        <Toolbar tool={tool} density={density} onTool={onTool} onDensity={onDensity} compact={isMobile} />
+        <Viewport terrain={terrain} rendererRef={rendererRef} handlersRef={handlersRef} panCursor={tool.kind === 'inspect'} />
+        <Advisor messages={messages} />
+        {selected && <Inspector tile={selected} layers={layers} version={hud?.tick ?? 0} onClose={() => setSelected(null)} />}
+        {budgetOpen && (
+          <BudgetPanel
+            hud={hud}
+            onTax={(zone, rate) => dispatch({ type: 'setTax', zone, rate })}
+            onFunding={(service, level) => dispatch({ type: 'setFunding', service, level })}
+            onLoan={amount => dispatch({ type: 'loan', amount })}
+            onRepay={id => dispatch({ type: 'repay', id })}
+            onClose={() => setBudgetOpen(false)}
+          />
+        )}
+        {!isMobile && <div className="city-hint">Drag to pan · right-drag orbit · wheel zoom · WASD/QE · R C I T B tools · P pause · Esc inspect</div>}
+        {toast && <div className="city-panel city-toast">{toast}</div>}
+        {saveFailed && (
+          <div className="city-panel city-toast" role="alert">
+            Couldn't save — storage is full or disabled.{' '}
+            <button type="button" className="city-btn city-btn-sm" onClick={() => setSaveFailed(false)}>
+              OK
+            </button>
+          </div>
+        )}
+        <ConfirmDialog open={confirmNew} title="Start a new city?" message="The current city and its save will be replaced by a new random map." confirmLabel="New city" onConfirm={newCity} onClose={() => setConfirmNew(false)} />
       </div>
     </ToolShell>
   );
 }
+

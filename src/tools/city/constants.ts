@@ -19,6 +19,11 @@ export const HEIGHT_SCALE = 9;
 export const TUNING = {
   // ── demand ──
   workforceRate: 0.55,
+  /** Commercial jobs wanted per resident, and per industrial job. */
+  cPerPop: 0.3,
+  cPerIndustry: 0.15,
+  /** Industrial jobs wanted per worker. */
+  iPerWorker: 0.55,
   newCityBoost: 45,
   newCityPop: 3000,
   taxNeutral: 9,
@@ -35,10 +40,10 @@ export const TUNING = {
   unwateredLow: 0.9,
   unwateredDense: 0.6,
   // ── growth ──
-  wealthMinDesir: [0, 90, 145, 185],
-  wealthMinLandValue: [0, 0, 90, 160],
-  upgradeDesir: [0, 150, 175, 999],
-  abandonDesir: 70,
+  wealthMinDesir: [0, 60, 125, 170],
+  wealthMinLandValue: [0, 0, 80, 140],
+  upgradeDesir: [0, 118, 150, 999],
+  abandonDesir: 50,
   buildRate: 0.08,
   densityBuildMult: [0, 1, 0.8, 0.6],
   occupancyStep: 0.12,
@@ -84,7 +89,7 @@ export const TUNING = {
   fireAbandoned: 40,
   fireCoal: 50,
   fireCoverEffect: 0.8,
-  igniteRate: 0.0025,
+  igniteRate: 0.0004,
   igniteIntensity: 40,
   spreadStep: 25,
   spreadRate: 0.05,
@@ -107,9 +112,9 @@ export const TUNING = {
   externalJobShare: 0.15,
   originBlock: 4,
   // ── budget ──
-  taxR: 1.1,
-  taxC: 1.6,
-  taxI: 1.3,
+  taxR: 0.55,
+  taxC: 0.85,
+  taxI: 0.7,
   wealthTaxMult: [0, 1, 1.9, 3.4],
   roadUpkeep: 0.6,
   loanMonths: 120,

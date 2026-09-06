@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "mt:validate": "npx tsx scripts/mt-validate.ts"
+    "mt:validate": "npx tsx scripts/mt-validate.ts",
+    "city:sim": "npx tsx scripts/city-sim.ts"
   },
   "dependencies": {
     "@fontsource-variable/newsreader": "^5.3.0",

@@ -2,11 +2,15 @@
 // it is loaded with a dynamic import() so the initial page stays small.
 
 import * as THREE from 'three';
-import { N, type Rect, type Theme3 } from '../types';
+import { SNAPSHOT_LAYERS, type Snapshot, type SnapshotLayers } from '../protocol';
+import { CHANGE, N, T, type OverlayKind, type Rect, type Theme3, type XY } from '../types';
 import { CameraRig } from './camera';
+import { ChunkManager } from './chunks';
 import { HeightField } from './heightfield';
+import { buildOverlayRGBA } from './overlay';
 import { DARK_PALETTE, LIGHT_PALETTE, type ScenePalette } from './palette';
 import { groundPoint, pickTile, type Ray } from './picking';
+import { createRoadAtlas, createWindowTexture } from './roadAtlas';
 import { buildTerrainChunks, createTerrainMaterial, type TerrainUniforms } from './terrain';
 
 export interface TerrainData {
@@ -14,6 +18,29 @@ export interface TerrainData {
   height: Float32Array;
   sea: number;
   water: Uint8Array;
+  slope: Uint8Array;
+}
+
+const OVERLAY_DEPS: Record<OverlayKind, number> = {
+  none: CHANGE.GEOMETRY,
+  power: CHANGE.GEOMETRY | CHANGE.UTILITY,
+  water: CHANGE.GEOMETRY | CHANGE.UTILITY,
+  traffic: CHANGE.GEOMETRY | CHANGE.TRAFFIC,
+  pollution: CHANGE.GEOMETRY | CHANGE.ENV,
+  landValue: CHANGE.GEOMETRY | CHANGE.ENV,
+  crime: CHANGE.GEOMETRY | CHANGE.SOCIAL,
+  fireRisk: CHANGE.GEOMETRY | CHANGE.SOCIAL,
+  fireCover: CHANGE.GEOMETRY | CHANGE.SOCIAL,
+  policeCover: CHANGE.GEOMETRY | CHANGE.SOCIAL,
+  education: CHANGE.GEOMETRY | CHANGE.SOCIAL,
+  health: CHANGE.GEOMETRY | CHANGE.SOCIAL,
+  desirability: CHANGE.GEOMETRY | CHANGE.ENV,
+};
+
+function allocLayers(): SnapshotLayers {
+  const out: Record<string, Uint8Array | Uint16Array> = {};
+  for (const [name, bytes] of SNAPSHOT_LAYERS) out[name] = bytes === 2 ? new Uint16Array(T) : new Uint8Array(T);
+  return out as unknown as SnapshotLayers;
 }
 
 export class CityRenderer {
@@ -29,6 +56,16 @@ export class CityRenderer {
   private readonly terrainMat: THREE.ShaderMaterial;
   private readonly waterMat: THREE.MeshBasicMaterial;
   private readonly terrainMeshes: THREE.Mesh[];
+  private readonly chunks: ChunkManager;
+  private readonly buildMat: THREE.MeshLambertMaterial;
+  private readonly roadMat: THREE.MeshBasicMaterial;
+  private readonly windowTex: THREE.CanvasTexture;
+  private readonly roadTex: THREE.CanvasTexture;
+  private readonly water: Uint8Array;
+  /** The renderer's own copy of the latest snapshot layers (safe to read any time). */
+  readonly layers: SnapshotLayers = allocLayers();
+  hasSnapshot = false;
+  private overlayKind: OverlayKind = 'none';
   private readonly ray = new THREE.Vector3();
   private readonly eyeV = new THREE.Vector3();
   private palette: ScenePalette = LIGHT_PALETTE;
@@ -55,6 +92,14 @@ export class CityRenderer {
     this.terrainMat = createTerrainMaterial(this.overlayTex);
     this.terrainMeshes = buildTerrainChunks(this.hf, terrain.seed, this.terrainMat);
     for (const m of this.terrainMeshes) this.scene.add(m);
+    this.water = terrain.water;
+
+    this.windowTex = createWindowTexture();
+    this.roadTex = createRoadAtlas();
+    this.buildMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: this.windowTex });
+    this.roadMat = new THREE.MeshBasicMaterial({ map: this.roadTex });
+    this.chunks = new ChunkManager(this.hf, terrain.seed, terrain.water, terrain.slope, this.buildMat, this.roadMat);
+    this.scene.add(this.chunks.group);
 
     this.waterMat = new THREE.MeshBasicMaterial({ color: this.palette.water, transparent: true, opacity: this.palette.waterOpacity, depthWrite: false });
     const water = new THREE.Mesh(new THREE.PlaneGeometry(N + 40, N + 40), this.waterMat);
@@ -107,14 +152,39 @@ export class CityRenderer {
   /** Highlight a rectangle of tiles (or none). */
   setCursor(rect: Rect | null, ok = true): void {
     const u = this.uniforms;
+    u.cursor2.value.set(-1, -1, -1, -1);
     if (!rect) u.cursor.value.set(-1, -1, -1, -1);
     else u.cursor.value.set(Math.min(rect.x0, rect.x1), Math.min(rect.y0, rect.y1), Math.max(rect.x0, rect.x1) + 1, Math.max(rect.y0, rect.y1) + 1);
     u.cursorColor.value.set(ok ? 0xffffff : 0xff3b30);
     this.needsRender = true;
   }
 
-  /** Call after writing into `overlay`. */
-  markOverlayDirty(): void {
+  /** Highlight an L-shaped path: horizontal from a, then vertical to b. */
+  setCursorLine(a: XY, b: XY): void {
+    const u = this.uniforms;
+    u.cursor.value.set(Math.min(a.x, b.x), a.y, Math.max(a.x, b.x) + 1, a.y + 1);
+    u.cursor2.value.set(b.x, Math.min(a.y, b.y), b.x + 1, Math.max(a.y, b.y) + 1);
+    u.cursorColor.value.set(0xffffff);
+    this.needsRender = true;
+  }
+
+  /** Copy a snapshot in, mark chunks and refresh the overlay. The buffer may be recycled afterwards. */
+  applySnapshot(snap: Snapshot): void {
+    for (const [name] of SNAPSHOT_LAYERS) (this.layers[name] as Uint8Array).set(snap.layers[name] as Uint8Array);
+    this.hasSnapshot = true;
+    this.chunks.setLayers(this.layers, snap.dirtyChunks);
+    if (snap.changed & OVERLAY_DEPS[this.overlayKind]) this.rebuildOverlay();
+    this.needsRender = true;
+  }
+
+  setOverlay(kind: OverlayKind): void {
+    if (kind === this.overlayKind) return;
+    this.overlayKind = kind;
+    if (this.hasSnapshot) this.rebuildOverlay();
+  }
+
+  private rebuildOverlay(): void {
+    buildOverlayRGBA(this.overlayKind, this.layers, this.water, this.overlay);
     this.overlayDirty = true;
     this.needsRender = true;
   }
@@ -151,6 +221,7 @@ export class CityRenderer {
     this.lastTime = now;
     const moving = this.rig.update(dt);
     if (moving) this.needsRender = true;
+    if (this.chunks.update(4) > 0) this.needsRender = true;
     if (!this.needsRender) return false;
     this.needsRender = false;
 
@@ -171,6 +242,11 @@ export class CityRenderer {
   dispose(): void {
     this.disposed = true;
     for (const m of this.terrainMeshes) m.geometry.dispose();
+    this.chunks.dispose();
+    this.buildMat.dispose();
+    this.roadMat.dispose();
+    this.windowTex.dispose();
+    this.roadTex.dispose();
     this.terrainMat.dispose();
     this.waterMat.dispose();
     this.overlayTex.dispose();

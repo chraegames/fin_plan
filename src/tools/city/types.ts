@@ -155,7 +155,8 @@ export interface CityState {
   watered: Uint8Array;
   powerComp: Int32Array;
   waterComp: Int32Array;
-  roadAccess: Uint8Array; // 0 none, else distance 1..3 to a road
+  roadAccess: Uint8Array; // 0 none, 1 = road tile, 2..4 = one to three tiles from a road
+  extAccess: Uint8Array; // 1 when the nearest road reaches the map edge
   landValue: Uint8Array;
   pollution: Uint8Array;
   waterPollution: Uint8Array;

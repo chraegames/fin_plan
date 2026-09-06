@@ -2,7 +2,7 @@
 
 **Chrae Lab** (`https://chraegames.cloud`) — a hub of small browser-only tools. React 19 + Vite 8 + TypeScript 5.9, no backend, no env vars (except optional Umami analytics in production). All state lives in `localStorage`.
 
-The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/go/`, `/magic-tower/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
+The site is a Vite **multi-page** build: the hub landing page at `/`, the FIRE planner (the original and by far the largest tool) at `/fire-planner/` with its SEO content guides beneath it, and one directory per tool (`/unit-converter/`, `/calculator/`, `/todo/`, `/sudoku/`, `/bingo/`, `/go/`, `/magic-tower/`, `/city/`, `/tv-guide/` — the last one is a five-page guide with four content chapters beneath it). Every page derives from one manifest — see [Site manifest](#site-manifest--srcsitemanifestts).
 
 User-facing: `README.md`. Deploy ops: `DEPLOY.md`. This file is for developers + future Claude sessions and captures the architecture, contracts, and gotchas that aren't obvious from skimming the tree. Most of it is about the FIRE planner because that's where the complexity is.
 
@@ -32,6 +32,7 @@ src/
   tools/go/               # online Go: go.ts (rules) + match.ts (pairing/session state machine) + net.ts (Trystero / BroadcastChannel transports) — see "Go"
   tools/magic-tower/      # 魔塔: combat.ts + floorgen.ts (generator) + zonesim.ts/solver.ts/policies.ts (verification) + game.ts (reducer) + sprites/render — see "Magic Tower"
   tools/tv-guide/         # multi-page guide: data.ts/logic.ts/pages.ts (pure) + components/ + pages/*View (pure) + Live.tsx + static.tsx/App.tsx/mount.tsx
+  tools/city/             # 3D city sim: sim/ (pure, runs in a Worker) + render/ (three.js, lazy) + ui/ + protocol/save — see "City"
   site/Prose.tsx          # H2/H3/P/UL/LI/A prose primitives shared by every prerendered content tree (ContentLayout re-exports them)
   main.tsx                # FIRE planner entry: boots StrictMode + analytics, mounts <App />
   App.tsx                 # FIRE planner state owner; computes routing; passes handlers down
@@ -57,7 +58,7 @@ src/
     base.css              # element resets, selection colour, theme-bound declarations
 ```
 
-Recharts is the only runtime UI dep (used by `storyline/charts/*`; Rollup keeps it out of the tool bundles). Three Fontsource families are bundled and self-hosted — no Google Fonts request (the site promises nothing is sent to a server): Space Grotesk (`--font-display` + `--font-sans`), Newsreader with its true italic (`--font-serif`, page h1s and the accent clause only) and IBM Plex Mono 400/500 (`--font-mono`: eyebrows, section labels, breadcrumbs, captions, numerics). No CSS framework, no UI kit, no router. There is no React Router — pages are separate HTML entries, and inside the FIRE app routing is just `useState` enums in `App.tsx`.
+Recharts (FIRE charts), Trystero (Go networking) and three.js (City, `import()`ed only on that page) are the runtime deps; Rollup keeps each out of the other pages' bundles. Three Fontsource families are bundled and self-hosted — no Google Fonts request (the site promises nothing is sent to a server): Space Grotesk (`--font-display` + `--font-sans`), Newsreader with its true italic (`--font-serif`, page h1s and the accent clause only) and IBM Plex Mono 400/500 (`--font-mono`: eyebrows, section labels, breadcrumbs, captions, numerics). No CSS framework, no UI kit, no router. There is no React Router — pages are separate HTML entries, and inside the FIRE app routing is just `useState` enums in `App.tsx`.
 
 ---
 
@@ -163,6 +164,8 @@ else, based on activePlan:
 | `chraeLab.magicTower` | `MAGIC_TOWER_KEY` | Magic Tower save slots (`auto`, `s1`–`s3`): seed, loop, hero, per-floor diffs — the tower is regenerated on load |
 | `chraeLab.magicTower.meta` | `MAGIC_TOWER_META_KEY` | Magic Tower unlocks (`unlockedLoop`), codex, per-loop records |
 | `chraeLab.magicTower.lang` | `MAGIC_TOWER_LANG_KEY` | Magic Tower UI language (`'en'` \| `'zh'`); the game shows one language at a time |
+| `chraeLab.city` | `CITY_KEY` | City save: seed, tick, funds, scalars + RLE/base64 layers (`src/tools/city/save.ts`); terrain and networks are rebuilt on load |
+| `chraeLab.city.prefs` | `CITY_PREFS_KEY` | City UI prefs (reserved) |
 | `financial-planner-scenarios` | legacy | Pre-profiles "single profile, many scenarios" shape |
 | `financial-planner-input` | legacy | Pre-scenarios "one plan" shape |
 | `financial-planner-plans` | legacy | Withdrawal schedules from the pre-scenarios shape |
@@ -234,6 +237,16 @@ A 魔塔 / Tower of the Sorcerer puzzle-RPG: ten loops (周目) × 99 procedural
 - **UI.** One classic-style *game frame* (`styles.ts` `.mt-frame`: dark, gold-bordered, fixed palette in both themes) holds the `SidePanel` (stats in pixel style), the board `Canvas` (backing store = displayed size × DPR so sprites and the number overlays stay crisp; `overlay.ts` computes the damage / gain numbers per tile) and the `Toolbar`. The monster manual is a popup (M toggles) rendered as a table by `components/Manual.tsx` from `manual.ts` (grouped by identical monsters; "Cheaper with" = the smallest ATK/DEF that lowers the cost and the cost at that value). All game copy is single-language via `strings.ts` (`t(lang, key)`, `msg(m, lang)` for reducer messages, which are structured `Msg` objects, not strings).
 - **Adding an ability / perk / template**: ability → `types.ts` union, `combat.ts`, `i18n.ts`, monster affinities, loop table; perk → `perks.ts` (must be a monotone bonus; hooks in `combat.ts`/`items.ts`); template → `floorgen.ts#detectTemplates`.
 
+## City — `src/tools/city/`
+
+A SimCity-4-style city builder: 128×128 tile grid, statistical simulation, procedural 3D. Three layers, strictly separated:
+
+- **`sim/` is pure TypeScript** (no DOM, no three, no React) and runs in a module Worker (`worker.ts` → `sim/host.ts#SimHost`; `client.ts` falls back to the same host inline when `Worker` is missing). `types.ts#CityState` is flat typed arrays indexed `y * N + x`; `constants.ts#TUNING` holds every coefficient (balance edits are one-file diffs). `sim/tick.ts` is the contract: fixed system order with a 24-tick month, cheap passes every tick (actions, growth over a quarter of the tiles), staggered passes on `k % 6` (totals/crime/fire risk, pollution, land value, desirability), coverage on `k % 12`, traffic assignment once a month (`k % 24 === 11`), and the monthly close (ageing, people, demand, budget, ignition, advisor). Randomness only comes from `state.rngState` via `nextRandom` in fixed tile order, so same seed + same actions at the same ticks ⇒ byte-identical state (`tick.test.ts` pins it). Never read `Date`, `Math.random` or module-level mutable state inside `sim/` (module-level *scratch* is fine).
+- **`render/` is the only place three.js lives**, `import()`ed from `Viewport.tsx` so `/city/` alone pays for the chunk. Everything is generated: terrain chunks with baked vertex lighting and one `ShaderMaterial` (overlay `DataTexture` + fading grid + cursor rects), `ChunkManager` with one merged building mesh + one road mesh per 16×16 chunk rebuilt only when the sim marks the chunk dirty (≤ 4 per frame), `buildingSpec()` (pure, tested) for shapes by zone × density × wealth × level, a canvas-painted road atlas and window cell. `camera.ts`/`picking.ts`/`overlay.ts`/`buildings.ts`/`roads.ts`/`geometryBuilder.ts` are pure and tested; `renderer.ts`, `chunks.ts`, `terrain.ts`, `roadAtlas.ts`, `input.ts` touch three/DOM and are not.
+- **`protocol.ts`**: a snapshot is one `ArrayBuffer` in `SNAPSHOT_LAYERS` order (16-bit layers first), *transferred* to the main thread and recycled back (`recycle`); the worker owns three buffers and skips a snapshot when none is free. `App.tsx` never sets React state per snapshot: the renderer copies the layers (`renderer.layers`, stable reference), the HUD updates at 4 Hz or on month boundaries, the Inspector re-reads the same layers via a `version` prop.
+
+Contracts that matter when changing it: `actions.ts#applyAction` is the only writer of saved layers on behalf of the player (validate → charge → mutate → flags); anything that changes conductivity sets `flags.netDirty`, roads/water plops `waterDirty`, stations `serviceDirty`, parks/water `distDirty`; geometry changes go through `markDirty(state, i)`. Roads conduct power (a deliberate departure from SC4). `save.ts#parseSaveFile` is pure and version-fenced (`SAVE_VERSION`, `GEN_VERSION` — bump the latter whenever `terrain.ts` changes). `scripts/city-sim.ts` (`npm run city:sim -- --seed 1 --years 10`) runs the scripted town from `sim/scenario.ts` headlessly and prints yearly curves — use it before and after any balance change. On localhost `window.__city` exposes `dispatch`, `fastForward`, `lookAt` and the scenario helpers for driving the live app (the e2e screenshot scripts use it).
+
 ## TV buying guide — `src/tools/tv-guide/`
 
 The one multi-page tool. `/tv-guide/` is a `kind: 'app'` entry (category `utilities`, has `about`); `/tv-guide/{technologies,brands,decoder,compare}/` are `kind: 'content'` entries with `area: 'tv-guide'`. Unlike the FIRE guides these content pages **do load React** — each has `tv-guide/<chapter>/index.html` → `src/tools/tv-guide/entries/<chapter>.tsx` → `mountGuide('<chapter>')`.
@@ -251,6 +264,7 @@ The one multi-page tool. `/tv-guide/` is a `kind: 'app'` entry (category `utilit
 
 - **Inline styles + CSS variables.** No CSS modules, no Tailwind, no styled-components. Style objects are passed to JSX `style={}` and reference tokens from `styles/tokens.css`. The tokens cover colors (light + dark), shadows, radii, and font families. Pages that need hover / responsive rules (hub, FIRE intro, TV guide) inject a namespaced `<style>` string (`hub-*`, `fire-intro-*`, `tvg-*`) from a `.ts` constant.
 - **Night Console look (Design/v3).** Neutral canvas, 1px borders, 5px radii, `--shadow-card: none` (only floating UI uses `--shadow-pop`), one 150ms `background`/`border-color` hover transition on cards. **Elevation ladder (retuned 2026-09-02 after dark-theme controls looked flat):** `--bg` → `--surface` (cards) → `--surface-2` (keys, secondary buttons, inputs) → `--surface-3` (hover) are each a clearly visible luminance step in both themes, and `--border-strong` is the outline for anything interactive (`--border` is for rules and card edges, `--border-soft` for hairlines only — never for a control). Interactive "keys" (calculator keypad, sudoku number pad, bingo flashboard, `Button` outline) add `inset 0 1px 0 var(--key-highlight)` so they read as raised; active segments/tabs are accent-filled with `--accent-contrast` text (unit converter, calculator, Go), and `Button` `soft` carries a 45% accent border so tinted toggles still read as controls on dark. Four category accents (`--cat-finance/-utilities/-productivity/-games`); `--accent` is finance teal by default and every inner page re-points the `--accent*` family at its category through `accentFor(entry.category)` (`src/site/accent.ts`) on its root element. Text on a filled accent is `--accent-contrast`, never a hardcoded white. Recurring patterns: the *section header* (mono 12.5px uppercase label + rule, optional 8px accent dot), the mono 12px breadcrumb with an `--ink-slash` separator, serif h1 with one `<em>` clause in the accent, mono 11.5px footers. Index numbers / chapter labels use `--ink-index` (contrast-checked at 10–11px), not `--ink-muted`.
+- **`ToolShell layout='full'`** (City) hands the tool the first viewport edge to edge (no padding, no max width, `min-height: calc(100dvh - 56px)`); About band + footer still follow below. Every other tool uses the default centred column.
 - **Primitives over re-rolling.** `Button`, `Icon`, `Input` (and `MoneyInput` / `PercentInput` / `YearInput`), `Popover`, and `EditDrawer` are the building blocks. New screens should compose these rather than introducing parallel primitives.
 - **Numeric inputs use a focus-buffered pattern** (see comment block at the top of `Input.tsx`). While focused: show raw typed text, allow mid-edit invalid states. On blur: clamp + canonicalize. The pattern matters — if you bypass it (e.g., always-controlled value with `Math.max`), backspace stops working.
 - **Modals use the focus-trap hook.** `useFocusTrap(active, ref)` (`hooks/useFocusTrap.ts`) handles tab trapping, body scroll lock, and focus restoration on close. All five modal-likes use it: AboutModal, ExportModal, ImportModal, EditDrawer, ConfirmDialog.
@@ -302,6 +316,14 @@ Engine + utility coverage, no DOM tests. Run with `npm test` (one-shot) or `npm 
 | `tools/magic-tower/save.test.ts` | Save-file validation (shape, `genVersion`), round-trip, meta defaults |
 | `tools/magic-tower/sprites.test.ts` | Every sprite is 16×16 with a complete palette; every monster has a sprite |
 | `tools/magic-tower/tower.test.ts` | Generates towers and runs `validateTower`: structure, sim + reducer ledger replay, templates (slow part gated by `MT_SLOW=1`) |
+| `tools/city/sim/terrain.test.ts` | Seeded terrain: determinism, ranges, water/buildable fractions, land on every edge, corner heights |
+| `tools/city/sim/actions.test.ts` | Costs and refusals (funds, water, occupied), L-line roads, plop footprints, bulldoze, tax/funding clamps, loans |
+| `tools/city/sim/roads.test.ts` | Road access distance, external connection only via an edge road, island roads stay disconnected |
+| `tools/city/sim/utilities.test.ts` | Power components + lines bridging islands, deterministic brownout fraction; water coverage radius and shrink under shortage |
+| `tools/city/sim/growth.test.ts` | A connected/powered/watered town grows; no road ⇒ no growth; losing the plant ⇒ abandonment; occupancy ≤ capacity, demand bounded |
+| `tools/city/sim/tick.test.ts` | Byte-identical determinism over 20 scripted months incl. a disaster; no NaN, every layer in range |
+| `tools/city/protocol.test.ts` / `save.test.ts` | Snapshot pack/view round-trip + alignment; RLE, save round-trip (< 300 KB), continues identically after reload, validator rejections |
+| `tools/city/render/*.test.ts` | Picking (vertical/oblique/miss), building specs (deterministic, inside tile, monotone height), road piece/rotation for all 16 masks, overlay RGBA |
 | `tools/tv-guide/data.test.ts` | Content invariants: unique ids, every layer/tech reference resolves, every current tech has a brand name, ratings 1–5, official URLs are brand roots, **no prices / inch sizes / brightness figures anywhere**, changelog newest-first and `updated` dates of all five `/tv-guide` pages equal `GUIDE_REVIEWED` |
 | `tools/tv-guide/logic.test.ts` | Decoder (normalisation, exact > prefix > contains ranking, aliases), `compareRows` best-cell marking incl. lower-is-better, `recommend` over the full answer space (budget cap, static-content → LCD, dark/movies/premium → OLED), `ruleOfThumb` 3×5 |
 
@@ -323,6 +345,8 @@ Tools: tool_opened {tool}, converter_used {category, from, to},
        bingo_started {variant}, bingo_finished {variant},
        go_matched {mode, size}, go_finished {size, result},
        mt_run_started {loop}, mt_perk {id}, mt_loop_cleared {loop, steps},
+       city_started {seed}, city_loaded, city_saved, city_month {population} (yearly),
+       city_disaster {kind},
        tool_opened {tool:'tv-guide', page}, tv_guide_chooser {room,use,budget},
        tv_guide_tab {page, tab}, tv_guide_decode, tv_guide_compare {tech}
 Both:  theme_toggled {theme}

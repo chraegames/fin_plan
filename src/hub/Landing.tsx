@@ -157,6 +157,16 @@ function HubIcon({ slug }: { slug: string }) {
           ))}
         </span>
       );
+    case 'city':
+      // a skyline: four towers of different heights on a baseline
+      return (
+        <span className="hub-tile" style={{ alignItems: 'flex-end', gap: 2, padding: '8px 9px' }}>
+          <span style={bar('45%', { width: 6, opacity: 0.7 })} />
+          <span style={bar('85%', { width: 6 })} />
+          <span style={bar('60%', { width: 6 })} />
+          <span style={bar('30%', { width: 6, opacity: 0.7 })} />
+        </span>
+      );
     default:
       return <span className="hub-tile" />;
   }

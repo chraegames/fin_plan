@@ -59,6 +59,7 @@ export function createCityState(seed: number): CityState {
     powerComp: new Int32Array(T),
     waterComp: new Int32Array(T),
     roadAccess: u8(),
+    extAccess: u8(),
     landValue: u8(),
     pollution: u8(),
     waterPollution: u8(),

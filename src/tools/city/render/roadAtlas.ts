@@ -1,0 +1,99 @@
+// Paints the 6-piece road atlas on a canvas: asphalt, kerbs, centre dashes.
+// Piece order: isolated, end (opens N), straight (N-S), corner (N+E), tee (N+E+S), cross.
+
+import * as THREE from 'three';
+import { PIECES } from './roads';
+
+export function createRoadAtlas(): THREE.CanvasTexture {
+  const S = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = S * PIECES;
+  canvas.height = S;
+  const ctx = canvas.getContext('2d')!;
+  const asphalt = '#4a4c50';
+  const kerb = '#9a9a96';
+  const dash = '#d8d3b0';
+  for (let p = 0; p < PIECES; p++) {
+    const ox = p * S;
+    ctx.fillStyle = asphalt;
+    ctx.fillRect(ox, 0, S, S);
+    const open = { n: false, e: false, s: false, w: false };
+    if (p === 1) open.n = true;
+    if (p === 2) open.n = open.s = true;
+    if (p === 3) open.n = open.e = true;
+    if (p === 4) open.n = open.e = open.s = true;
+    if (p === 5) open.n = open.e = open.s = open.w = true;
+    // kerbs on closed edges
+    ctx.fillStyle = kerb;
+    const k = 5;
+    if (!open.n) ctx.fillRect(ox, 0, S, k);
+    if (!open.s) ctx.fillRect(ox, S - k, S, k);
+    if (!open.w) ctx.fillRect(ox, 0, k, S);
+    if (!open.e) ctx.fillRect(ox + S - k, 0, k, S);
+    // centre dashes along open directions
+    ctx.fillStyle = dash;
+    const c = S / 2;
+    const dashLen = 7;
+    const gap = 6;
+    const drawDash = (dir: 'n' | 'e' | 's' | 'w') => {
+      for (let t = 6; t < c - 4; t += dashLen + gap) {
+        if (dir === 'n') ctx.fillRect(ox + c - 1.5, t, 3, dashLen);
+        if (dir === 's') ctx.fillRect(ox + c - 1.5, S - t - dashLen, 3, dashLen);
+        if (dir === 'w') ctx.fillRect(ox + t, c - 1.5, dashLen, 3);
+        if (dir === 'e') ctx.fillRect(ox + S - t - dashLen, c - 1.5, dashLen, 3);
+      }
+    };
+    if (p === 2) {
+      drawDash('n');
+      drawDash('s');
+    } else if (p === 3) {
+      drawDash('n');
+      drawDash('e');
+    } else if (p === 1) drawDash('n');
+    if (p === 4 || p === 5) {
+      // crosswalk stripes across open edges
+      ctx.fillStyle = '#e6e6e0';
+      const stripe = (edge: 'n' | 'e' | 's' | 'w') => {
+        for (let t = 10; t < S - 10; t += 8) {
+          if (edge === 'n') ctx.fillRect(ox + t, 6, 4, 8);
+          if (edge === 's') ctx.fillRect(ox + t, S - 14, 4, 8);
+          if (edge === 'w') ctx.fillRect(ox + 6, t, 8, 4);
+          if (edge === 'e') ctx.fillRect(ox + S - 14, t, 8, 4);
+        }
+      };
+      if (open.n) stripe('n');
+      if (open.e) stripe('e');
+      if (open.s) stripe('s');
+      if (p === 5 && open.w) stripe('w');
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+/** Window cell: white frame with a dark glass rectangle; corner texel is plain white. */
+export function createWindowTexture(): THREE.CanvasTexture {
+  const S = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = '#20262e';
+  ctx.fillRect(9, 9, 14, 16);
+  ctx.fillStyle = '#5a7590';
+  ctx.fillRect(11, 11, 5, 5);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 4;
+  return tex;
+}

@@ -28,6 +28,7 @@ uniform sampler2D overlayTex;
 uniform float overlayMix;
 uniform float gridStrength;
 uniform vec4 cursor;
+uniform vec4 cursor2;
 uniform vec3 cursorColor;
 uniform float cursorMix;
 varying vec3 vColor;
@@ -43,7 +44,9 @@ void main() {
   float w = fwidth(m) * 1.5;
   float line = smoothstep(0.485 - w, 0.485 + w, m);
   col *= 1.0 - line * gridStrength * 0.32;
-  if (vWorld.x >= cursor.x && vWorld.x < cursor.z && vWorld.z >= cursor.y && vWorld.z < cursor.w) {
+  bool inA = vWorld.x >= cursor.x && vWorld.x < cursor.z && vWorld.z >= cursor.y && vWorld.z < cursor.w;
+  bool inB = vWorld.x >= cursor2.x && vWorld.x < cursor2.z && vWorld.z >= cursor2.y && vWorld.z < cursor2.w;
+  if (inA || inB) {
     col = mix(col, cursorColor, cursorMix);
   }
   gl_FragColor = vec4(col, 1.0);
@@ -55,6 +58,7 @@ export interface TerrainUniforms {
   overlayMix: { value: number };
   gridStrength: { value: number };
   cursor: { value: THREE.Vector4 };
+  cursor2: { value: THREE.Vector4 };
   cursorColor: { value: THREE.Color };
   cursorMix: { value: number };
 }
@@ -65,6 +69,7 @@ export function createTerrainMaterial(overlay: THREE.DataTexture): THREE.ShaderM
     overlayMix: { value: 1 },
     gridStrength: { value: 0 },
     cursor: { value: new THREE.Vector4(-1, -1, -1, -1) },
+    cursor2: { value: new THREE.Vector4(-1, -1, -1, -1) },
     cursorColor: { value: new THREE.Color(0xffffff) },
     cursorMix: { value: 0.45 },
   }]) as TerrainUniforms & Record<string, THREE.IUniform>;
