@@ -573,6 +573,54 @@ export const PAGES: SiteEntry[] = [
       ],
     },
   },
+  {
+    slug: 'city',
+    path: '/city/',
+    kind: 'app',
+    status: 'soon',
+    category: 'games',
+    name: 'City',
+    tagline: 'A 3D city simulation. Zone, build, tax and watch a statistical model of a city respond.',
+    title: 'City — free 3D city-building simulation in your browser',
+    description:
+      'Build a city in 3D in your browser: zone residential, commercial and industrial land, lay roads, run power and water, fund fire, police, schools and hospitals, and watch demand, land value, traffic, pollution, crime and your budget respond every month. Everything is generated and simulated on your device.',
+    updated: '2026-09-05',
+    about: {
+      applicationCategory: 'GameApplication',
+      intro:
+        'A city builder in the SimCity tradition, rendered in 3D from nothing but code. The map, every building and every vehicle are generated on the fly, and underneath runs a detailed statistical simulation: residential, commercial and industrial demand, desirability per tile, land value, air and water pollution, crime, fire risk, traffic assignment over your road network, utility networks, service coverage and a monthly budget. Nothing is uploaded; the whole city lives in this browser tab.',
+      features: [
+        'Zoning with three densities and three wealth tiers per zone type. Buildings grow, upgrade, change wealth and get abandoned based on demand and how desirable the tile is.',
+        'Power and water as real networks: plants and pumps feed connected tiles, a shortfall causes brownouts and shrinking water coverage, and unpowered blocks stop growing.',
+        'Fire, police, health and education with road-distance coverage and capacity. Funding sliders change range and effectiveness; education and health feed the wealth mix of who moves in.',
+        'Traffic assigned every month over the road graph with congestion feedback, so long commutes and jammed links push residents away and pollution follows the busiest streets.',
+        'Air pollution diffuses, land value follows water, parks and services, crime rises with density and falls with police coverage, and fires spread from tile to tile until a station reaches them.',
+        'A monthly ledger with tax rates per zone, service funding, loans and an advisor that points at the problem holding the city back. Twelve data views paint every layer onto the terrain.',
+      ],
+      faq: [
+        {
+          q: 'How does the simulation work?',
+          a: 'The city is a 128 × 128 grid of tiles. Every tick the simulation updates a set of per-tile layers: desirability, land value, pollution, crime, fire risk, utility and service coverage, traffic and commute time. Buildings grow or decay from those layers and from city-wide demand for each zone type and wealth tier, and once a month taxes are collected, services are paid for and demand is recomputed. It is a statistical model in the style of the classic SimCity games, not one that tracks individual citizens.',
+        },
+        {
+          q: 'Why does nothing grow?',
+          a: 'Zones need a road within three tiles, power, and (for medium and high density) water. Industry also needs a road that reaches the edge of the map so goods can leave. Check the power and water data views for red tiles, look at the demand bars at the top, and read the advisor: it lists the most likely reason in order.',
+        },
+        {
+          q: 'Is the 3D scene downloaded from somewhere?',
+          a: 'No. There are no models or textures; the terrain, buildings, roads, trees and vehicles are built from code in your browser. The only download is the three.js rendering library, which loads once when you open the page.',
+        },
+        {
+          q: 'Where is my city saved?',
+          a: 'In this browser only, automatically at the end of every month and when you leave the page. Only the layers you changed are stored; the terrain is rebuilt from the seed. Clearing site data deletes the city.',
+        },
+        {
+          q: 'Does it run on a phone?',
+          a: 'Yes, on any device with WebGL. On a touch screen one finger pans and two fingers zoom and rotate; turn on the paint toggle to apply the selected tool with a single finger drag.',
+        },
+      ],
+    },
+  },
   // ─── TV buying guide (one app + four content chapters under /tv-guide/) ──
   // Dates: keep every `updated` here equal to GUIDE_REVIEWED in
   // src/tools/tv-guide/data.ts (data.test.ts enforces the lockstep).

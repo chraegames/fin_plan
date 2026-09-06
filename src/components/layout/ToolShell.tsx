@@ -18,9 +18,16 @@ interface ToolShellProps {
   /** Extra controls rendered left of the theme toggle. */
   rightSlot?: ReactNode;
   maxWidth?: number;
+  /**
+   * 'column' (default): a centred, padded content column.
+   * 'full': the tool owns the first viewport edge to edge (no padding, no max
+   * width, at least the viewport height minus the header); About + footer
+   * still follow below.
+   */
+  layout?: 'column' | 'full';
 }
 
-export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolShellProps) {
+export function ToolShell({ entry, children, rightSlot, maxWidth = 760, layout = 'column' }: ToolShellProps) {
   const { theme, toggle } = useTheme();
   const isMobile = useIsMobile();
   const local = isLocalHost();
@@ -87,16 +94,20 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760 }: ToolSh
       </header>
 
       <main
-        style={{
-          width: '100%',
-          maxWidth,
-          margin: '0 auto',
-          padding: isMobile
-            ? '16px var(--page-pad-x) var(--page-pad-bot)'
-            : 'var(--page-pad-top) var(--page-pad-x) var(--page-pad-bot)',
-          boxSizing: 'border-box',
-          flex: 1,
-        }}
+        style={
+          layout === 'full'
+            ? { width: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 56px)' }
+            : {
+                width: '100%',
+                maxWidth,
+                margin: '0 auto',
+                padding: isMobile
+                  ? '16px var(--page-pad-x) var(--page-pad-bot)'
+                  : 'var(--page-pad-top) var(--page-pad-x) var(--page-pad-bot)',
+                boxSizing: 'border-box',
+                flex: 1,
+              }
+        }
       >
         {children}
       </main>

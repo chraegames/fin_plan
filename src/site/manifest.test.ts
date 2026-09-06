@@ -99,7 +99,7 @@ describe('site manifest', () => {
     expect(liveTools().every(p => p.kind === 'app' && p.status === 'live')).toBe(true);
     expect(liveTools().map(p => p.slug)).toContain('sudoku');
     expect(liveTools().map(p => p.slug)).toContain('magic-tower');
-    expect(liveTools()).toEqual(PAGES.filter(p => p.kind === 'app'));
+    expect(liveTools()).toEqual(PAGES.filter(p => p.kind === 'app' && p.status === 'live'));
     expect(contentPages().every(p => p.kind === 'content')).toBe(true);
     expect(contentPages()).toHaveLength(8);
     expect(contentPages().filter(p => p.area === 'tv-guide').map(p => p.slug)).toEqual([
