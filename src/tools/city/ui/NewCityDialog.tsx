@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { randomSeed } from '../rng';
+import { CityIcon } from './icons';
 
 interface NewCityDialogProps {
   open: boolean;
@@ -20,13 +21,18 @@ export function NewCityDialog({ open, hasCity, onStart, onClose }: NewCityDialog
   return (
     <div className="city-modal-backdrop" onClick={onClose}>
       <div ref={ref} className="city-panel city-modal" role="dialog" aria-modal="true" aria-labelledby="city-new-title" onClick={e => e.stopPropagation()}>
-        <h3 id="city-new-title">New city</h3>
+        <h3 id="city-new-title">
+          <span className="city-tile" style={{ background: 'var(--cp-r)' }}>
+            <CityIcon name="house" size={16} />
+          </span>
+          New city
+        </h3>
         {hasCity && <p>The current city and its save will be replaced.</p>}
         <label className="city-seed">
           <span>Map seed</span>
           <input type="text" inputMode="numeric" value={seed} onChange={e => setSeed(e.target.value.replace(/[^0-9]/g, ''))} aria-label="Map seed" />
           <button type="button" className="city-btn city-btn-sm" onClick={() => setSeed(String(randomSeed() % 1_000_000))}>
-            Random
+            <CityIcon name="dice" size={14} /> Random
           </button>
         </label>
         <p className="city-modal-note">The same seed always gives the same terrain, so you can share a map by its number.</p>
@@ -35,7 +41,7 @@ export function NewCityDialog({ open, hasCity, onStart, onClose }: NewCityDialog
             Cancel
           </button>
           <button type="button" className="city-btn city-btn-primary" disabled={!valid} onClick={() => valid && onStart(value)}>
-            Start
+            <CityIcon name="check" size={16} /> Start
           </button>
         </div>
       </div>

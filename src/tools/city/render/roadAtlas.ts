@@ -68,7 +68,8 @@ export function createRoadAtlas(): THREE.CanvasTexture {
     }
   }
   const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
+  // sampled by a ShaderMaterial that writes straight to the framebuffer: no decode, no encode
+  tex.colorSpace = THREE.NoColorSpace;
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.anisotropy = 4;

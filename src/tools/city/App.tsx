@@ -16,6 +16,7 @@ import { BudgetPanel } from './ui/BudgetPanel';
 import { Inspector } from './ui/Inspector';
 import { NewCityDialog } from './ui/NewCityDialog';
 import { CITY_STYLES } from './ui/styles';
+import { CityIcon } from './ui/icons';
 import { Toolbar } from './ui/Toolbar';
 import { TopBar } from './ui/TopBar';
 import { canPlopAt, plopRect } from './ui/validity';
@@ -43,7 +44,7 @@ function modeFor(tool: Tool): 'pan' | 'point' | 'rect' | 'line' {
     case 'line':
       return 'line';
     case 'plop':
-    case 'fire':
+    case 'disaster':
       return 'point';
     default:
       return 'rect';
@@ -226,8 +227,8 @@ export default function App() {
           case 'plop':
             dispatch({ type: 'plop', plop: tool.plop, at: t });
             break;
-          case 'fire':
-            dispatch({ type: 'disaster', kind: 'fire', at: t });
+          case 'disaster':
+            dispatch({ type: 'disaster', kind: tool.disaster, at: t });
             break;
           case 'road':
             dispatch({ type: 'road', from: t, to: t });
@@ -379,9 +380,9 @@ export default function App() {
         <div className="city-hud">
           <TopBar hud={hud} speed={speed} overlay={overlay} onSpeed={setSpeed} onOverlay={setOverlay} onBudget={() => setBudgetOpen(o => !o)} onNewCity={() => setConfirmNew(true)} compact={isMobile} />
           {isMobile && (
-            <label className="city-panel city-paint" style={{ padding: '6px 8px' }}>
-              <input type="checkbox" checked={paint} onChange={e => setPaint(e.target.checked)} /> paint
-            </label>
+            <button type="button" className={`city-btn city-paint${paint ? ' city-on' : ''}`} aria-pressed={paint} onClick={() => setPaint(p => !p)} title="One-finger drag applies the tool">
+              <CityIcon name="paint" size={16} /> Paint
+            </button>
           )}
         </div>
         <Toolbar tool={tool} density={density} onTool={onTool} onDensity={onDensity} compact={isMobile} />
@@ -398,8 +399,15 @@ export default function App() {
             onClose={() => setBudgetOpen(false)}
           />
         )}
-        {!isMobile && <div className="city-hint">Drag to pan · right-drag orbit · wheel zoom · WASD/QE · R C I T B tools · P pause · Esc inspect</div>}
-        {toast && <div className="city-panel city-toast">{toast}</div>}
+        {!isMobile && <div className="city-hint">drag · pan &nbsp;|&nbsp; right-drag · orbit &nbsp;|&nbsp; wheel · zoom &nbsp;|&nbsp; R C I T B · tools &nbsp;|&nbsp; P · pause &nbsp;|&nbsp; Esc · inspect</div>}
+        {toast && (
+          <div className="city-panel city-toast" role="status">
+            <span className="city-tile" style={{ background: 'var(--cp-danger)', width: 24, height: 24, borderRadius: 7 }}>
+              <CityIcon name="warning" size={14} />
+            </span>
+            {toast}
+          </div>
+        )}
         {saveFailed && (
           <div className="city-panel city-toast" role="alert">
             Couldn't save — storage is full or disabled.{' '}

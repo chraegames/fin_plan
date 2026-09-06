@@ -2,6 +2,7 @@ import { DENSITY_NAMES, WEALTH_SYMBOL, ZONE_NAMES, plopDef } from '../constants'
 import type { SnapshotLayers } from '../protocol';
 import { N, ZONE, type XY } from '../types';
 import { capacityOf } from '../sim/buildings';
+import { CityIcon } from './icons';
 
 interface InspectorProps {
   tile: XY;
@@ -11,53 +12,72 @@ interface InspectorProps {
   onClose: () => void;
 }
 
-const pct = (v: number) => `${Math.round((v / 255) * 100)}%`;
+type Row = [string, React.ReactNode];
+
+function Meter({ v, color }: { v: number; color: string }) {
+  return (
+    <>
+      {Math.round((v / 255) * 100)}%
+      <span className="city-meter">
+        <i style={{ width: `${(v / 255) * 100}%`, background: color }} />
+      </span>
+    </>
+  );
+}
+
+const yesNo = (b: boolean) => <span className={b ? 'city-yes' : 'city-no'}>{b ? 'yes' : 'no'}</span>;
 
 export function Inspector({ tile, layers: L, version, onClose }: InspectorProps) {
   void version;
   const i = tile.y * N + tile.x;
-  const rows: [string, string][] = [];
+  const rows: Row[] = [];
+  let title = `Tile ${tile.x}, ${tile.y}`;
   if (L) {
     const z = L.zone[i];
     const plop = L.plop[i] ? plopDef(L.plop[i]) : undefined;
-    if (plop) rows.push(['Building', plop.name]);
+    if (plop) title = plop.name;
     else if (z) {
-      rows.push(['Zone', `${ZONE_NAMES[z]} · ${DENSITY_NAMES[L.density[i]]} density`]);
+      title = `${ZONE_NAMES[z]} · ${DENSITY_NAMES[L.density[i]]}`;
       if (L.level[i]) {
         rows.push(['Building', `Level ${L.level[i]} · ${WEALTH_SYMBOL[L.wealth[i]]}${L.abandoned[i] ? ' · abandoned' : ''}`]);
         const cap = capacityOf(z, L.density[i], L.level[i], L.wealth[i]);
         rows.push([z === ZONE.R ? 'Residents' : 'Jobs', `${z === ZONE.R ? L.pop[i] : L.jobs[i]} / ${cap}`]);
-      } else rows.push(['Building', 'none yet']);
-      rows.push(['Desirability', pct(L.desirability[i])]);
-    } else if (L.road[i]) rows.push(['Road', `traffic ${pct(L.traffic[i])}`]);
-    else rows.push(['Land', 'empty']);
+      } else rows.push(['Building', 'nothing built yet']);
+      rows.push(['Desirability', <Meter v={L.desirability[i]} color="var(--cp-purple)" />]);
+    } else if (L.road[i]) {
+      title = 'Road';
+      rows.push(['Traffic', <Meter v={L.traffic[i]} color="var(--cp-road)" />]);
+    } else title = 'Open land';
     if (z || plop) {
-      rows.push(['Power', L.powered[i] ? 'yes' : 'no']);
-      rows.push(['Water', L.watered[i] ? 'yes' : 'no']);
-      rows.push(['Road access', L.roadAccess[i] ? `${L.roadAccess[i] - 1} tiles` : 'none']);
+      rows.push(['Power', yesNo(!!L.powered[i])]);
+      rows.push(['Water', yesNo(!!L.watered[i])]);
+      rows.push(['Road access', L.roadAccess[i] ? `${L.roadAccess[i] - 1} tiles away` : <span className="city-no">none</span>]);
     }
     if (z === ZONE.R && L.level[i]) {
-      rows.push(['Commute', L.commute[i] === 255 ? 'no jobs reachable' : `${L.commute[i]} tiles`]);
-      rows.push(['Education', `${L.edu[i]}`]);
-      rows.push(['Health', `${L.health[i]}`]);
+      rows.push(['Commute', L.commute[i] === 255 ? <span className="city-no">no jobs reachable</span> : `${L.commute[i]} tiles`]);
+      rows.push(['Education', `${L.edu[i]} / 100`]);
+      rows.push(['Health', `${L.health[i]} / 100`]);
     }
-    rows.push(['Land value', pct(L.landValue[i])]);
-    rows.push(['Pollution', pct(L.pollution[i])]);
-    rows.push(['Crime', pct(L.crime[i])]);
-    if (L.fireRisk[i]) rows.push(['Fire risk', pct(L.fireRisk[i])]);
-    rows.push(['Fire · police', `${pct(L.fireCover[i])} · ${pct(L.policeCover[i])}`]);
-    rows.push(['Health · schools', `${pct(L.healthCover[i])} · ${pct(L.eduCover[i])}`]);
-    if (L.onFire[i]) rows.push(['On fire', 'yes']);
+    rows.push(['Land value', <Meter v={L.landValue[i]} color="var(--cp-coin)" />]);
+    rows.push(['Pollution', <Meter v={L.pollution[i]} color="#8C7A4B" />]);
+    rows.push(['Crime', <Meter v={L.crime[i]} color="#3F5FB0" />]);
+    if (L.fireRisk[i]) rows.push(['Fire risk', <Meter v={L.fireRisk[i]} color="var(--cp-danger)" />]);
+    rows.push(['Fire · police', `${Math.round((L.fireCover[i] / 255) * 100)}% · ${Math.round((L.policeCover[i] / 255) * 100)}%`]);
+    rows.push(['Health · schools', `${Math.round((L.healthCover[i] / 255) * 100)}% · ${Math.round((L.eduCover[i] / 255) * 100)}%`]);
+    if (L.onFire[i]) rows.push(['On fire', <span className="city-no">yes</span>]);
   }
   return (
     <div className="city-panel city-inspector" role="dialog" aria-label="Tile inspector">
-      <div className="city-inspector-head">
-        <span>Tile {tile.x}, {tile.y}</span>
-        <button type="button" className="city-btn city-btn-sm" onClick={onClose} aria-label="Close inspector">
-          ✕
+      <div className="city-panel-head">
+        <span>
+          <CityIcon name="inspect" size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+          {title}
+        </span>
+        <button type="button" className="city-btn city-btn-sm city-btn-icon" onClick={onClose} aria-label="Close inspector">
+          <CityIcon name="close" size={14} />
         </button>
       </div>
-      <table>
+      <table className="city-kv">
         <tbody>
           {rows.map(([k, v]) => (
             <tr key={k}>

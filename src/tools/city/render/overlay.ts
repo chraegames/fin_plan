@@ -55,7 +55,7 @@ export function buildOverlayRGBA(kind: OverlayKind, L: SnapshotLayers, water: Ui
       r = c[0];
       g = c[1];
       b = c[2];
-      a = L.level[i] ? 0.12 : 0.4;
+      a = L.level[i] ? 0.1 : 0.32;
     }
     if (kind !== 'none' && !water[i]) {
       let v = -1;

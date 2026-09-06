@@ -8,6 +8,7 @@ import { advise } from './advisor';
 import { monthlyBudget } from './budget';
 import { computeCrime } from './crime';
 import { computeDesirability } from './desirability';
+import { stepTornado } from './disasters';
 import { computeFireRisk, igniteMonthly, spreadFire } from './fire';
 import { ageBuildings, growthPass } from './growth';
 import { computeLandValue } from './landvalue';
@@ -51,6 +52,7 @@ export function tick(s: CityState): void {
   }
   if (s.flags.waterDirty) rebuildWaterNetwork(s);
   if (s.flags.anyFire) spreadFire(s);
+  if (s.tornado) stepTornado(s);
   growthPass(s, k % 4);
   if (k % 4 === 0) {
     balancePower(s);

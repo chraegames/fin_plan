@@ -96,6 +96,7 @@ export function createCityState(seed: number): CityState {
     changed: CHANGE.TERRAIN | CHANGE.GEOMETRY | CHANGE.HUD,
     messages: [],
     results: [],
+    tornado: null,
   };
   state.commute.fill(255);
   return state;

@@ -195,6 +195,15 @@ export interface CityState {
   changed: number; // CHANGE_* bitmask since the last snapshot
   messages: AdvisorMsg[];
   results: ActionResult[]; // action results since the last snapshot
+  tornado: Tornado | null; // transient, not saved
+}
+
+export interface Tornado {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  ticksLeft: number;
 }
 
 /** Bits of CityState.changed. */
@@ -207,6 +216,7 @@ export const CHANGE = {
   FIRE: 32,
   HUD: 64,
   TERRAIN: 128,
+  QUAKE: 256, // an earthquake happened since the last snapshot (renderer shakes)
 } as const;
 
 // ─── Player intent ────────────────────────────────────────────────────
@@ -219,7 +229,9 @@ export type Tool =
   | { kind: 'line' }
   | { kind: 'bulldoze' }
   | { kind: 'plop'; plop: PlopId }
-  | { kind: 'fire' };
+  | { kind: 'disaster'; disaster: DisasterKind };
+
+export type DisasterKind = 'fire' | 'tornado' | 'quake';
 
 export type Action =
   | { type: 'zone'; zone: ZoneKind; density: Density; rect: Rect }
@@ -232,7 +244,7 @@ export type Action =
   | { type: 'setFunding'; service: ServiceId; level: number }
   | { type: 'loan'; amount: number }
   | { type: 'repay'; id: number }
-  | { type: 'disaster'; kind: 'fire'; at: XY };
+  | { type: 'disaster'; kind: DisasterKind; at: XY };
 
 export type ActionFail = 'funds' | 'terrain' | 'occupied' | 'bounds' | 'noop';
 
@@ -258,6 +270,7 @@ export interface HudStats {
   externalConnected: boolean;
   brownout: boolean;
   waterShort: boolean;
+  tornado: { x: number; y: number } | null;
 }
 
 export const SPEEDS = [0, 1, 2, 3] as const;

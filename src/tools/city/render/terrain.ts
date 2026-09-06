@@ -31,12 +31,13 @@ uniform vec4 cursor;
 uniform vec4 cursor2;
 uniform vec3 cursorColor;
 uniform float cursorMix;
+uniform float tint;
 varying vec3 vColor;
 varying vec2 vUv;
 varying vec3 vWorld;
 #include <fog_pars_fragment>
 void main() {
-  vec3 col = vColor;
+  vec3 col = vColor * tint;
   vec4 ov = texture2D(overlayTex, vUv);
   col = mix(col, ov.rgb, ov.a * overlayMix);
   vec2 f = abs(fract(vWorld.xz) - 0.5);
@@ -61,6 +62,7 @@ export interface TerrainUniforms {
   cursor2: { value: THREE.Vector4 };
   cursorColor: { value: THREE.Color };
   cursorMix: { value: number };
+  tint: { value: number };
 }
 
 export function createTerrainMaterial(overlay: THREE.DataTexture): THREE.ShaderMaterial {
@@ -72,6 +74,7 @@ export function createTerrainMaterial(overlay: THREE.DataTexture): THREE.ShaderM
     cursor2: { value: new THREE.Vector4(-1, -1, -1, -1) },
     cursorColor: { value: new THREE.Color(0xffffff) },
     cursorMix: { value: 0.45 },
+    tint: { value: 1 },
   }]) as TerrainUniforms & Record<string, THREE.IUniform>;
   uniforms.overlayTex.value = overlay;
   return new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, fog: true });
@@ -165,11 +168,12 @@ uniform sampler2D atlas;
 uniform sampler2D overlayTex;
 uniform float overlayMix;
 uniform float mapSize;
+uniform float tint;
 varying vec2 vUv;
 varying vec3 vWorld;
 #include <fog_pars_fragment>
 void main() {
-  vec3 col = texture2D(atlas, vUv).rgb;
+  vec3 col = texture2D(atlas, vUv).rgb * tint;
   vec4 ov = texture2D(overlayTex, vWorld.xz / mapSize);
   col = mix(col, ov.rgb, ov.a * overlayMix);
   gl_FragColor = vec4(col, 1.0);
@@ -178,7 +182,7 @@ void main() {
 
 /** Road material: atlas texture blended with the same overlay the terrain uses. */
 export function createRoadMaterial(atlas: THREE.Texture, overlay: THREE.DataTexture): THREE.ShaderMaterial {
-  const uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { atlas: { value: null }, overlayTex: { value: null }, overlayMix: { value: 1 }, mapSize: { value: N } }]) as Record<string, THREE.IUniform>;
+  const uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { atlas: { value: null }, overlayTex: { value: null }, overlayMix: { value: 1 }, mapSize: { value: N }, tint: { value: 1 } }]) as Record<string, THREE.IUniform>;
   uniforms.atlas.value = atlas;
   uniforms.overlayTex.value = overlay;
   return new THREE.ShaderMaterial({ uniforms, vertexShader: ROAD_VERT, fragmentShader: ROAD_FRAG, fog: true });

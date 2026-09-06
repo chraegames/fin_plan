@@ -135,7 +135,7 @@ export class InputController {
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       if (p) {
-        this.renderer.rig.pan(-(mx - this.lastX) * 0.5, -(my - this.lastY) * 0.5);
+        this.renderer.rig.pan(-(mx - this.lastX) * 0.5, (my - this.lastY) * 0.5);
       }
       this.lastX = mx;
       this.lastY = my;
@@ -158,7 +158,8 @@ export class InputController {
       return;
     }
     if (this.camDrag === 'pan') {
-      this.renderer.rig.pan(-dx, -dy);
+      // grab: the ground under the cursor follows the pointer
+      this.renderer.rig.pan(-dx, dy);
       return;
     }
     const t = this.pick(e);

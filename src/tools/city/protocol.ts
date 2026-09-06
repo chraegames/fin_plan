@@ -88,6 +88,7 @@ export function buildHud(s: CityState): HudStats {
     externalConnected: s.externalConnected,
     brownout: t.powerDemand > t.powerSupply && t.powerDemand > 0,
     waterShort: t.waterDemand > t.waterSupply * 1.25 && t.waterDemand > 0,
+    tornado: s.tornado ? { x: s.tornado.x, y: s.tornado.y } : null,
   };
 }
 

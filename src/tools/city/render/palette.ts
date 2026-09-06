@@ -14,6 +14,10 @@ export interface ScenePalette {
   water: number;
   waterOpacity: number;
   grid: number;
+  skyTop: number;
+  skyHorizon: number;
+  /** Multiplier on terrain / road colours (they are unlit). */
+  groundTint: number;
 }
 
 export const LIGHT_PALETTE: ScenePalette = {
@@ -26,9 +30,12 @@ export const LIGHT_PALETTE: ScenePalette = {
   sun: 0xfff2dc,
   sunIntensity: 2.6,
   hemiIntensity: 1.5,
-  water: 0x3d86b8,
+  water: 0x3f93c9,
   waterOpacity: 0.72,
   grid: 0x000000,
+  skyTop: 0x4f9be0,
+  skyHorizon: 0xdfe9f0,
+  groundTint: 1,
 };
 
 export const DARK_PALETTE: ScenePalette = {
@@ -44,6 +51,9 @@ export const DARK_PALETTE: ScenePalette = {
   water: 0x1d4a6e,
   waterOpacity: 0.78,
   grid: 0x000000,
+  skyTop: 0x0b1020,
+  skyHorizon: 0x3a3f5c,
+  groundTint: 0.5,
 };
 
 /** Terrain vertex colour by land height in world units (0 = shore) and slope (|normal.xz|). Returns [r,g,b] 0..1. */

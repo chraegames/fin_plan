@@ -7,6 +7,7 @@ import { tileCapacity } from './buildings';
 import { clampRect, idx, inBounds, lineTiles, xOf, yOf } from './grid';
 import { markDirty } from './state';
 import { buildable } from './terrain';
+import { earthquake, startTornado } from './disasters';
 
 const lineBuf: number[] = [];
 
@@ -271,11 +272,17 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
       return { id, ok: true, cost: bal };
     }
     case 'disaster': {
+      if (!inBounds(a.at.x, a.at.y)) return fail(id, 'bounds');
       const i = idx(a.at.x, a.at.y);
-      if (!inBounds(a.at.x, a.at.y) || !(s.level[i] || (s.plop[i] && s.plop[i] !== PLOP.LINE))) return fail(id, 'noop');
-      s.onFire[i] = 120;
-      s.flags.anyFire = true;
-      s.changed |= CHANGE.FIRE;
+      if (a.kind === 'fire') {
+        if (!(s.level[i] || (s.plop[i] && s.plop[i] !== PLOP.LINE))) return fail(id, 'noop');
+        s.onFire[i] = 120;
+        s.flags.anyFire = true;
+        s.changed |= CHANGE.FIRE;
+      } else if (a.kind === 'tornado') {
+        if (s.tornado) return fail(id, 'noop');
+        startTornado(s, a.at);
+      } else earthquake(s, a.at);
       return { id, ok: true, cost: 0 };
     }
   }

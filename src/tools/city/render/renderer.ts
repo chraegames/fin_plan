@@ -13,6 +13,7 @@ import { groundPoint, pickTile, type Ray } from './picking';
 import { createRoadAtlas, createWindowTexture } from './roadAtlas';
 import { buildTerrainChunks, createRoadMaterial, createTerrainMaterial, type TerrainUniforms } from './terrain';
 import { VehicleField } from './vehicles';
+import { createSkyDome, FireSparks, recolorSkyDome, TornadoFunnel, WindBlades } from './effects';
 
 export interface TerrainData {
   seed: number;
@@ -59,6 +60,12 @@ export class CityRenderer {
   private readonly terrainMeshes: THREE.Mesh[];
   private readonly chunks: ChunkManager;
   private readonly vehicles: VehicleField;
+  private readonly sparks: FireSparks;
+  private readonly blades: WindBlades;
+  private readonly funnel: TornadoFunnel;
+  private readonly sky: THREE.Mesh;
+  private shake = 0;
+  private time = 0;
   /** Sim speed, used to pace the cosmetic traffic. */
   speed = 1;
   private readonly buildMat: THREE.MeshLambertMaterial;
@@ -90,7 +97,7 @@ export class CityRenderer {
     this.overlayTex = new THREE.DataTexture(this.overlay, N, N, THREE.RGBAFormat);
     this.overlayTex.magFilter = THREE.NearestFilter;
     this.overlayTex.minFilter = THREE.NearestFilter;
-    this.overlayTex.colorSpace = THREE.SRGBColorSpace;
+    this.overlayTex.colorSpace = THREE.NoColorSpace;
     this.overlayTex.needsUpdate = true;
 
     this.terrainMat = createTerrainMaterial(this.overlayTex);
@@ -106,6 +113,14 @@ export class CityRenderer {
     this.scene.add(this.chunks.group);
     this.vehicles = new VehicleField(this.hf, opts?.vehicles ?? 400);
     this.scene.add(this.vehicles.mesh);
+    this.sparks = new FireSparks(this.hf);
+    this.scene.add(this.sparks.points);
+    this.blades = new WindBlades(this.hf);
+    this.scene.add(this.blades.mesh);
+    this.funnel = new TornadoFunnel(this.hf);
+    this.scene.add(this.funnel.points);
+    this.sky = createSkyDome(LIGHT_PALETTE.skyTop, LIGHT_PALETTE.skyHorizon);
+    this.scene.add(this.sky);
 
     this.waterMat = new THREE.MeshBasicMaterial({ color: this.palette.water, transparent: true, opacity: this.palette.waterOpacity, depthWrite: false });
     const water = new THREE.Mesh(new THREE.PlaneGeometry(N + 40, N + 40), this.waterMat);
@@ -132,6 +147,9 @@ export class CityRenderer {
     this.palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
     const p = this.palette;
     this.scene.background = new THREE.Color(p.background);
+    if (this.sky) recolorSkyDome(this.sky, p.skyTop, p.skyHorizon);
+    this.uniforms.tint.value = p.groundTint;
+    (this.roadMat.uniforms.tint as THREE.IUniform).value = p.groundTint;
     const fog = this.scene.fog as THREE.Fog;
     fog.color.set(p.fog);
     fog.near = p.fogNear;
@@ -181,6 +199,10 @@ export class CityRenderer {
     this.chunks.setLayers(this.layers, snap.dirtyChunks);
     if (snap.changed & OVERLAY_DEPS[this.overlayKind]) this.rebuildOverlay();
     if (snap.changed & (CHANGE.TRAFFIC | CHANGE.GEOMETRY)) this.vehicles.resample(this.layers);
+    if (snap.changed & (CHANGE.FIRE | CHANGE.GEOMETRY)) this.sparks.resample(this.layers);
+    if (snap.changed & CHANGE.GEOMETRY) this.blades.resample(this.layers);
+    if (snap.changed & CHANGE.QUAKE) this.shake = 1.2;
+    this.funnel.set(snap.hud.tornado);
     this.needsRender = true;
   }
 
@@ -229,15 +251,30 @@ export class CityRenderer {
     const moving = this.rig.update(dt);
     if (moving) this.needsRender = true;
     if (this.chunks.update(4) > 0) this.needsRender = true;
+    this.time += dt * (this.speed === 0 ? 0.25 : 1);
     if (this.vehicles.update(dt, this.speed)) this.needsRender = true;
+    if (this.sparks.update(this.time)) this.needsRender = true;
+    if (this.blades.update(this.time)) this.needsRender = true;
+    if (this.funnel.update(this.time, dt)) this.needsRender = true;
+    if (this.shake > 0) {
+      this.shake = Math.max(0, this.shake - dt);
+      this.needsRender = true;
+    }
     if (!this.needsRender) return false;
     this.needsRender = false;
 
     const ty = this.targetY();
     const e = this.rig.eye(ty);
     this.eyeV.set(e.x, Math.max(e.y, this.heightAt(e.x, e.z) + 1.2), e.z);
+    if (this.shake > 0) {
+      const k = this.shake * 0.35;
+      this.eyeV.x += Math.sin(this.time * 47) * k;
+      this.eyeV.y += Math.sin(this.time * 61) * k * 0.6;
+      this.eyeV.z += Math.cos(this.time * 53) * k;
+    }
     this.camera.position.copy(this.eyeV);
     this.camera.lookAt(this.rig.cur.tx, ty, this.rig.cur.tz);
+    this.sky.position.copy(this.camera.position);
     this.uniforms.gridStrength.value = Math.min(1, Math.max(0, (60 - this.rig.cur.dist) / 35));
     if (this.overlayDirty) {
       this.overlayTex.needsUpdate = true;
@@ -252,6 +289,11 @@ export class CityRenderer {
     for (const m of this.terrainMeshes) m.geometry.dispose();
     this.chunks.dispose();
     this.vehicles.dispose();
+    this.sparks.dispose();
+    this.blades.dispose();
+    this.funnel.dispose();
+    this.sky.geometry.dispose();
+    (this.sky.material as THREE.Material).dispose();
     this.buildMat.dispose();
     this.roadMat.dispose();
     this.windowTex.dispose();
