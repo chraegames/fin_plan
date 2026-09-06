@@ -56,6 +56,35 @@ export function fmt(n: number): string {
   return Math.round(n).toLocaleString('en-US');
 }
 
+/** A simple responsive mayor: adds plants, water and services when the advisor would nag. */
+let reserve = 0;
+function mayor(s: CityState, L: Layout, year: number): void {
+  const t = s.totals;
+  const spot = (): { x: number; y: number } => {
+    // reserve lots along the industrial side, below the plant
+    const px = L.x0 + L.w - 8;
+    const py = L.y0 + 6 + (reserve++ % 5) * 5 + 1;
+    act(s, { type: 'bulldoze', rect: { x0: px, y0: py, x1: px + 2, y1: py + 2 } });
+    return { x: px, y: py };
+  };
+  if (t.powerSupply === 0 || t.powerDemand > t.powerSupply * 0.9) {
+    const at = spot();
+    act(s, { type: 'plop', plop: PLOP.COAL, at });
+    if (!quiet) console.log(`  year ${year}: + coal plant`);
+  }
+  if (t.waterDemand > t.waterSupply * 0.9) {
+    const at = spot();
+    act(s, { type: 'plop', plop: PLOP.TOWER, at }, { type: 'plop', plop: PLOP.TOWER, at: { x: at.x + 1, y: at.y } }, { type: 'plop', plop: PLOP.TOWER, at: { x: at.x + 2, y: at.y } });
+    if (!quiet) console.log(`  year ${year}: + water towers`);
+  }
+  if (year === 4) act(s, ...serviceActions({ ...L, y0: L.y0 + 15 }));
+  if (year === 5) {
+    const cx = L.x0 + Math.floor(L.w / 2);
+    act(s, { type: 'bulldoze', rect: { x0: cx - 1, y0: L.y0 + 21, x1: cx, y1: L.y0 + 22 } }, { type: 'plop', plop: PLOP.HIGH, at: { x: cx - 1, y: L.y0 + 21 } });
+    act(s, { type: 'bulldoze', rect: { x0: cx + 2, y0: L.y0 + 21, x1: cx + 3, y1: L.y0 + 22 } }, { type: 'plop', plop: PLOP.PARK_L, at: { x: cx + 2, y: L.y0 + 21 } });
+  }
+}
+
 const s = createCityState(seed);
 const site = findSite(s, 45, 31);
 if (!site) {
@@ -72,13 +101,7 @@ let maxTick = 0;
 for (let y = 0; y < years; y++) {
   if (y === 1) act(s, ...serviceActions(site));
   if (y === 3 || y === 6) act(s, ...densifyActions(site, y === 3 ? 2 : 3));
-  if (y > 0 && s.totals.powerSupply === 0) {
-    if (!quiet) console.log('  (plant lost — rebuilding)');
-    const px = site.x0 + site.w - 8;
-    const py = site.y0 + 1;
-    act(s, { type: 'bulldoze', rect: { x0: px, y0: py, x1: px + 1, y1: py + 1 } });
-    act(s, { type: 'plop', plop: PLOP.COAL, at: { x: px, y: py } });
-  }
+  if (y > 0) mayor(s, site, y);
   for (let m = 0; m < 12 * TICKS_PER_MONTH; m++) {
     const a = performance.now();
     tick(s);
