@@ -17,6 +17,7 @@ export function pollutionStep(s: CityState): void {
   for (let i = 0; i < T; i++) {
     const def = s.plop[i] ? plopDef(s.plop[i]) : undefined;
     if (def?.emission) emit[i] += def.emission / (def.size * def.size);
+    if (def?.kind === 'park') emit[i] -= TUNING.parkAbsorb;
   }
   for (let i = 0; i < T; i++) {
     let sum = 0;

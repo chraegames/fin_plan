@@ -56,32 +56,48 @@ export function fmt(n: number): string {
   return Math.round(n).toLocaleString('en-US');
 }
 
-/** A simple responsive mayor: adds plants, water and services when the advisor would nag. */
+/** A responsive mayor: utilities on demand, services scaled with population, densification. */
 let reserve = 0;
+let stationSpot = 0;
+const built = { police: 0, fire: 0, school: 0, clinic: 0, park: 0 };
 function mayor(s: CityState, L: Layout, year: number): void {
   const t = s.totals;
   const spot = (): { x: number; y: number } => {
-    // reserve lots along the industrial side, below the plant
     const px = L.x0 + L.w - 8;
     const py = L.y0 + 6 + (reserve++ % 5) * 5 + 1;
     act(s, { type: 'bulldoze', rect: { x0: px, y0: py, x1: px + 2, y1: py + 2 } });
     return { x: px, y: py };
   };
+  // a station spot inside the residential/commercial grid, next to a road
+  const station = (plop: number, size = 1): void => {
+    const cols = Math.floor((L.w - 10) / 7);
+    const k = stationSpot++;
+    const x = L.x0 + 1 + (k % cols) * 7 + 1;
+    const y = L.y0 + 1 + Math.floor(k / cols) * 5;
+    act(s, { type: 'bulldoze', rect: { x0: x, y0: y, x1: x + size - 1, y1: y + size - 1 } }, { type: 'plop', plop, at: { x, y } });
+  };
   if (t.powerSupply === 0 || t.powerDemand > t.powerSupply * 0.9) {
-    const at = spot();
-    act(s, { type: 'plop', plop: PLOP.COAL, at });
+    act(s, { type: 'plop', plop: PLOP.COAL, at: spot() });
     if (!quiet) console.log(`  year ${year}: + coal plant`);
   }
   if (t.waterDemand > t.waterSupply * 0.9) {
     const at = spot();
     act(s, { type: 'plop', plop: PLOP.TOWER, at }, { type: 'plop', plop: PLOP.TOWER, at: { x: at.x + 1, y: at.y } }, { type: 'plop', plop: PLOP.TOWER, at: { x: at.x + 2, y: at.y } });
-    if (!quiet) console.log(`  year ${year}: + water towers`);
   }
-  if (year === 4) act(s, ...serviceActions({ ...L, y0: L.y0 + 15 }));
-  if (year === 5) {
-    const cx = L.x0 + Math.floor(L.w / 2);
-    act(s, { type: 'bulldoze', rect: { x0: cx - 1, y0: L.y0 + 21, x1: cx, y1: L.y0 + 22 } }, { type: 'plop', plop: PLOP.HIGH, at: { x: cx - 1, y: L.y0 + 21 } });
-    act(s, { type: 'bulldoze', rect: { x0: cx + 2, y0: L.y0 + 21, x1: cx + 3, y1: L.y0 + 22 } }, { type: 'plop', plop: PLOP.PARK_L, at: { x: cx + 2, y: L.y0 + 21 } });
+  const pop = t.population;
+  if (pop / (built.police + 1) > 2500) { station(PLOP.POLICE); built.police++; }
+  if (pop / (built.fire + 1) > 4000) { station(PLOP.FIRE); built.fire++; }
+  if (pop / (built.school + 1) > 3000) { station(PLOP.SCHOOL); built.school++; }
+  if (pop / (built.clinic + 1) > 4000) { station(PLOP.CLINIC); built.clinic++; }
+  if (pop / (built.park + 1) > 2000) { station(PLOP.PARK_S); built.park++; }
+  if (year === 5) station(PLOP.HIGH, 2);
+  if (year === 8) station(PLOP.HOSPITAL, 2);
+  if (year === 3) {
+    const third = Math.floor(L.w / 3);
+    for (let y = L.y0; y < L.y0 + L.h; y++) {
+      if ((y - L.y0) % 5 === 0) continue;
+      act(s, { type: 'zone', zone: 2, density: 2, rect: { x0: L.x0 + third, y0: y, x1: L.x0 + 2 * third - 1, y1: y } });
+    }
   }
 }
 
@@ -101,6 +117,7 @@ let maxTick = 0;
 for (let y = 0; y < years; y++) {
   if (y === 1) act(s, ...serviceActions(site));
   if (y === 3 || y === 6) act(s, ...densifyActions(site, y === 3 ? 2 : 3));
+  if (y > 0 && !quiet) console.log(`  stations police ${built.police} fire ${built.fire} school ${built.school} clinic ${built.clinic} park ${built.park}`);
   if (y > 0) mayor(s, site, y);
   for (let m = 0; m < 12 * TICKS_PER_MONTH; m++) {
     const a = performance.now();

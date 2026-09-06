@@ -56,7 +56,7 @@ export function computeCoverage(s: CityState): void {
   }
   for (let i = 0; i < T; i++) {
     s.healthCover[i] = Math.max(clinicCover[i], hospitalCover[i]);
-    s.eduCover[i] = Math.min(255, Math.round(0.4 * schoolCover[i] + 0.4 * highCover[i] + 0.2 * uniCover[i]));
+    s.eduCover[i] = Math.min(255, Math.round(0.55 * schoolCover[i] + 0.5 * highCover[i] + 0.3 * uniCover[i]));
   }
   s.flags.serviceDirty = false;
   s.changed |= CHANGE.SOCIAL;

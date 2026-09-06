@@ -247,7 +247,8 @@ export type Action =
   | { type: 'setFunding'; service: ServiceId; level: number }
   | { type: 'loan'; amount: number }
   | { type: 'repay'; id: number }
-  | { type: 'disaster'; kind: DisasterKind; at: XY };
+  | { type: 'disaster'; kind: DisasterKind; at: XY }
+  | { type: 'grant'; amount: number }; // debug panel only
 
 export type ActionFail = 'funds' | 'terrain' | 'occupied' | 'bounds' | 'noop';
 

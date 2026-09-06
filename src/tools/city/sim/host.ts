@@ -1,7 +1,7 @@
 // SimHost: owns the CityState, runs ticks on a clock, applies actions and
 // emits snapshots. Used by the worker and by the inline fallback alike.
 
-import { MAX_TICKS_PER_STEP, TICK_RATES } from '../constants';
+import { applyTuning, MAX_TICKS_PER_STEP, TICK_RATES } from '../constants';
 import { buildHud, packSnapshot, SNAPSHOT_BYTES, type MainToWorker, type WorkerToMain } from '../protocol';
 import { decodeSave, encodeSave } from '../save';
 import { CHANGE, CHUNKS, type Action, type CityState, type Speed } from '../types';
@@ -64,6 +64,9 @@ export class SimHost {
       case 'requestSnapshot':
         this.wantSnapshot = true;
         this.flush(true);
+        return;
+      case 'tuning':
+        applyTuning(msg.overrides);
         return;
       case 'fastForward':
         if (this.state) {

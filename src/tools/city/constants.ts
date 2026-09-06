@@ -69,14 +69,16 @@ export const TUNING = {
   airDiffusion: 0.18,
   airDecay: 0.12,
   trafficEmission: 6,
+  /** Air pollution absorbed per park tile per step. */
+  parkAbsorb: 6,
   fireEmission: 30,
   waterDiffusion: 0.22,
   waterDecay: 0.04,
   // ── crime ──
-  crimeCapNorm: 120,
-  crimeDensity: [0, 1, 1.3, 1.6],
+  crimeCapNorm: 200,
+  crimeDensity: [0, 1, 1.15, 1.3],
   crimeWealth: [0, 1.3, 1.0, 0.7],
-  crimePolice: 0.9,
+  crimePolice: 1.1,
   crimeEdu: 0.2,
   crimeLandValue: 0.1,
   crimeEma: 0.3,
@@ -100,10 +102,10 @@ export const TUNING = {
   waterRadius: 6,
   pumpFar: 0.3,
   // ── services ──
-  serviceRange: { [PLOP.FIRE]: 14, [PLOP.POLICE]: 12, [PLOP.CLINIC]: 9, [PLOP.HOSPITAL]: 20, [PLOP.SCHOOL]: 12, [PLOP.HIGH]: 16, [PLOP.UNI]: 28 } as Record<number, number>,
+  serviceRange: { [PLOP.FIRE]: 14, [PLOP.POLICE]: 12, [PLOP.CLINIC]: 10, [PLOP.HOSPITAL]: 20, [PLOP.SCHOOL]: 14, [PLOP.HIGH]: 18, [PLOP.UNI]: 28 } as Record<number, number>,
   serviceCapacity: { [PLOP.CLINIC]: 400, [PLOP.HOSPITAL]: 2500, [PLOP.SCHOOL]: 600, [PLOP.HIGH]: 1200, [PLOP.UNI]: 4000 } as Record<number, number>,
   /** Share of the population a service actually serves (pupils, patients). */
-  serviceServedShare: { [PLOP.CLINIC]: 0.3, [PLOP.HOSPITAL]: 0.3, [PLOP.SCHOOL]: 0.2, [PLOP.HIGH]: 0.15, [PLOP.UNI]: 0.1 } as Record<number, number>,
+  serviceServedShare: { [PLOP.CLINIC]: 0.25, [PLOP.HOSPITAL]: 0.25, [PLOP.SCHOOL]: 0.15, [PLOP.HIGH]: 0.12, [PLOP.UNI]: 0.08 } as Record<number, number>,
   eduEma: 0.1,
   healthEma: 0.1,
   // ── traffic ──
@@ -117,16 +119,56 @@ export const TUNING = {
   externalJobShare: 0.15,
   originBlock: 4,
   // ── budget ──
-  taxR: 0.55,
-  taxC: 0.85,
-  taxI: 0.7,
+  taxR: 0.25,
+  taxC: 0.45,
+  taxI: 0.35,
   wealthTaxMult: [0, 1, 1.9, 3.4],
   roadUpkeep: 0.6,
   loanMonths: 120,
   loanApr: 0.05,
   loanSizes: [10_000, 25_000],
   redMonthsBeforeCuts: 3,
-} as const;
+};
+
+/** Numeric TUNING keys that the debug panel may override at runtime. */
+export const TUNABLE_KEYS = [
+  'buildRate',
+  'occupancyStep',
+  'abandonRate',
+  'upgradeRate',
+  'abandonDesir',
+  'newCityBoost',
+  'taxSlope',
+  'workforceRate',
+  'cPerPop',
+  'iPerWorker',
+  'demandCapNorm',
+  'airDiffusion',
+  'airDecay',
+  'parkAbsorb',
+  'crimeCapNorm',
+  'crimePolice',
+  'igniteRate',
+  'spreadRate',
+  'linkCapacity',
+  'congestionK',
+  'lvPollution',
+  'lvCrime',
+  'taxR',
+  'taxC',
+  'taxI',
+  'waterRadius',
+] as const;
+export type TunableKey = (typeof TUNABLE_KEYS)[number];
+
+/** Apply runtime overrides (debug panel). Unknown keys and non-finite values are ignored. */
+export function applyTuning(overrides: Partial<Record<TunableKey, number>>): void {
+  const t = TUNING as unknown as Record<string, unknown>;
+  for (const k of TUNABLE_KEYS) {
+    const v = overrides[k];
+    if (typeof v === 'number' && Number.isFinite(v)) t[k] = v;
+  }
+}
 
 // ─── Buildings ─────────────────────────────────────────────────────────
 
@@ -180,22 +222,22 @@ const P = (
 ): PlopDef => ({ id, key, name, kind, size, cost, monthly, service, capacity, emission, needsRoad });
 
 export const PLOPS: readonly PlopDef[] = [
-  P(PLOP.COAL, 'coal', 'Coal power plant', 'power', 2, 3000, 250, SERVICE.POWER, 6000, 45),
-  P(PLOP.GAS, 'gas', 'Gas power plant', 'power', 2, 4000, 300, SERVICE.POWER, 3500, 24),
-  P(PLOP.WIND, 'wind', 'Wind turbine', 'power', 1, 500, 25, SERVICE.POWER, 250, 0),
-  P(PLOP.SOLAR, 'solar', 'Solar farm', 'power', 2, 1500, 40, SERVICE.POWER, 400, 0),
+  P(PLOP.COAL, 'coal', 'Coal power plant', 'power', 2, 3000, 400, SERVICE.POWER, 6000, 45),
+  P(PLOP.GAS, 'gas', 'Gas power plant', 'power', 2, 4000, 450, SERVICE.POWER, 3500, 24),
+  P(PLOP.WIND, 'wind', 'Wind turbine', 'power', 1, 500, 40, SERVICE.POWER, 250, 0),
+  P(PLOP.SOLAR, 'solar', 'Solar farm', 'power', 2, 1500, 60, SERVICE.POWER, 400, 0),
   P(PLOP.LINE, 'line', 'Power line', 'line', 1, 5, 0.1, SERVICE.POWER),
-  P(PLOP.PUMP, 'pump', 'Water pump', 'water', 1, 400, 40, SERVICE.WATER, 2400),
-  P(PLOP.TOWER, 'tower', 'Water tower', 'water', 1, 800, 60, SERVICE.WATER, 1200),
-  P(PLOP.FIRE, 'fire', 'Fire station', 'fire', 1, 500, 120, SERVICE.FIRE, 0, 0, true),
-  P(PLOP.POLICE, 'police', 'Police station', 'police', 1, 500, 120, SERVICE.POLICE, 0, 0, true),
-  P(PLOP.CLINIC, 'clinic', 'Clinic', 'health', 1, 400, 90, SERVICE.HEALTH, 400, 0, true),
-  P(PLOP.HOSPITAL, 'hospital', 'Hospital', 'health', 2, 2500, 400, SERVICE.HEALTH, 2500, 0, true),
-  P(PLOP.SCHOOL, 'school', 'Elementary school', 'education', 1, 600, 100, SERVICE.EDUCATION, 600, 0, true),
-  P(PLOP.HIGH, 'high', 'High school', 'education', 2, 1500, 220, SERVICE.EDUCATION, 1200, 0, true),
-  P(PLOP.UNI, 'uni', 'University', 'education', 3, 6000, 600, SERVICE.EDUCATION, 4000, 0, true),
-  P(PLOP.PARK_S, 'park', 'Small park', 'park', 1, 100, 8, -1),
-  P(PLOP.PARK_L, 'parkL', 'Large park', 'park', 2, 600, 30, -1),
+  P(PLOP.PUMP, 'pump', 'Water pump', 'water', 1, 400, 60, SERVICE.WATER, 2400),
+  P(PLOP.TOWER, 'tower', 'Water tower', 'water', 1, 800, 90, SERVICE.WATER, 1200),
+  P(PLOP.FIRE, 'fire', 'Fire station', 'fire', 1, 500, 200, SERVICE.FIRE, 0, 0, true),
+  P(PLOP.POLICE, 'police', 'Police station', 'police', 1, 500, 200, SERVICE.POLICE, 0, 0, true),
+  P(PLOP.CLINIC, 'clinic', 'Clinic', 'health', 1, 400, 150, SERVICE.HEALTH, 400, 0, true),
+  P(PLOP.HOSPITAL, 'hospital', 'Hospital', 'health', 2, 2500, 600, SERVICE.HEALTH, 2500, 0, true),
+  P(PLOP.SCHOOL, 'school', 'Elementary school', 'education', 1, 600, 160, SERVICE.EDUCATION, 600, 0, true),
+  P(PLOP.HIGH, 'high', 'High school', 'education', 2, 1500, 350, SERVICE.EDUCATION, 1200, 0, true),
+  P(PLOP.UNI, 'uni', 'University', 'education', 3, 6000, 900, SERVICE.EDUCATION, 4000, 0, true),
+  P(PLOP.PARK_S, 'park', 'Small park', 'park', 1, 100, 15, -1),
+  P(PLOP.PARK_L, 'parkL', 'Large park', 'park', 2, 600, 50, -1),
 ];
 
 const PLOP_BY_ID: PlopDef[] = [];

@@ -13,6 +13,7 @@ import { randomSeed } from './rng';
 import { clearSave, loadSave, writeSave } from './save';
 import { Advisor } from './ui/Advisor';
 import { BudgetPanel } from './ui/BudgetPanel';
+import { DebugPanel } from './ui/DebugPanel';
 import { Inspector } from './ui/Inspector';
 import { NewCityDialog } from './ui/NewCityDialog';
 import { CITY_STYLES } from './ui/styles';
@@ -65,6 +66,8 @@ export default function App() {
   const [paint, setPaint] = useState(false);
   const [selected, setSelected] = useState<XY | null>(null);
   const [budgetOpen, setBudgetOpen] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const debugAllowed = isLocalHost() || (typeof window !== 'undefined' && /[?&]debug=1/.test(window.location.search));
   const [confirmNew, setConfirmNew] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -294,7 +297,7 @@ export default function App() {
 
   // localhost debug hook (drives e2e screenshots and tuning)
   useEffect(() => {
-    if (!isLocalHost()) return;
+    if (!debugAllowed) return;
     const w = window as unknown as { __city?: unknown };
     w.__city = {
       dispatch: (a: Action) => dispatch(a),
@@ -305,11 +308,12 @@ export default function App() {
       lookAt: (x: number, z: number, dist: number, yaw = 0.6, pitch = 0.8) => rendererRef.current?.rig.setPose({ tx: x, tz: z, dist, yaw, pitch }, true),
       scenario: { findSite, townActions, serviceActions, densifyActions },
       setSpeed: (s: Speed) => setSpeed(s),
+      openDebug: () => setDebugOpen(true),
     };
     return () => {
       delete w.__city;
     };
-  }, [dispatch]);
+  }, [dispatch, debugAllowed]);
 
   // hotkeys
   useEffect(() => {
@@ -322,6 +326,10 @@ export default function App() {
           setTool({ kind: 'inspect' });
           setSelected(null);
           setBudgetOpen(false);
+          setDebugOpen(false);
+          break;
+        case '`':
+          if (debugAllowed) setDebugOpen(o => !o);
           break;
         case 'r':
           setTool({ kind: 'zone', zone: 1, density });
@@ -356,7 +364,7 @@ export default function App() {
     };
     window.addEventListener('keydown', on);
     return () => window.removeEventListener('keydown', on);
-  }, [density]);
+  }, [density, debugAllowed]);
 
   const onTool = useCallback((t: Tool) => {
     setTool(t);
@@ -399,6 +407,9 @@ export default function App() {
         <Viewport terrain={terrain} rendererRef={rendererRef} handlersRef={handlersRef} panCursor={tool.kind === 'inspect'} />
         <Advisor messages={messages} />
         {selected && <Inspector tile={selected} layers={layers} version={hud?.tick ?? 0} onClose={() => setSelected(null)} />}
+        {debugOpen && debugAllowed && (
+          <DebugPanel hud={hud} layers={layers} version={hud?.tick ?? 0} onFastForward={ticks => clientRef.current?.fastForward(ticks)} onGrant={amount => dispatch({ type: 'grant', amount })} onTuning={o => clientRef.current?.setTuning(o)} onClose={() => setDebugOpen(false)} />
+        )}
         {budgetOpen && (
           <BudgetPanel
             hud={hud}

@@ -111,6 +111,14 @@ export const CITY_STYLES = `
 .city-loan { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin: 4px 0; font: 500 12px/1.3 var(--font-sans); color: var(--cp-ink-2); }
 .city-loan-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font: 500 11px/1.3 var(--font-sans); color: var(--cp-muted); }
 
+/* debug */
+.city-debug { position: absolute; right: 10px; top: 76px; bottom: 10px; z-index: 8; width: 330px; overflow: auto; padding: 10px 12px; font: 500 11.5px/1.3 var(--font-mono); }
+.city-debug-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+.city-debug-kv th { width: 52%; }
+.city-debug-tuning { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-top: 10px; }
+.city-debug-tuning label { display: flex; flex-direction: column; gap: 2px; font-size: 10px; color: var(--cp-muted); }
+.city-debug-tuning input { font: 600 11px/1 var(--font-mono); height: 24px; padding: 0 6px; border: 2px solid var(--cp-line); border-radius: 6px; background: #fff; color: var(--cp-ink); width: 100%; box-sizing: border-box; }
+
 /* misc */
 .city-hint { position: absolute; right: 10px; bottom: 10px; z-index: 5; font: 700 10.5px/1 var(--font-mono); color: var(--cp-ink-2); background: var(--cp-paper); border: 2px solid var(--cp-line); padding: 6px 9px; border-radius: 8px; pointer-events: none; max-width: 60%; }
 .city-toast { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 8; padding: 8px 14px; font: 700 13px/1.2 var(--font-display); display: flex; gap: 10px; align-items: center; }

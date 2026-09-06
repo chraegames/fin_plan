@@ -4,6 +4,7 @@
 import type { ActionResult, AdvisorMsg, CityState, HudStats, Ledger, Loan } from './types';
 import { T, type Action, type Speed } from './types';
 import type { SaveFile } from './save';
+import type { TunableKey } from './constants';
 
 export const SNAPSHOT_LAYERS = [
   ['plopOrigin', 2],
@@ -101,7 +102,8 @@ export type MainToWorker =
   | { type: 'recycle'; buf: ArrayBuffer }
   | { type: 'requestSave'; id: number }
   | { type: 'requestSnapshot' }
-  | { type: 'fastForward'; ticks: number };
+  | { type: 'fastForward'; ticks: number }
+  | { type: 'tuning'; overrides: Partial<Record<TunableKey, number>> };
 
 export type WorkerToMain =
   | { type: 'terrain'; seed: number; height: Float32Array; sea: number; water: Uint8Array; slope: Uint8Array }

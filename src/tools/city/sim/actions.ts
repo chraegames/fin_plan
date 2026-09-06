@@ -276,6 +276,11 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
       s.changed |= CHANGE.HUD;
       return { id, ok: true, cost: bal };
     }
+    case 'grant': {
+      s.funds += Math.max(0, Math.min(1_000_000, a.amount));
+      s.changed |= CHANGE.HUD;
+      return { id, ok: true, cost: 0 };
+    }
     case 'disaster': {
       if (!inBounds(a.at.x, a.at.y)) return fail(id, 'bounds');
       const i = idx(a.at.x, a.at.y);

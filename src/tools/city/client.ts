@@ -6,12 +6,14 @@ import { viewSnapshot } from './protocol';
 import type { SaveFile } from './save';
 import type { TerrainData } from './render/renderer';
 import type { Action, ActionResult, Speed } from './types';
+import type { TunableKey } from './constants';
 
 export interface SimClient {
   init(seed: number, save?: SaveFile): void;
   send(action: Action): Promise<ActionResult>;
   setSpeed(speed: Speed): void;
   fastForward(ticks: number): void;
+  setTuning(overrides: Partial<Record<TunableKey, number>>): void;
   requestSave(): Promise<SaveFile>;
   requestSnapshot(): void;
   /** Return a snapshot buffer once the renderer is done with it. */
@@ -46,6 +48,9 @@ class ClientBase implements SimClient {
   }
   fastForward(ticks: number): void {
     this.postFn({ type: 'fastForward', ticks });
+  }
+  setTuning(overrides: Partial<Record<TunableKey, number>>): void {
+    this.postFn({ type: 'tuning', overrides });
   }
   requestSave(): Promise<SaveFile> {
     const id = this.nextId++;
