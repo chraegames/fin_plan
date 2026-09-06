@@ -9,6 +9,7 @@ export type CityIconName =
   | 'factory'
   | 'dezone'
   | 'road'
+  | 'avenue'
   | 'pylon'
   | 'coal'
   | 'gas'
@@ -56,6 +57,7 @@ const P: Record<CityIconName, string> = {
   factory: 'M3 20V9l5 3V9l5 3V9l5 3v8H3zM6 6V3h3v3M15 15h2M10 15h2M6 15h2',
   dezone: 'M4 20h16M6.5 15.5 12 10l4 4-4.5 4.5H8zM12 10l3-3 4 4-3 3',
   road: 'M4 20 9 4h6l5 16M12 6v3M12 11.5v3M12 17v3',
+  avenue: 'M3 20 8 4h8l5 16M10.5 5v15M13.5 5v15',
   pylon: 'M8 21 11 4h2l3 17M5 9h14M6.5 13h11M9.5 9l-1 4M14.5 9l1 4M4 3l2 2M20 3l-2 2',
   coal: 'M3 20V11l4-2v11M7 20V13l4-2v9M11 20v-8l4-2v10M15 20V9h4v11M3 20h18M9 4v3M13 5v2M17 3v4',
   gas: 'M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3 1-6 1-9z',

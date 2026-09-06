@@ -111,7 +111,7 @@ export class ChunkManager {
           if (y + 1 < N && L.road[i + N]) mask |= MASK_S;
           if (x > 0 && L.road[i - 1]) mask |= MASK_W;
           if (y > 0 && L.road[i - N]) mask |= MASK_N;
-          emitRoad(rb, x, y, mask, corners);
+          emitRoad(rb, x, y, mask, corners, L.road[i] === 2 ? 1 : 0);
           continue;
         }
         const fire = L.onFire[i] > 0;

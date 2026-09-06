@@ -30,7 +30,9 @@ export function monthlyBudget(s: CityState): Ledger {
     const slot = def.service < 0 ? SERVICE.ROADS : def.service;
     expenses[slot] += n * def.monthly * s.funding[slot];
   }
-  expenses[SERVICE.ROADS] += s.totals.roadTiles * TUNING.roadUpkeep * s.funding[SERVICE.ROADS];
+  let roadUnits = 0;
+  for (let i = 0; i < T; i++) if (s.road[i]) roadUnits += s.road[i] === 2 ? TUNING.avenueUpkeep : 1;
+  expenses[SERVICE.ROADS] += roadUnits * TUNING.roadUpkeep * s.funding[SERVICE.ROADS];
   let loanCost = 0;
   for (const loan of s.loans) {
     const principalPart = loan.principal / TUNING.loanMonths;

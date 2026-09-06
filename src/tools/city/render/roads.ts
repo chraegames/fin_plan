@@ -28,13 +28,15 @@ export function roadPiece(mask: number): { piece: number; rot: number } {
 
 const WHITE: RGB = [1, 1, 1];
 
-/** Emit a road quad for tile (x, y) with corner heights [nw, ne, sw, se]. */
-export function emitRoad(b: GeometryBuilder, x: number, y: number, mask: number, corners: readonly number[]): void {
+/** Emit a road quad for tile (x, y) with corner heights [nw, ne, sw, se]; row 0 = street, row 1 = avenue. */
+export function emitRoad(b: GeometryBuilder, x: number, y: number, mask: number, corners: readonly number[], row = 0): void {
   const { piece, rot } = roadPiece(mask);
   const u0 = piece / PIECES;
   const u1 = (piece + 1) / PIECES;
+  const v1 = 1 - row / 2;
+  const v0 = v1 - 0.5;
   // uv corners in canonical orientation: nw, sw, se, ne (matches ground() vertex order)
-  let uv = [u0, 1, u0, 0, u1, 0, u1, 1];
+  let uv = [u0, v1, u0, v0, u1, v0, u1, v1];
   for (let r = 0; r < rot; r++) uv = [uv[6], uv[7], uv[0], uv[1], uv[2], uv[3], uv[4], uv[5]];
   const lift = 0.03;
   b.ground(x, y, corners[0] + lift, corners[1] + lift, corners[2] + lift, corners[3] + lift, WHITE, uv);

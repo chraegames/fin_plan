@@ -140,7 +140,7 @@ export interface CityState {
   // saved layers
   zone: Uint8Array; // ZONE
   density: Uint8Array; // 1..3 on zoned tiles
-  road: Uint8Array; // 0/1
+  road: Uint8Array; // 0 none, 1 street, 2 avenue
   level: Uint8Array; // 0 = no building, 1..3
   wealth: Uint8Array; // 1..3 when level > 0
   abandoned: Uint8Array;
@@ -226,6 +226,7 @@ export type Tool =
   | { kind: 'zone'; zone: ZoneKind; density: Density }
   | { kind: 'dezone' }
   | { kind: 'road' }
+  | { kind: 'avenue' }
   | { kind: 'line' }
   | { kind: 'bulldoze' }
   | { kind: 'plop'; plop: PlopId }
@@ -237,7 +238,7 @@ export type Action =
   | { type: 'zone'; zone: ZoneKind; density: Density; rect: Rect }
   | { type: 'dezone'; rect: Rect }
   | { type: 'bulldoze'; rect: Rect }
-  | { type: 'road'; from: XY; to: XY }
+  | { type: 'road'; from: XY; to: XY; avenue?: boolean }
   | { type: 'line'; from: XY; to: XY }
   | { type: 'plop'; plop: PlopId; at: XY }
   | { type: 'setTax'; zone: ZoneKind; rate: number }

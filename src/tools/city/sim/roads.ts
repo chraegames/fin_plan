@@ -16,7 +16,7 @@ export function isEdge(i: number): boolean {
 export function analyseRoads(s: CityState): void {
   const { road, roadAccess, extAccess, queue } = s;
   // road distance, capped at ACCESS_RANGE + 1 (unreachable)
-  distanceTransform(roadAccess, queue, i => road[i] === 1, ACCESS_RANGE + 1);
+  distanceTransform(roadAccess, queue, i => road[i] > 0, ACCESS_RANGE + 1);
   let roadTiles = 0;
   for (let i = 0; i < T; i++) {
     roadAccess[i] = roadAccess[i] > ACCESS_RANGE ? 0 : roadAccess[i] + 1;

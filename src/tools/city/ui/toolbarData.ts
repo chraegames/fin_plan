@@ -38,6 +38,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
     title: 'Transport & power',
     items: [
       { key: 'road', label: 'Road', icon: 'road', color: 'var(--cp-road)', cost: `$${COST.road}/tile`, tool: { kind: 'road' }, hotkey: 'T' },
+      { key: 'avenue', label: 'Avenue', icon: 'avenue', color: '#3E4147', cost: `$${COST.avenue}/tile · 2.5× capacity`, tool: { kind: 'avenue' }, hotkey: 'Y' },
       { key: 'line', label: 'Power line', icon: 'pylon', color: 'var(--cp-power)', cost: `$${plopDef(PLOP.LINE)!.cost}/tile`, tool: { kind: 'line' } },
       plopItem(PLOP.COAL, 'coal', '#6B6E7A'),
       plopItem(PLOP.GAS, 'gas', '#E58E3B'),

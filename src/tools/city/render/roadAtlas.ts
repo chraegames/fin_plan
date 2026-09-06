@@ -8,13 +8,28 @@ export function createRoadAtlas(): THREE.CanvasTexture {
   const S = 64;
   const canvas = document.createElement('canvas');
   canvas.width = S * PIECES;
-  canvas.height = S;
+  canvas.height = S * 2; // row 0 streets, row 1 avenues
   const ctx = canvas.getContext('2d')!;
-  const asphalt = '#4a4c50';
-  const kerb = '#9a9a96';
-  const dash = '#d8d3b0';
+  for (let row = 0; row < 2; row++) paintRow(ctx, S, row);
+  const tex = new THREE.CanvasTexture(canvas);
+  // sampled by a ShaderMaterial that writes straight to the framebuffer: no decode, no encode
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+function paintRow(ctx: CanvasRenderingContext2D, S: number, row: number): void {
+  const avenue = row === 1;
+  const asphalt = avenue ? '#3e4045' : '#4a4c50';
+  const kerb = avenue ? '#b5b1a4' : '#9a9a96';
+  const dash = avenue ? '#e8c840' : '#d8d3b0';
+  const oy = row * S;
   for (let p = 0; p < PIECES; p++) {
     const ox = p * S;
+    ctx.save();
+    ctx.translate(0, oy);
     ctx.fillStyle = asphalt;
     ctx.fillRect(ox, 0, S, S);
     const open = { n: false, e: false, s: false, w: false };
@@ -36,6 +51,19 @@ export function createRoadAtlas(): THREE.CanvasTexture {
     const dashLen = 7;
     const gap = 6;
     const drawDash = (dir: 'n' | 'e' | 's' | 'w') => {
+      if (avenue) {
+        // double solid centre line
+        const y0 = dir === 'n' ? 0 : c;
+        const x0 = dir === 'w' ? 0 : c;
+        if (dir === 'n' || dir === 's') {
+          ctx.fillRect(ox + c - 4, y0, 2, c);
+          ctx.fillRect(ox + c + 2, y0, 2, c);
+        } else {
+          ctx.fillRect(ox + x0, c - 4, c, 2);
+          ctx.fillRect(ox + x0, c + 2, c, 2);
+        }
+        return;
+      }
       for (let t = 6; t < c - 4; t += dashLen + gap) {
         if (dir === 'n') ctx.fillRect(ox + c - 1.5, t, 3, dashLen);
         if (dir === 's') ctx.fillRect(ox + c - 1.5, S - t - dashLen, 3, dashLen);
@@ -66,14 +94,8 @@ export function createRoadAtlas(): THREE.CanvasTexture {
       if (open.s) stripe('s');
       if (p === 5 && open.w) stripe('w');
     }
+    ctx.restore();
   }
-  const tex = new THREE.CanvasTexture(canvas);
-  // sampled by a ShaderMaterial that writes straight to the framebuffer: no decode, no encode
-  tex.colorSpace = THREE.NoColorSpace;
-  tex.magFilter = THREE.LinearFilter;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.anisotropy = 4;
-  return tex;
 }
 
 /** Window cell: white frame with a dark glass rectangle; corner texel is plain white. */

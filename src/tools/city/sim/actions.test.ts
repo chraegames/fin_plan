@@ -42,6 +42,16 @@ describe('actions', () => {
     expect(s.results[2]).toMatchObject({ ok: false, reason: 'noop' });
   });
 
+  it('avenues cost more, upgrade streets for the difference and raise capacity', () => {
+    const s = flatState();
+    act(s, { type: 'road', from: { x: 0, y: 5 }, to: { x: 9, y: 5 } });
+    act(s, { type: 'road', from: { x: 0, y: 5 }, to: { x: 9, y: 5 }, avenue: true });
+    expect(s.results[1]).toMatchObject({ ok: true, cost: 10 * (COST.avenue - COST.road) });
+    expect(s.road[idx(4, 5)]).toBe(2);
+    act(s, { type: 'road', from: { x: 0, y: 5 }, to: { x: 9, y: 5 } });
+    expect(s.results[2]).toMatchObject({ ok: false, reason: 'noop' });
+  });
+
   it('plops occupy their footprint and are removed whole by the bulldozer', () => {
     const s = flatState();
     const def = plopDef(PLOP.COAL)!;

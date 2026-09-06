@@ -41,6 +41,7 @@ function modeFor(tool: Tool): 'pan' | 'point' | 'rect' | 'line' {
     case 'inspect':
       return 'pan';
     case 'road':
+    case 'avenue':
     case 'line':
       return 'line';
     case 'plop':
@@ -189,7 +190,7 @@ export default function App() {
       const ok = !!(r && g && r.hasSnapshot && canPlopAt(r.layers, g, t.plop, a));
       return { rect: plopRect(t.plop, a), ok };
     }
-    if (t.kind === 'road' || t.kind === 'line') return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
+    if (t.kind === 'road' || t.kind === 'avenue' || t.kind === 'line') return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
     return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
   }, []);
 
@@ -233,6 +234,9 @@ export default function App() {
           case 'road':
             dispatch({ type: 'road', from: t, to: t });
             break;
+          case 'avenue':
+            dispatch({ type: 'road', from: t, to: t, avenue: true });
+            break;
           case 'line':
             dispatch({ type: 'line', from: t, to: t });
             break;
@@ -251,7 +255,7 @@ export default function App() {
         const r = rendererRef.current;
         if (!r) return;
         const tool = toolRef.current;
-        if (tool.kind === 'road' || tool.kind === 'line') r.setCursorLine(a, b);
+        if (tool.kind === 'road' || tool.kind === 'avenue' || tool.kind === 'line') r.setCursorLine(a, b);
         else {
           const c = cursorFor(tool, a, b);
           r.setCursor(c.rect, c.ok);
@@ -272,6 +276,9 @@ export default function App() {
             break;
           case 'road':
             dispatch({ type: 'road', from: a, to: b });
+            break;
+          case 'avenue':
+            dispatch({ type: 'road', from: a, to: b, avenue: true });
             break;
           case 'line':
             dispatch({ type: 'line', from: a, to: b });
@@ -327,6 +334,9 @@ export default function App() {
           break;
         case 't':
           setTool({ kind: 'road' });
+          break;
+        case 'y':
+          setTool({ kind: 'avenue' });
           break;
         case 'b':
           setTool({ kind: 'bulldoze' });

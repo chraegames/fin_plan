@@ -214,7 +214,7 @@ export function assignTraffic(s: CityState): void {
           const v = nbr(u, k);
           if (v < 0 || !s.road[v]) continue;
           const [arr, li] = linkVol(vol, u, v);
-          const load = arr[li] / cap;
+          const load = arr[li] / (s.road[u] === 2 && s.road[v] === 2 ? cap * TUNING.avenueCapacity : cap);
           const w = 1 + TUNING.congestionK * load * load;
           const nd = du + w;
           if (dist[v] < 0 || nd < dist[v]) {
@@ -257,7 +257,8 @@ export function assignTraffic(s: CityState): void {
     let load = Math.max(volE[i], volS[i]);
     if (i >= 1 && s.road[i - 1]) load = Math.max(load, volE[i - 1]);
     if (i >= N && s.road[i - N]) load = Math.max(load, volS[i - N]);
-    s.traffic[i] = Math.min(255, Math.round((128 * load) / cap));
+    const tileCap = s.road[i] === 2 ? cap * TUNING.avenueCapacity : cap;
+    s.traffic[i] = Math.min(255, Math.round((128 * load) / tileCap));
   }
   const noise = [1, 0.7, 0.4, 0.2];
   for (let i = 0; i < T; i++) {

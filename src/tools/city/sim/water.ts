@@ -8,7 +8,7 @@ import { waterDemandOf } from './buildings';
 import { effectiveFunding } from './budget';
 import { idx, inBounds, nbr, xOf, yOf } from './grid';
 
-const isPipe = (s: CityState, i: number): boolean => s.road[i] === 1 || s.plop[i] === PLOP.PUMP || s.plop[i] === PLOP.TOWER;
+const isPipe = (s: CityState, i: number): boolean => s.road[i] > 0 || s.plop[i] === PLOP.PUMP || s.plop[i] === PLOP.TOWER;
 
 function find(parent: Int32Array, i: number): number {
   while (parent[i] !== i) {

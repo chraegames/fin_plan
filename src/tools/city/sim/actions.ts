@@ -92,8 +92,12 @@ export function previewCost(s: CityState, a: Action): number {
     case 'line': {
       lineTiles(a.from, a.to, lineBuf);
       let n = 0;
-      for (const i of lineBuf) if (a.type === 'road' ? roadable(s, i) : lineable(s, i)) n++;
-      return n * (a.type === 'road' ? COST.road : (plopDef(PLOP.LINE)?.cost ?? 5));
+      for (const i of lineBuf) {
+        if (a.type === 'road') {
+          if (roadable(s, i, !!a.avenue)) n += roadCost(s, i, !!a.avenue);
+        } else if (lineable(s, i)) n += plopDef(PLOP.LINE)?.cost ?? 5;
+      }
+      return n;
     }
     case 'plop':
       return plopDef(a.plop)?.cost ?? 0;
@@ -114,8 +118,14 @@ function zoneable(s: CityState, i: number, zone: number, density: number): boole
   if (s.level[i] && s.zone[i] !== zone) return false;
   return s.zone[i] !== zone || s.density[i] !== density;
 }
-function roadable(s: CityState, i: number): boolean {
-  return buildable(s, i) && !s.road[i] && !s.plop[i] && !s.level[i];
+function roadable(s: CityState, i: number, avenue = false): boolean {
+  if (!buildable(s, i) || s.plop[i] || s.level[i]) return false;
+  // a street can be upgraded to an avenue; nothing else may be rebuilt
+  return s.road[i] === 0 || (avenue && s.road[i] === 1);
+}
+function roadCost(s: CityState, i: number, avenue: boolean): number {
+  if (!avenue) return COST.road;
+  return s.road[i] === 1 ? COST.avenue - COST.road : COST.avenue;
 }
 function lineable(s: CityState, i: number): boolean {
   return buildable(s, i) && !s.road[i] && !s.plop[i] && !s.level[i];
@@ -197,16 +207,17 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
     case 'line': {
       lineTiles(a.from, a.to, lineBuf);
       const isRoad = a.type === 'road';
-      const tiles = lineBuf.filter(i => (isRoad ? roadable(s, i) : lineable(s, i)));
+      const avenue = isRoad && !!a.avenue;
+      const tiles = lineBuf.filter(i => (isRoad ? roadable(s, i, avenue) : lineable(s, i)));
       if (!tiles.length) return fail(id, lineBuf.every(i => (isRoad ? s.road[i] : s.plop[i] === PLOP.LINE)) ? 'noop' : 'terrain');
-      const unit = isRoad ? COST.road : (plopDef(PLOP.LINE)?.cost ?? 5);
-      const cost = tiles.length * unit;
+      let cost = 0;
+      for (const i of tiles) cost += isRoad ? roadCost(s, i, avenue) : (plopDef(PLOP.LINE)?.cost ?? 5);
       const err = charge(s, id, cost);
       if (err) return err;
       for (const i of tiles) {
         s.zone[i] = ZONE.NONE;
         s.density[i] = 0;
-        if (isRoad) s.road[i] = 1;
+        if (isRoad) s.road[i] = avenue ? 2 : 1;
         else {
           s.plop[i] = PLOP.LINE;
           s.plopOrigin[i] = i;

@@ -108,6 +108,9 @@ export const TUNING = {
   healthEma: 0.1,
   // ── traffic ──
   linkCapacity: 900,
+  /** Capacity multiplier of an avenue link (both tiles must be avenue). */
+  avenueCapacity: 2.5,
+  avenueUpkeep: 2,
   congestionK: 1.2,
   msaIterations: 3,
   maxDijkstraPops: 1500,
@@ -203,6 +206,7 @@ export function plopDef(id: number): PlopDef | undefined {
 
 export const COST = {
   road: 10,
+  avenue: 30,
   zone: 2,
   bulldoze: 1,
 } as const;
