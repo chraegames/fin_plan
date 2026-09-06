@@ -60,14 +60,14 @@ export const TUNING = {
   lvHeight: 70,
   lvWater: 45,
   lvPark: 35,
-  lvPollution: 0.55,
+  lvPollution: 0.4,
   lvCrime: 0.45,
   lvTraffic: 0.25,
   lvAbandoned: 25,
   lvEma: 0.4,
   // ── pollution ──
   airDiffusion: 0.18,
-  airDecay: 0.07,
+  airDecay: 0.12,
   trafficEmission: 6,
   fireEmission: 30,
   waterDiffusion: 0.22,
@@ -102,10 +102,12 @@ export const TUNING = {
   // ── services ──
   serviceRange: { [PLOP.FIRE]: 14, [PLOP.POLICE]: 12, [PLOP.CLINIC]: 9, [PLOP.HOSPITAL]: 20, [PLOP.SCHOOL]: 12, [PLOP.HIGH]: 16, [PLOP.UNI]: 28 } as Record<number, number>,
   serviceCapacity: { [PLOP.CLINIC]: 400, [PLOP.HOSPITAL]: 2500, [PLOP.SCHOOL]: 600, [PLOP.HIGH]: 1200, [PLOP.UNI]: 4000 } as Record<number, number>,
+  /** Share of the population a service actually serves (pupils, patients). */
+  serviceServedShare: { [PLOP.CLINIC]: 0.3, [PLOP.HOSPITAL]: 0.3, [PLOP.SCHOOL]: 0.2, [PLOP.HIGH]: 0.15, [PLOP.UNI]: 0.1 } as Record<number, number>,
   eduEma: 0.1,
   healthEma: 0.1,
   // ── traffic ──
-  linkCapacity: 120,
+  linkCapacity: 900,
   congestionK: 1.2,
   msaIterations: 3,
   maxDijkstraPops: 1500,
@@ -137,7 +139,7 @@ export const WEALTH_POP_MULT = [0, 1, 0.8, 0.6] as const;
 export const POWER_PER_CAPITA = [0, 0.5, 1.0, 3.0] as const;
 export const WATER_PER_CAPITA = [0, 0.6, 0.8, 2.0] as const;
 /** Air pollution per level by industrial wealth; commercial emits 1 per level. */
-export const INDUSTRY_EMISSION = [0, 12, 8, 2] as const;
+export const INDUSTRY_EMISSION = [0, 8, 5, 1.5] as const;
 export const WATER_EMISSION_I = [0, 10, 5, 0] as const;
 
 // ─── Plops ─────────────────────────────────────────────────────────────
@@ -175,7 +177,7 @@ const P = (
 ): PlopDef => ({ id, key, name, kind, size, cost, monthly, service, capacity, emission, needsRoad });
 
 export const PLOPS: readonly PlopDef[] = [
-  P(PLOP.COAL, 'coal', 'Coal power plant', 'power', 2, 3000, 250, SERVICE.POWER, 6000, 60),
+  P(PLOP.COAL, 'coal', 'Coal power plant', 'power', 2, 3000, 250, SERVICE.POWER, 6000, 45),
   P(PLOP.GAS, 'gas', 'Gas power plant', 'power', 2, 4000, 300, SERVICE.POWER, 3500, 24),
   P(PLOP.WIND, 'wind', 'Wind turbine', 'power', 1, 500, 25, SERVICE.POWER, 250, 0),
   P(PLOP.SOLAR, 'solar', 'Solar farm', 'power', 2, 1500, 40, SERVICE.POWER, 400, 0),

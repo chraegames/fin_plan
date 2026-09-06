@@ -130,7 +130,8 @@ function coverFrom(s: CityState, origin: number, plop: number, layer: Uint8Array
       servedPop += s.pop[n];
     }
   }
-  const capFactor = capacity > 0 ? Math.min(1, capacity / Math.max(1, servedPop)) : 1;
+  const share = TUNING.serviceServedShare[plop] ?? 1;
+  const capFactor = capacity > 0 ? Math.min(1, capacity / Math.max(1, servedPop * share)) : 1;
   for (let k = 0; k < nTouched; k++) {
     const i = touched[k];
     const d = reachDist[i];

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ToolShell } from '../../components/layout/ToolShell';
-import { ConfirmDialog } from '../../components/storyline/ConfirmDialog';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { byPath } from '../../site/manifest';
 import { track } from '../../utils/analytics';
@@ -15,6 +14,7 @@ import { clearSave, loadSave, writeSave } from './save';
 import { Advisor } from './ui/Advisor';
 import { BudgetPanel } from './ui/BudgetPanel';
 import { Inspector } from './ui/Inspector';
+import { NewCityDialog } from './ui/NewCityDialog';
 import { CITY_STYLES } from './ui/styles';
 import { Toolbar } from './ui/Toolbar';
 import { TopBar } from './ui/TopBar';
@@ -97,6 +97,7 @@ export default function App() {
   }, [overlay]);
   useEffect(() => {
     clientRef.current?.setSpeed(speed);
+    if (rendererRef.current) rendererRef.current.speed = speed;
   }, [speed]);
 
   const showToast = useCallback((text: string) => {
@@ -355,20 +356,22 @@ export default function App() {
     setTool(t => (t.kind === 'zone' ? { ...t, density: d } : t));
   }, []);
 
-  const newCity = useCallback(() => {
-    setConfirmNew(false);
-    const client = clientRef.current;
-    if (!client) return;
-    clearSave();
-    lastSavedTick.current = -1;
-    setHud(null);
-    setSelected(null);
-    setTerrain(null);
-    const seed = randomSeed();
-    client.init(seed);
-    client.setSpeed(speed);
-    track('city_started', { seed });
-  }, [speed]);
+  const newCity = useCallback(
+    (seed: number) => {
+      setConfirmNew(false);
+      const client = clientRef.current;
+      if (!client) return;
+      clearSave();
+      lastSavedTick.current = -1;
+      setHud(null);
+      setSelected(null);
+      setTerrain(null);
+      client.init(seed);
+      client.setSpeed(speed);
+      track('city_started', { seed });
+    },
+    [speed],
+  );
 
   return (
     <ToolShell entry={entry} layout="full">
@@ -405,7 +408,7 @@ export default function App() {
             </button>
           </div>
         )}
-        <ConfirmDialog open={confirmNew} title="Start a new city?" message="The current city and its save will be replaced by a new random map." confirmLabel="New city" onConfirm={newCity} onClose={() => setConfirmNew(false)} />
+        <NewCityDialog key={confirmNew ? 'open' : 'closed'} open={confirmNew} hasCity={!!hud && hud.totals.buildings > 0} onStart={newCity} onClose={() => setConfirmNew(false)} />
       </div>
     </ToolShell>
   );

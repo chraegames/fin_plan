@@ -89,6 +89,10 @@ request.
 
 This is a personal project; treat it as such. Use at your own risk.
 
+### City
+
+A 3D city-building simulation at `/city/` in the SimCity tradition. Zone residential, commercial and industrial land at three densities, lay roads and power lines, place plants, pumps, fire and police stations, clinics, schools and parks, and set taxes and funding. Underneath runs a per-tile statistical model: demand by zone and wealth tier, desirability, land value, air and water pollution, crime, fire risk and spread, power and water networks, road-distance service coverage, monthly traffic assignment with congestion, and a ledger with loans. Twelve data views paint the layers onto the terrain. The map, every building and every car are generated from code; the simulation runs in a Web Worker and the city autosaves in your browser.
+
 ### Magic Tower 魔塔
 
 A Tower of the Sorcerer / 魔塔 puzzle-RPG at `/magic-tower/`: ten playthroughs of 99 generated floors, deterministic combat with a live damage manual, keys, gems, potions, Breach Stones that punch through floors into sealed vaults, and a blessing after every boss. Every tower is generated from a seed and proven solvable before you play it; saves stay in your browser.

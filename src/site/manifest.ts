@@ -577,7 +577,7 @@ export const PAGES: SiteEntry[] = [
     slug: 'city',
     path: '/city/',
     kind: 'app',
-    status: 'soon',
+    status: 'live',
     category: 'games',
     name: 'City',
     tagline: 'A 3D city simulation. Zone, build, tax and watch a statistical model of a city respond.',

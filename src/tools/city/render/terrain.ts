@@ -147,3 +147,39 @@ export function buildTerrainChunks(hf: HeightField, seed: number, material: THRE
   }
   return meshes;
 }
+
+const ROAD_VERT = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vWorld;
+#include <fog_pars_vertex>
+void main() {
+  vUv = uv;
+  vWorld = position;
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
+}`;
+
+const ROAD_FRAG = /* glsl */ `
+uniform sampler2D atlas;
+uniform sampler2D overlayTex;
+uniform float overlayMix;
+uniform float mapSize;
+varying vec2 vUv;
+varying vec3 vWorld;
+#include <fog_pars_fragment>
+void main() {
+  vec3 col = texture2D(atlas, vUv).rgb;
+  vec4 ov = texture2D(overlayTex, vWorld.xz / mapSize);
+  col = mix(col, ov.rgb, ov.a * overlayMix);
+  gl_FragColor = vec4(col, 1.0);
+  #include <fog_fragment>
+}`;
+
+/** Road material: atlas texture blended with the same overlay the terrain uses. */
+export function createRoadMaterial(atlas: THREE.Texture, overlay: THREE.DataTexture): THREE.ShaderMaterial {
+  const uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { atlas: { value: null }, overlayTex: { value: null }, overlayMix: { value: 1 }, mapSize: { value: N } }]) as Record<string, THREE.IUniform>;
+  uniforms.atlas.value = atlas;
+  uniforms.overlayTex.value = overlay;
+  return new THREE.ShaderMaterial({ uniforms, vertexShader: ROAD_VERT, fragmentShader: ROAD_FRAG, fog: true });
+}

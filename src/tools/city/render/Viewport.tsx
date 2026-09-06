@@ -57,7 +57,7 @@ export function Viewport({ terrain, rendererRef, handlersRef, panCursor }: Viewp
       .then(({ mod, inputMod }) => {
         if (!alive) return;
         try {
-          renderer = new mod.CityRenderer(canvas, terrain);
+          renderer = new mod.CityRenderer(canvas, terrain, { vehicles: window.matchMedia?.('(max-width: 720px)').matches ? 150 : 400 });
         } catch (err) {
           console.warn('City: WebGL unavailable', err);
           setStatus('failed');

@@ -67,6 +67,15 @@ export const CITY_STYLES = `
 .city-ledger-net th, .city-ledger-net td { border-top: 1px solid var(--border); padding-top: 3px; font-weight: 500; }
 .city-loan { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin: 3px 0; color: var(--ink-2); }
 .city-loan-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; color: var(--ink-3); }
+.city-modal-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: grid; place-items: center; }
+.city-modal { width: min(420px, calc(100% - 32px)); padding: 16px 18px; font-family: var(--font-sans); font-size: 13px; color: var(--ink-2); }
+.city-modal h3 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 500; font-size: 16px; color: var(--ink); }
+.city-modal p { margin: 4px 0 10px; }
+.city-modal-note { font-size: 12px; color: var(--ink-3); }
+.city-seed { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-index); }
+.city-seed input { flex: 1; font-family: var(--font-mono); font-size: 13px; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface-2); color: var(--ink); }
+.city-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.city-btn-primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .city-toast { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 8; padding: 8px 14px; font-family: var(--font-mono); font-size: 12px; color: var(--ink); }
 .city-paint { display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
 @media (max-width: 720px) {

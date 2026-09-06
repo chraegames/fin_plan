@@ -11,7 +11,8 @@ import { buildOverlayRGBA } from './overlay';
 import { DARK_PALETTE, LIGHT_PALETTE, type ScenePalette } from './palette';
 import { groundPoint, pickTile, type Ray } from './picking';
 import { createRoadAtlas, createWindowTexture } from './roadAtlas';
-import { buildTerrainChunks, createTerrainMaterial, type TerrainUniforms } from './terrain';
+import { buildTerrainChunks, createRoadMaterial, createTerrainMaterial, type TerrainUniforms } from './terrain';
+import { VehicleField } from './vehicles';
 
 export interface TerrainData {
   seed: number;
@@ -57,8 +58,11 @@ export class CityRenderer {
   private readonly waterMat: THREE.MeshBasicMaterial;
   private readonly terrainMeshes: THREE.Mesh[];
   private readonly chunks: ChunkManager;
+  private readonly vehicles: VehicleField;
+  /** Sim speed, used to pace the cosmetic traffic. */
+  speed = 1;
   private readonly buildMat: THREE.MeshLambertMaterial;
-  private readonly roadMat: THREE.MeshBasicMaterial;
+  private readonly roadMat: THREE.ShaderMaterial;
   private readonly windowTex: THREE.CanvasTexture;
   private readonly roadTex: THREE.CanvasTexture;
   private readonly water: Uint8Array;
@@ -76,7 +80,7 @@ export class CityRenderer {
   private height = 1;
   private disposed = false;
 
-  constructor(canvas: HTMLCanvasElement, terrain: TerrainData) {
+  constructor(canvas: HTMLCanvasElement, terrain: TerrainData, opts?: { vehicles?: number }) {
     this.gl = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
     this.gl.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.5, 900);
@@ -97,9 +101,11 @@ export class CityRenderer {
     this.windowTex = createWindowTexture();
     this.roadTex = createRoadAtlas();
     this.buildMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: this.windowTex });
-    this.roadMat = new THREE.MeshBasicMaterial({ map: this.roadTex });
+    this.roadMat = createRoadMaterial(this.roadTex, this.overlayTex);
     this.chunks = new ChunkManager(this.hf, terrain.seed, terrain.water, terrain.slope, this.buildMat, this.roadMat);
     this.scene.add(this.chunks.group);
+    this.vehicles = new VehicleField(this.hf, opts?.vehicles ?? 400);
+    this.scene.add(this.vehicles.mesh);
 
     this.waterMat = new THREE.MeshBasicMaterial({ color: this.palette.water, transparent: true, opacity: this.palette.waterOpacity, depthWrite: false });
     const water = new THREE.Mesh(new THREE.PlaneGeometry(N + 40, N + 40), this.waterMat);
@@ -174,6 +180,7 @@ export class CityRenderer {
     this.hasSnapshot = true;
     this.chunks.setLayers(this.layers, snap.dirtyChunks);
     if (snap.changed & OVERLAY_DEPS[this.overlayKind]) this.rebuildOverlay();
+    if (snap.changed & (CHANGE.TRAFFIC | CHANGE.GEOMETRY)) this.vehicles.resample(this.layers);
     this.needsRender = true;
   }
 
@@ -222,6 +229,7 @@ export class CityRenderer {
     const moving = this.rig.update(dt);
     if (moving) this.needsRender = true;
     if (this.chunks.update(4) > 0) this.needsRender = true;
+    if (this.vehicles.update(dt, this.speed)) this.needsRender = true;
     if (!this.needsRender) return false;
     this.needsRender = false;
 
@@ -243,6 +251,7 @@ export class CityRenderer {
     this.disposed = true;
     for (const m of this.terrainMeshes) m.geometry.dispose();
     this.chunks.dispose();
+    this.vehicles.dispose();
     this.buildMat.dispose();
     this.roadMat.dispose();
     this.windowTex.dispose();
