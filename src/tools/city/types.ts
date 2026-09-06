@@ -150,6 +150,8 @@ export interface CityState {
   pop: Uint16Array;
   jobs: Uint16Array;
   onFire: Uint8Array; // intensity 0..255 (saved so a fire survives reload)
+  lotOrigin: Uint16Array; // top-left tile of the building lot (valid where level > 0)
+  lotSize: Uint8Array; // side of the lot, 1..3
   // derived per-tile layers
   powered: Uint8Array;
   watered: Uint8Array;

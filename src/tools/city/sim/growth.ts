@@ -5,6 +5,7 @@
 import { TUNING } from '../constants';
 import { CHANGE, T, ZONE, type CityState } from '../types';
 import { capacityOf, demandIndex, tileCapacity } from './buildings';
+import { claimLot, lotTiles } from './lots';
 import { markDirty, nextRandom } from './state';
 import { consumeDemand } from './zones';
 
@@ -30,28 +31,38 @@ export function growthPass(s: CityState, slice: number): void {
       const d = demand[demandIndex(z, w)];
       const p = TUNING.buildRate * (d / 100) * (desir / 255) * TUNING.densityBuildMult[s.density[i]];
       if (nextRandom(s) < p) {
-        level[i] = 1;
-        wealth[i] = w;
-        abandoned[i] = 0;
-        s.age[i] = 0;
+        const k = claimLot(s, i);
+        if (!k) continue;
         const cap = capacityOf(z, s.density[i], 1, w);
         const start = Math.max(1, Math.round(cap * 0.2));
-        if (z === ZONE.R) s.pop[i] = start;
-        else s.jobs[i] = start;
-        consumeDemand(s, z, w, cap);
-        markDirty(s, i);
+        level[i] = 1; // so lotTiles() expands from the origin
+        for (const j of lotTiles(s, i)) {
+          level[j] = 1;
+          wealth[j] = w;
+          abandoned[j] = 0;
+          s.age[j] = 0;
+          if (z === ZONE.R) s.pop[j] = start;
+          else s.jobs[j] = start;
+          markDirty(s, j);
+        }
+        consumeDemand(s, z, w, cap * k * k);
         s.flags.netDirty = true;
       }
       continue;
     }
+    // multi-tile lots decide as one: only the origin tile runs the rules below
+    const isOrigin = s.lotOrigin[i] === i || s.lotSize[i] <= 1;
     const w = wealth[i];
     const dk = demandIndex(z, w);
     const d = demand[dk];
     if (abandoned[i]) {
+      if (!isOrigin) continue;
       if (desir >= TUNING.wealthMinDesir[w] && d > 0) {
         if (nextRandom(s) < TUNING.recoverRate) {
-          abandoned[i] = 0;
-          markDirty(s, i);
+          for (const j of lotTiles(s, i)) {
+            abandoned[j] = 0;
+            markDirty(s, j);
+          }
         }
       } else if (nextRandom(s) < TUNING.demolishRate) {
         demolish(s, i);
@@ -68,6 +79,9 @@ export function growthPass(s: CityState, slice: number): void {
       occ[i] = Math.max(0, Math.min(cap, occ[i] + step));
       s.changed |= CHANGE.HUD;
     }
+    if (!isOrigin) continue;
+    const lot = lotTiles(s, i).slice();
+    const lotN = lot.length;
     // abandonment
     if (!s.powered[i]) {
       if (nextRandom(s) < TUNING.unpoweredAbandon) {
@@ -84,48 +98,61 @@ export function growthPass(s: CityState, slice: number): void {
     // upgrade in level
     const lv = level[i];
     if (lv < 3 && desir > TUNING.upgradeDesir[lv] && d > 15 && s.age[i] > TUNING.upgradeMinAgeMonths && nextRandom(s) < TUNING.upgradeRate) {
-      level[i] = lv + 1;
-      consumeDemand(s, z, w, tileCapacity(s, i) - cap);
-      markDirty(s, i);
+      for (const j of lot) {
+        level[j] = lv + 1;
+        markDirty(s, j);
+      }
+      consumeDemand(s, z, w, (tileCapacity(s, i) - cap) * lotN);
       continue;
     }
-    // wealth up: rebuild at level 1 of the next tier
+    // wealth up: the next tier moves in
     if (w < 3 && desir >= TUNING.wealthMinDesir[w + 1] && landValue[i] >= TUNING.wealthMinLandValue[w + 1] && demand[demandIndex(z, w + 1)] > 0 && nextRandom(s) < TUNING.wealthUpRate) {
-      wealth[i] = w + 1;
-      s.age[i] = 0;
-      const ncap = tileCapacity(s, i);
-      occ[i] = Math.min(occ[i], ncap);
-      consumeDemand(s, z, w + 1, ncap);
-      markDirty(s, i);
+      for (const j of lot) {
+        wealth[j] = w + 1;
+        s.age[j] = 0;
+        occ[j] = Math.min(occ[j], tileCapacity(s, j));
+        markDirty(s, j);
+      }
+      consumeDemand(s, z, w + 1, tileCapacity(s, i) * lotN);
       continue;
     }
     // wealth down
     if (w > 1 && desir < TUNING.wealthMinDesir[w] - 25 && nextRandom(s) < TUNING.wealthDownRate) {
-      wealth[i] = w - 1;
-      occ[i] = Math.min(occ[i], tileCapacity(s, i));
-      markDirty(s, i);
+      for (const j of lot) {
+        wealth[j] = w - 1;
+        occ[j] = Math.min(occ[j], tileCapacity(s, j));
+        markDirty(s, j);
+      }
     }
   }
 }
 
+/** Abandon the whole lot that contains tile i. */
 function abandon(s: CityState, i: number): void {
-  s.abandoned[i] = 1;
-  s.pop[i] = 0;
-  s.jobs[i] = 0;
-  markDirty(s, i);
+  for (const j of lotTiles(s, i)) {
+    s.abandoned[j] = 1;
+    s.pop[j] = 0;
+    s.jobs[j] = 0;
+    markDirty(s, j);
+  }
   s.changed |= CHANGE.HUD;
 }
 
+/** Demolish the whole lot that contains tile i (the zone stays). */
 export function demolish(s: CityState, i: number): void {
-  s.level[i] = 0;
-  s.wealth[i] = 0;
-  s.abandoned[i] = 0;
-  s.age[i] = 0;
-  s.pop[i] = 0;
-  s.jobs[i] = 0;
-  s.onFire[i] = 0;
-  s.burnTicks[i] = 0;
-  markDirty(s, i);
+  for (const j of lotTiles(s, i)) {
+    s.level[j] = 0;
+    s.wealth[j] = 0;
+    s.abandoned[j] = 0;
+    s.age[j] = 0;
+    s.pop[j] = 0;
+    s.jobs[j] = 0;
+    s.onFire[j] = 0;
+    s.burnTicks[j] = 0;
+    s.lotOrigin[j] = 0;
+    s.lotSize[j] = 0;
+    markDirty(s, j);
+  }
   s.flags.netDirty = true;
   s.changed |= CHANGE.HUD;
 }

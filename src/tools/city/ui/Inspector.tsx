@@ -39,7 +39,8 @@ export function Inspector({ tile, layers: L, version, onClose }: InspectorProps)
     else if (z) {
       title = `${ZONE_NAMES[z]} · ${DENSITY_NAMES[L.density[i]]}`;
       if (L.level[i]) {
-        rows.push(['Building', `Level ${L.level[i]} · ${WEALTH_SYMBOL[L.wealth[i]]}${L.abandoned[i] ? ' · abandoned' : ''}`]);
+        const k = L.lotSize[i] || 1;
+        rows.push(['Building', `Level ${L.level[i]} · ${WEALTH_SYMBOL[L.wealth[i]]}${k > 1 ? ` · ${k}×${k} lot` : ''}${L.abandoned[i] ? ' · abandoned' : ''}`]);
         const cap = capacityOf(z, L.density[i], L.level[i], L.wealth[i]);
         rows.push([z === ZONE.R ? 'Residents' : 'Jobs', `${z === ZONE.R ? L.pop[i] : L.jobs[i]} / ${cap}`]);
       } else rows.push(['Building', 'nothing built yet']);

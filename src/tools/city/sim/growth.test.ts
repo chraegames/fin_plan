@@ -31,6 +31,36 @@ describe('growth', () => {
     }
   });
 
+  it('medium and high density zones form 2×2 and 3×3 lots that act as one', () => {
+    const s = flatState();
+    act(s, { type: 'road', from: { x: 0, y: 40 }, to: { x: N - 1, y: 40 } });
+    act(s, { type: 'road', from: { x: 40, y: 20 }, to: { x: 40, y: 60 } });
+    act(s, { type: 'zone', zone: 1, density: 2, rect: { x0: 20, y0: 41, x1: 39, y1: 43 } });
+    act(s, { type: 'zone', zone: 1, density: 3, rect: { x0: 41, y0: 41, x1: 60, y1: 43 } });
+    act(s, { type: 'zone', zone: 2, density: 1, rect: { x0: 20, y0: 37, x1: 60, y1: 39 } });
+    act(s, { type: 'plop', plop: PLOP.COAL, at: { x: 62, y: 38 } });
+    act(s, { type: 'plop', plop: PLOP.TOWER, at: { x: 64, y: 39 } });
+    prime(s);
+    run(s, TICKS_PER_MONTH * 8);
+    expect(countWhere(s.lotSize, v => v === 2)).toBeGreaterThan(8);
+    expect(countWhere(s.lotSize, v => v === 3)).toBeGreaterThan(8);
+    // every tile of a lot shares level and wealth with its origin
+    for (let i = 0; i < T; i++) {
+      if (!s.level[i] || s.lotSize[i] <= 1) continue;
+      const o = s.lotOrigin[i];
+      expect(s.level[i]).toBe(s.level[o]);
+      expect(s.wealth[i]).toBe(s.wealth[o]);
+      expect(s.lotSize[o]).toBe(s.lotSize[i]);
+    }
+    // bulldozing one tile clears the whole lot
+    let three = -1;
+    for (let i = 0; i < T; i++) if (s.level[i] && s.lotSize[i] === 3 && s.lotOrigin[i] === i) { three = i; break; }
+    expect(three).toBeGreaterThan(0);
+    act(s, { type: 'bulldoze', rect: { x0: (three % N) + 1, y0: Math.floor(three / N) + 1, x1: (three % N) + 1, y1: Math.floor(three / N) + 1 } });
+    expect(s.level[three]).toBe(0);
+    expect(s.level[three + 2 + 2 * N]).toBe(0);
+  });
+
   it('zones without a road never grow', () => {
     const s = flatState();
     act(s, { type: 'zone', zone: 1, density: 1, rect: { x0: 20, y0: 20, x1: 40, y1: 30 } });

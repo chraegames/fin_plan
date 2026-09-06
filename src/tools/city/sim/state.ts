@@ -54,6 +54,8 @@ export function createCityState(seed: number): CityState {
     pop: u16(),
     jobs: u16(),
     onFire: u8(),
+    lotOrigin: u16(),
+    lotSize: u8(),
     powered: u8(),
     watered: u8(),
     powerComp: new Int32Array(T),

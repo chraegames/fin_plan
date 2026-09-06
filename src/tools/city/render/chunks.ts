@@ -135,8 +135,22 @@ export class ChunkManager {
           continue;
         }
         if (L.level[i]) {
-          const spec = buildingSpec(L.zone[i], L.density[i], L.wealth[i], L.level[i], hashSeed(this.seed, i) & 0xff);
-          emitBuilding(b, x, y, spec, corners, fire ? BURNING : L.abandoned[i] ? ABANDONED : null);
+          const k = L.lotSize[i] || 1;
+          if (k > 1 && L.lotOrigin[i] !== i) continue; // drawn by the origin tile
+          if (k > 1) {
+            // footprint corners of the whole lot
+            corners[0] = this.hf.corner(x, y);
+            corners[1] = this.hf.corner(x + k, y);
+            corners[2] = this.hf.corner(x, y + k);
+            corners[3] = this.hf.corner(x + k, y + k);
+            for (let dy = 0; dy <= k; dy++) for (let dx = 0; dx <= k; dx++) corners[0] = Math.max(corners[0], this.hf.corner(x + dx, y + dy));
+          }
+          let burning = fire;
+          let abandoned = !!L.abandoned[i];
+          for (let dy = 0; dy < k && !burning; dy++) for (let dx = 0; dx < k; dx++) if (L.onFire[i + dy * N + dx]) burning = true;
+          if (k > 1) for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++) if (L.abandoned[i + dy * N + dx]) abandoned = true;
+          const spec = buildingSpec(L.zone[i], L.density[i], L.wealth[i], L.level[i], hashSeed(this.seed, i) & 0xff, k);
+          emitBuilding(b, x, y, spec, corners, burning ? BURNING : abandoned ? ABANDONED : null);
           continue;
         }
         if (!L.zone[i] && this.slope[i] / 255 < SLOPE_TREE_LIMIT) {

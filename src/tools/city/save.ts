@@ -11,8 +11,10 @@ export const SAVE_VERSION = 1;
 export const GEN_VERSION = 1;
 
 // Slow-moving derived layers are saved too so a reload continues seamlessly.
-export const SAVED_U8 = ['zone', 'density', 'road', 'level', 'wealth', 'abandoned', 'plop', 'onFire', 'burnTicks', 'landValue', 'pollution', 'waterPollution', 'crime', 'edu', 'health', 'traffic', 'commute'] as const;
-export const SAVED_U16 = ['age', 'plopOrigin', 'pop', 'jobs'] as const;
+export const SAVED_U8 = ['zone', 'density', 'road', 'level', 'wealth', 'abandoned', 'plop', 'onFire', 'burnTicks', 'landValue', 'pollution', 'waterPollution', 'crime', 'edu', 'health', 'traffic', 'commute', 'lotSize'] as const;
+export const SAVED_U16 = ['age', 'plopOrigin', 'pop', 'jobs', 'lotOrigin'] as const;
+/** Layers a save may lack (added after launch); decodeSave backfills them. */
+const OPTIONAL_LAYERS: ReadonlySet<string> = new Set(['lotOrigin', 'lotSize']);
 
 export interface SaveFile {
   v: number;
@@ -157,7 +159,7 @@ export function parseSaveFile(raw: string | null): SaveFile | null {
   if (!Array.isArray(o.loans) || !o.loans.every(isLoan)) return null;
   if (!Array.isArray(o.ledger) || !o.ledger.every(isLedger)) return null;
   if (!o.layers || typeof o.layers !== 'object') return null;
-  for (const k of [...SAVED_U8, ...SAVED_U16]) if (typeof o.layers[k] !== 'string') return null;
+  for (const k of [...SAVED_U8, ...SAVED_U16]) if (typeof o.layers[k] !== 'string' && !OPTIONAL_LAYERS.has(k)) return null;
   return o;
 }
 
@@ -165,14 +167,25 @@ export function parseSaveFile(raw: string | null): SaveFile | null {
 export function decodeSave(file: SaveFile): CityState | null {
   const s = createCityState(file.seed);
   for (const k of SAVED_U8) {
+    if (file.layers[k] === undefined && OPTIONAL_LAYERS.has(k)) continue;
     const a = decodeU8(file.layers[k]);
     if (!a) return null;
     s[k].set(a);
   }
   for (const k of SAVED_U16) {
+    if (file.layers[k] === undefined && OPTIONAL_LAYERS.has(k)) continue;
     const a = decodeU16(file.layers[k]);
     if (!a) return null;
     s[k].set(a);
+  }
+  if (file.layers.lotOrigin === undefined) {
+    // pre-lot save: every building is a single-tile lot
+    for (let i = 0; i < T; i++) {
+      if (s.level[i]) {
+        s.lotOrigin[i] = i;
+        s.lotSize[i] = 1;
+      }
+    }
   }
   s.tick = file.tick;
   s.rngState = file.rngState >>> 0;

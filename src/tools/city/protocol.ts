@@ -7,6 +7,7 @@ import type { SaveFile } from './save';
 
 export const SNAPSHOT_LAYERS = [
   ['plopOrigin', 2],
+  ['lotOrigin', 2],
   ['pop', 2],
   ['jobs', 2],
   ['zone', 1],
@@ -16,6 +17,7 @@ export const SNAPSHOT_LAYERS = [
   ['wealth', 1],
   ['abandoned', 1],
   ['plop', 1],
+  ['lotSize', 1],
   ['powered', 1],
   ['watered', 1],
   ['onFire', 1],

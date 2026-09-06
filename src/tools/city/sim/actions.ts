@@ -3,11 +3,11 @@
 
 import { COST, PLOPS, TUNING, plopDef } from '../constants';
 import { CHANGE, PLOP, ZONE, type Action, type ActionFail, type ActionResult, type CityState, type XY } from '../types';
-import { tileCapacity } from './buildings';
 import { clampRect, idx, inBounds, lineTiles, xOf, yOf } from './grid';
 import { markDirty } from './state';
 import { buildable } from './terrain';
 import { earthquake, startTornado } from './disasters';
+import { demolish } from './growth';
 
 const lineBuf: number[] = [];
 
@@ -147,15 +147,8 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
       for (const i of tiles) {
         s.zone[i] = a.zone;
         s.density[i] = a.density;
-        if (s.level[i]) {
-          // redevelop: the lot rebuilds from level 1 at its new density
-          s.level[i] = 1;
-          s.age[i] = 0;
-          s.abandoned[i] = 0;
-          const cap = tileCapacity(s, i);
-          s.pop[i] = Math.min(s.pop[i], cap);
-          s.jobs[i] = Math.min(s.jobs[i], cap);
-        }
+        // a built lot changing density is redeveloped: it comes down and regrows
+        if (s.level[i]) demolish(s, i);
         markDirty(s, i);
       }
       s.flags.netDirty = true;
@@ -194,6 +187,7 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
           s.flags.waterDirty = true;
           s.flags.serviceDirty = true;
         }
+        if (s.level[i]) demolish(s, i); // whole lot
         clearBuilding(s, i);
         s.zone[i] = ZONE.NONE;
         s.density[i] = 0;

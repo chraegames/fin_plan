@@ -118,7 +118,7 @@ const FLOORS: number[][][] = [
   [[], [0, 1, 1, 2], [0, 2, 3, 3], [0, 3, 4, 5]],
 ];
 
-export function buildingSpec(zone: number, density: number, wealth: number, level: number, variant: number): BuildingSpec {
+export function buildingSpec(zone: number, density: number, wealth: number, level: number, variant: number, size = 1): BuildingSpec {
   const parts: Part[] = [];
   const floorH = 0.3 * [0, 1, 1.05, 1.15][wealth];
   const v = variant & 0xff;
@@ -126,6 +126,7 @@ export function buildingSpec(zone: number, density: number, wealth: number, leve
   const inset = Math.max(0.04, [0, 0.22, 0.12, 0.06][density] + jitter);
   let floors = FLOORS[zone][density][level];
   if (wealth === 3 && density === 3 && v & 1) floors += 2;
+  if (size > 1) floors = Math.round(floors * (1 + 0.3 * (size - 1)));
   const wall = WALLS[zone][wealth][v % 3];
   const roof = ROOFS[wealth];
   const x0 = inset;
@@ -189,6 +190,21 @@ export function buildingSpec(zone: number, density: number, wealth: number, leve
       box(x0, z0, 0.55, 0.36, 0, floors * floorH * 1.6, wall, roof);
       if (wealth === 1) parts.push({ kind: 'cyl', cx: x1 - 0.1, cz: 0.5, r: 0.06, h0: 0, h1: shedH + 0.9, color: [0.35, 0.33, 0.32] });
       height = Math.max(floors * floorH * 1.6, shedH + 0.9);
+    }
+  }
+  if (size > 1) {
+    // scale the footprint to the lot; heights stay in world units
+    for (const p of parts) {
+      if (p.kind === 'cyl') {
+        p.cx *= size;
+        p.cz *= size;
+        p.r *= Math.sqrt(size);
+      } else {
+        p.x0 *= size;
+        p.z0 *= size;
+        p.x1 *= size;
+        p.z1 *= size;
+      }
     }
   }
   return { parts, floorH, height };
