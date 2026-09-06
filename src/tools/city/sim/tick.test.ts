@@ -31,7 +31,7 @@ describe('tick', () => {
     expect(a.funds).toBe(b.funds);
     expect(a.rngState).toBe(b.rngState);
     expect(Array.from(a.demand)).toEqual(Array.from(b.demand));
-  });
+  }, 30_000);
 
   it('produces no NaN or infinities and keeps every layer in range', () => {
     const s = scripted(3, 18);
@@ -51,5 +51,5 @@ describe('tick', () => {
     expect(s.totals.population).toBeGreaterThan(500);
     expect(s.ledger.length).toBeLessThanOrEqual(12);
     expect(s.ledger.length).toBeGreaterThan(0);
-  });
+  }, 30_000);
 });

@@ -54,20 +54,22 @@ export class VehicleField {
   resample(L: SnapshotLayers): void {
     this.road = L.road.slice();
     this.traffic = L.traffic.slice();
+    // cars only where the monthly assignment put trips: about one car per
+    // tile at full load, none on an unused road
     let total = 0;
-    for (let i = 0; i < T; i++) if (this.road[i]) total += 2 + this.traffic[i];
+    for (let i = 0; i < T; i++) if (this.road[i]) total += this.traffic[i];
     this.cars.length = 0;
-    if (total === 0) {
+    const want = Math.min(this.capacity, Math.round((total / 128) * 1.1));
+    if (total === 0 || want === 0) {
       this.mesh.count = 0;
       return;
     }
     // largest-remainder allocation over road tiles
     let acc = 0;
     let placed = 0;
-    const want = this.capacity;
     for (let i = 0; i < T && placed < want; i++) {
-      if (!this.road[i]) continue;
-      acc += ((2 + this.traffic[i]) / total) * want;
+      if (!this.road[i] || !this.traffic[i]) continue;
+      acc += (this.traffic[i] / total) * want;
       while (acc >= 1 && placed < want) {
         acc -= 1;
         const dir = this.pickDir(i, -1);
