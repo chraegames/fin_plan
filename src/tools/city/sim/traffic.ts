@@ -3,8 +3,9 @@
 // Writes traffic[] (link load), commute[] (per R tile) and employment totals.
 
 import { TUNING } from '../constants';
-import { CHANGE, N, T, ZONE, type CityState } from '../types';
+import { CHANGE, N, SERVICE, T, ZONE, type CityState } from '../types';
 import { tileCapacity } from './buildings';
+import { effectiveFunding } from './budget';
 import { idx, nbr } from './grid';
 import { isEdge } from './roads';
 
@@ -176,7 +177,7 @@ export function assignTraffic(s: CityState): void {
   }
   origins.sort((a, b) => b.trips - a.trips || a.block - b.block);
 
-  const cap = TUNING.linkCapacity * (0.5 + 0.5 * Math.min(1, s.funding[2]));
+  const cap = TUNING.linkCapacity * (0.5 + 0.5 * Math.min(1, effectiveFunding(s, SERVICE.ROADS)));
   volE.fill(0);
   volS.fill(0);
   let employed = 0;

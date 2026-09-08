@@ -1,7 +1,7 @@
 // The advisor: a short, prioritised list of what is holding the city back.
 // Every message names the fix and, where there is one, the data view to open.
 
-import { TICKS_PER_MONTH, plopDef } from '../constants';
+import { TICKS_PER_MONTH, TUNING, plopDef } from '../constants';
 import { CHANGE, PLOP, T, ZONE, type AdvisorMsg, type CityState, type OverlayKind } from '../types';
 import { isUnlocked, MILESTONES } from './milestones';
 
@@ -11,7 +11,8 @@ export function advise(s: CityState): void {
   const push = (id: string, level: AdvisorMsg['level'], text: string, overlay?: OverlayKind) => {
     if (out.length < 4) out.push({ id, level, text, overlay });
   };
-  if (s.funds < 0) push('broke', 'bad', 'The treasury is in the red. Raise taxes, cut service funding or take a loan before services are cut automatically.');
+  if (s.monthsInRed >= TUNING.redMonthsBeforeCuts) push('cuts', 'bad', `Every service is running at half strength: the treasury has been in the red for ${s.monthsInRed} months. Raise taxes, take a loan or cut spending to restore them.`);
+  else if (s.funds < 0) push('broke', 'bad', `The treasury is in the red. After ${TUNING.redMonthsBeforeCuts} months every service drops to half strength — raise taxes, cut funding or take a loan.`);
   if (t.powerDemand > 0 && t.powerSupply === 0) push('nopower', 'bad', 'Nothing is powered. Place a power plant next to the zoned area (roads and zones carry power).', 'power');
   else if (t.powerDemand > t.powerSupply && t.powerDemand > 0) push('brownout', 'bad', 'Brownouts: power demand exceeds supply. Build another plant or raise power funding.', 'power');
   if (t.waterDemand > t.waterSupply * 1.25 && t.waterDemand > 0) push('water', 'warn', 'Water is short. Pumps next to a river or lake give the most; pipes run under every road.', 'water');

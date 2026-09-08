@@ -1,6 +1,6 @@
 // Air pollution diffuses over the whole map; water pollution only across water.
 
-import { TUNING, plopDef } from '../constants';
+import { TUNING, WATER_EMISSION_I, plopDef } from '../constants';
 import { CHANGE, T, ZONE, type CityState } from '../types';
 import { emissionOf } from './buildings';
 import { nbr } from './grid';
@@ -47,7 +47,7 @@ function waterPollutionStep(s: CityState): void {
     p[i] = s.waterPollution[i];
     if (s.water[i]) continue;
     let e = 0;
-    if (s.level[i] && s.zone[i] === ZONE.I && !s.abandoned[i]) e = [0, 10, 5, 0][s.wealth[i]];
+    if (s.level[i] && s.zone[i] === ZONE.I && !s.abandoned[i]) e = WATER_EMISSION_I[s.wealth[i]];
     else if (s.road[i]) e = 2 * (s.traffic[i] / 255);
     if (!e) continue;
     for (let k = 0; k < 4; k++) {

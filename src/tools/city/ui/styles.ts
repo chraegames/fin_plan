@@ -60,8 +60,9 @@ export const CITY_STYLES = `
 .city-neg { color: var(--cp-danger); }
 .city-pos { color: var(--cp-good); }
 .city-demands { display: flex; align-items: flex-end; gap: 5px; height: 40px; padding: 0 6px; border-left: 2px dashed #E3D2B8; border-right: 2px dashed #E3D2B8; }
-.city-demand { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 18px; height: 100%; }
-.city-demand-track { position: relative; flex: 1; width: 12px; border-radius: 6px; border: 2px solid var(--cp-line); background: #fff; overflow: hidden; }
+.city-demand { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 22px; height: 100%; }
+.city-demand-tracks { display: flex; gap: 2px; flex: 1; width: 100%; }
+.city-demand-track { position: relative; flex: 1; min-width: 5px; border-radius: 3px; border: 1.5px solid var(--cp-line); background: #fff; overflow: hidden; }
 .city-demand-track::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--cp-line); opacity: 0.35; }
 .city-demand-fill { position: absolute; left: 0; right: 0; }
 .city-demand-label { font: 700 10px/1 var(--font-display); color: var(--cp-ink); }

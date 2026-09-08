@@ -46,6 +46,7 @@ const FAIL_TEXT: Record<ActionFail, string> = {
   noop: 'Nothing to do there.',
   locked: 'Not unlocked yet — grow the city to the next milestone.',
   water: 'This must be built on the shore, touching water.',
+  road: 'This needs a road touching it.',
 };
 
 type Sheet = 'budget' | 'stats' | 'milestones' | null;

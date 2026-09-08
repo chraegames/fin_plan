@@ -90,7 +90,21 @@ export function plopFail(s: CityState, plop: number, at: XY): ActionFail | null 
   if (!isUnlocked(s, plop)) return 'locked';
   if (!canPlop(s, plop, at)) return 'occupied';
   if (def.needsWater && !touchesWater(s, idx(at.x, at.y), def.size)) return 'water';
+  if (def.needsRoad && !touchesRoad(s, at, def.size)) return 'road';
   return null;
+}
+
+/** A road tile touches the footprint (4-neighbourhood of its border). */
+export function touchesRoad(s: CityState, at: XY, size: number): boolean {
+  for (let dy = -1; dy <= size; dy++) {
+    for (let dx = -1; dx <= size; dx++) {
+      if (dx >= 0 && dy >= 0 && dx < size && dy < size) continue;
+      const x = at.x + dx;
+      const y = at.y + dy;
+      if (inBounds(x, y) && s.road[idx(x, y)]) return true;
+    }
+  }
+  return false;
 }
 
 /** Preview cost of an action without applying it (for the HUD). */

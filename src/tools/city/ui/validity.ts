@@ -25,6 +25,11 @@ export function canPlopAt(L: SnapshotLayers, g: Ground, plop: number, at: XY): b
   if (!def) return false;
   for (let dy = 0; dy < def.size; dy++) for (let dx = 0; dx < def.size; dx++) if (!tileFree(L, g, at.x + dx, at.y + dy)) return false;
   if (def.needsWater && !touchesWater(g, at, def.size)) return false;
+  if (def.needsRoad) {
+    let road = false;
+    for (let y = at.y - 1; y <= at.y + def.size && !road; y++) for (let x = at.x - 1; x <= at.x + def.size && !road; x++) if (x >= 0 && y >= 0 && x < N && y < N && L.road[y * N + x]) road = true;
+    if (!road) return false;
+  }
   return true;
 }
 

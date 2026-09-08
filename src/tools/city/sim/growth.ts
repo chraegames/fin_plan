@@ -89,7 +89,8 @@ export function growthPass(s: CityState, slice: number): void {
         continue;
       }
     }
-    if (desir < TUNING.abandonDesir || d < -60 || (z === ZONE.R && s.commute[i] === 255 && nextRandom(s) < 0.5)) {
+    // a brand-new house has no commute yet (traffic runs monthly), so it gets a month's grace
+    if (desir < TUNING.abandonDesir || d < -60 || (z === ZONE.R && s.commute[i] === 255 && s.age[i] > 0 && nextRandom(s) < 0.5)) {
       if (nextRandom(s) < TUNING.abandonRate) {
         abandon(s, i);
         continue;

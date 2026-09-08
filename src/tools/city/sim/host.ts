@@ -4,7 +4,7 @@
 import { applyTuning, MAX_TICKS_PER_STEP, TICK_RATES } from '../constants';
 import { buildHud, packSnapshot, SNAPSHOT_BYTES, type MainToWorker, type WorkerToMain } from '../protocol';
 import { decodeSave, encodeSave } from '../save';
-import { CHANGE, CHUNKS, type Action, type CityState, type Speed } from '../types';
+import { type Action, type CityState, type Speed } from '../types';
 import { createCityState } from './state';
 import { applyActions, primeDerived, tick } from './tick';
 
@@ -129,6 +129,5 @@ export class SimHost {
     this.post(msg, [buf]);
     this.wantSnapshot = false;
     this.lastSnapshot = now;
-    if (s.changed & CHANGE.GEOMETRY) s.dirtyChunks.fill(0, 0, CHUNKS);
   }
 }

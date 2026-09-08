@@ -51,12 +51,21 @@ function Stat({ icon, color, label, children, title, onClick }: { icon: CityIcon
   );
 }
 
-function DemandBar({ label, value, color }: { label: string; value: number; color: string }) {
-  const v = Math.max(-100, Math.min(100, value));
+/** One zone type: three thin tracks for the $, $$ and $$$ tiers. */
+function DemandBar({ label, name, values, color }: { label: string; name: string; values: number[]; color: string }) {
+  const tiers = ['$', '$$', '$$$'];
+  const title = `${name} demand · ${values.map((v, k) => `${tiers[k]} ${Math.round(v) > 0 ? '+' : ''}${Math.round(v)}`).join(' · ')}`;
   return (
-    <div className="city-demand" title={`${label} demand ${Math.round(v)}`}>
-      <span className="city-demand-track">
-        <span className="city-demand-fill" style={{ background: v < 0 ? 'var(--cp-danger)' : color, height: `${Math.abs(v) / 2}%`, [v < 0 ? 'top' : 'bottom']: '50%' }} />
+    <div className="city-demand" title={title}>
+      <span className="city-demand-tracks">
+        {values.map((raw, k) => {
+          const v = Math.max(-100, Math.min(100, raw));
+          return (
+            <span key={k} className="city-demand-track">
+              <span className="city-demand-fill" style={{ background: v < 0 ? 'var(--cp-danger)' : color, opacity: 0.6 + 0.2 * k, height: `${Math.abs(v) / 2}%`, [v < 0 ? 'top' : 'bottom']: '50%' }} />
+            </span>
+          );
+        })}
       </span>
       <span className="city-demand-label">{label}</span>
     </div>
@@ -94,7 +103,6 @@ export function TopBar({ hud, speed, overlay, prefs, onSpeed, onOverlay, onPrefs
   useOutside(viewOpen, viewRef, () => setViewOpen(false));
   useOutside(gearOpen, gearRef, () => setGearOpen(false));
   const d = hud?.demand ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
-  const max3 = (k: number) => Math.max(d[k], d[k + 1], d[k + 2]);
   const speeds: { s: Speed; icon: CityIconName; label: string; extra?: string }[] = [
     { s: 0, icon: 'pause', label: 'Pause (P)' },
     { s: 1, icon: 'play', label: 'Normal speed (1)' },
@@ -129,10 +137,10 @@ export function TopBar({ hud, speed, overlay, prefs, onSpeed, onOverlay, onPrefs
           </Stat>
         </div>
       )}
-      <div className="city-demands" aria-label="RCI demand" title="Demand for residential, commercial and industrial space">
-        <DemandBar label="R" value={max3(0)} color="var(--cp-r)" />
-        <DemandBar label="C" value={max3(3)} color="var(--cp-c)" />
-        <DemandBar label="I" value={max3(6)} color="var(--cp-i)" />
+      <div className="city-demands" aria-label="RCI demand by wealth tier">
+        <DemandBar label="R" name="Residential" values={d.slice(0, 3)} color="var(--cp-r)" />
+        <DemandBar label="C" name="Commercial" values={d.slice(3, 6)} color="var(--cp-c)" />
+        <DemandBar label="I" name="Industrial" values={d.slice(6, 9)} color="var(--cp-i)" />
       </div>
       {t && (
         <div className="city-chips" aria-label="Utilities">

@@ -1,10 +1,8 @@
 // Paints the terrain overlay texture: zone tints plus the selected data view.
 // Pure so it can be tested; the renderer uploads the result.
 
-import { ZONE, type OverlayKind } from '../types';
+import { T, ZONE, type OverlayKind } from '../types';
 import type { SnapshotLayers } from '../protocol';
-
-const T = 128 * 128;
 
 const ZONE_RGB: number[][] = [
   [0, 0, 0],

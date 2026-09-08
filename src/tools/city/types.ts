@@ -343,7 +343,7 @@ export type Action =
   | { type: 'disaster'; kind: DisasterKind; at: XY }
   | { type: 'grant'; amount: number }; // debug panel only
 
-export type ActionFail = 'funds' | 'terrain' | 'occupied' | 'bounds' | 'noop' | 'locked' | 'water';
+export type ActionFail = 'funds' | 'terrain' | 'occupied' | 'bounds' | 'noop' | 'locked' | 'water' | 'road';
 
 export interface ActionResult {
   id: number;

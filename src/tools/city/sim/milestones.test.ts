@@ -38,7 +38,7 @@ describe('milestones', () => {
   it('locked plops, densities, avenues, loans and policies are refused until their tier', () => {
     const s = flatState(1, 1_000_000, true);
     act(s, { type: 'road', from: { x: 0, y: 10 }, to: { x: 30, y: 10 } });
-    act(s, { type: 'plop', plop: PLOP.HOSPITAL, at: { x: 5, y: 12 } });
+    act(s, { type: 'plop', plop: PLOP.HOSPITAL, at: { x: 5, y: 11 } });
     expect(s.results.at(-1)).toMatchObject({ ok: false, reason: 'locked' });
     expect(isUnlocked(s, PLOP.HOSPITAL)).toBe(false);
     act(s, { type: 'zone', zone: 1, density: 3, rect: { x0: 2, y0: 11, x1: 6, y1: 12 } });
@@ -51,9 +51,9 @@ describe('milestones', () => {
     act(s, { type: 'setPolicy', policy: 1, on: true });
     expect(s.results.at(-1)).toMatchObject({ ok: false, reason: 'locked' });
     s.milestone = unlockTier(PLOP.HOSPITAL);
-    act(s, { type: 'plop', plop: PLOP.HOSPITAL, at: { x: 5, y: 12 } });
+    act(s, { type: 'plop', plop: PLOP.HOSPITAL, at: { x: 5, y: 11 } });
     expect(s.results.at(-1)).toMatchObject({ ok: true });
-    expect(s.plop[idx(5, 12)]).toBe(PLOP.HOSPITAL);
+    expect(s.plop[idx(5, 11)]).toBe(PLOP.HOSPITAL);
   });
 
   it('a hydro plant must touch water', () => {

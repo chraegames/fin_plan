@@ -30,7 +30,6 @@ export const TUNING = {
   taxSlope: 7,
   extIndustryBonus: 25,
   extIndustryPenalty: -40,
-  capNoPlant: 0.15,
   capBrownout: 0.5,
   capWaterShort: 0.6,
   capGarbage: 0.7,

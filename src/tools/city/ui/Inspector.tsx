@@ -129,7 +129,7 @@ export function Inspector({ tile, layers: L, version, demand, onClose, onOverlay
           if (x >= 0 && y >= 0 && x < N && y < N && L.road[y * N + x]) road = true;
         }
         rows.push(['Road next to it', yesNo(road)]);
-        if (!road) status = { text: 'Not working: it needs a road touching it.', tone: 'bad' };
+        if (!road) status = { text: 'Not working: the road next to it was removed. Rebuild it.', tone: 'bad' };
       }
       if (L.onFire[o]) status = { text: 'On fire!', tone: 'bad' };
       else if (!status) status = { text: plop.desc, tone: 'ok' };

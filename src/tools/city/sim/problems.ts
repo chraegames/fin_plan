@@ -21,7 +21,7 @@ export function computeProblems(s: CityState): void {
       if (!s.watered[i] && (s.density[i] > 1 || s.wealth[i] > 1)) bits |= PROBLEM.NO_WATER;
       if (!s.roadAccess[i]) bits |= PROBLEM.NO_ROAD;
       if (z === ZONE.R) {
-        if (s.commute[i] === 255 && s.pop[i] > 0) bits |= PROBLEM.NO_JOBS;
+        if (s.commute[i] === 255 && s.pop[i] > 0 && s.age[i] > 0) bits |= PROBLEM.NO_JOBS;
         if (s.crime[i] > 140 || s.pollution[i] > 120) bits |= PROBLEM.BLIGHT;
       } else {
         const cap = tileCapacity(s, i);
