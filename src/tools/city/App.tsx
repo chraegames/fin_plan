@@ -345,6 +345,24 @@ export default function App() {
     };
   }, [cursorFor, dispatch]);
 
+  const newCity = useCallback(
+    (seed: number) => {
+      setConfirmNew(false);
+      const client = clientRef.current;
+      if (!client) return;
+      clearSave();
+      lastSavedTick.current = -1;
+      setHud(null);
+      setSelected(null);
+      setTerrain(null);
+      setSheet(null);
+      client.init(seed);
+      client.setSpeed(speed);
+      track('city_started', { seed });
+    },
+    [speed],
+  );
+
   // localhost debug hook (drives e2e screenshots and tuning)
   useEffect(() => {
     if (!debugAllowed) return;
@@ -365,11 +383,12 @@ export default function App() {
       select: (t: XY | null) => setSelected(t),
       setPrefs: (p: Partial<CityPrefs>) => setPrefs(cur => ({ ...cur, ...p })),
       setClock: (t: number) => rendererRef.current?.setClock(t),
+      newCity: (seed: number) => newCity(seed),
     };
     return () => {
       delete w.__city;
     };
-  }, [dispatch, debugAllowed]);
+  }, [dispatch, debugAllowed, newCity]);
 
   // hotkeys
   useEffect(() => {
@@ -446,23 +465,6 @@ export default function App() {
     setTool(t => (t.kind === 'zone' ? { ...t, density: d } : t));
   }, []);
 
-  const newCity = useCallback(
-    (seed: number) => {
-      setConfirmNew(false);
-      const client = clientRef.current;
-      if (!client) return;
-      clearSave();
-      lastSavedTick.current = -1;
-      setHud(null);
-      setSelected(null);
-      setTerrain(null);
-      setSheet(null);
-      client.init(seed);
-      client.setSpeed(speed);
-      track('city_started', { seed });
-    },
-    [speed],
-  );
 
   const seed = terrain?.seed ?? -1;
   const onboardingVisible = !!hud && !isMobile && prefs.onboardingDoneSeed !== seed && hud.milestone === 0 && !onboardingSteps(hud).every(st => st.done);
