@@ -49,7 +49,35 @@ export type CityIconName =
   | 'check'
   | 'dice'
   | 'tornado'
-  | 'quake';
+  | 'quake'
+  | 'pipe'
+  | 'nuclear'
+  | 'hydro'
+  | 'treatment'
+  | 'landfill'
+  | 'incinerator'
+  | 'recycling'
+  | 'bus'
+  | 'fireHq'
+  | 'policeHq'
+  | 'library'
+  | 'cityHall'
+  | 'stadium'
+  | 'landmark'
+  | 'plaza'
+  | 'lock'
+  | 'flag'
+  | 'chart'
+  | 'gear'
+  | 'sun'
+  | 'moon'
+  | 'bin'
+  | 'info'
+  | 'eye'
+  | 'target'
+  | 'arrow'
+  | 'smile'
+  | 'policy';
 
 const P: Record<CityIconName, string> = {
   house: 'M3 11.5 12 4l9 7.5M5.5 10v9.5h13V10M10 19.5v-5h4v5',
@@ -98,6 +126,34 @@ const P: Record<CityIconName, string> = {
   dice: 'M5 5h14v14H5zM9 9h.5M15 9h.5M12 12h.5M9 15h.5M15 15h.5',
   tornado: 'M4 6h16M6 10h12M8 14h8M10 18h4M12 21v1',
   quake: 'M3 12h4l2-6 3 12 3-9 2 5h4',
+  pipe: 'M3 9h6v6H3zM9 12h6M15 9h6v6h-6zM6 9V4M18 15v5',
+  nuclear: 'M12 12m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0M12 3a9 9 0 0 1 7.8 4.5l-4.3 2.5M4.2 7.5A9 9 0 0 1 12 3M4.2 7.5l4.3 2.5M12 21a9 9 0 0 1-7.8-4.5M12 21v-5M19.8 16.5A9 9 0 0 1 12 21',
+  hydro: 'M3 20h18M4 20V9h16v11M8 9V5h8v4M7 14h2M11 14h2M15 14h2M3 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0',
+  treatment: 'M4 20h16M6 20v-6a6 6 0 0 1 12 0v6M6 14h12M12 3v5M9 5l3 3 3-3',
+  landfill: 'M3 20h18M5 20c1-5 3-8 6-8s5 3 6 8M13 12c1-3 3-4 5-4s3 2 3 5M8 12l1-4M15 9l1-2',
+  incinerator: 'M4 20V10h10v10H4zM4 20h16M16 20V4h3v16M8 14c1-2 2-2 2-4 1 1 2 2 2 4a2 2 0 0 1-4 0z',
+  recycling: 'M12 4l3 5h-6zM5.5 15.5 8 11l3 5M18.5 15.5 16 11l-3 5M8 20h8M6 16l2 4M18 16l-2 4',
+  bus: 'M5 4h14v13H5zM5 9h14M5 17v3h3v-3M16 17v3h3v-3M8 13h.5M15.5 13h.5',
+  fireHq: 'M4 20h16M6 20V9l6-5 6 5v11M12 11c1.5 2 3 3 3 5a3 3 0 0 1-6 0c0-1 .5-2 1.5-3 0 1 .5 1.5 1.5 2 0-2 0-3 0-4z',
+  policeHq: 'M4 20h16M6 20V8h12v12M12 3 6 8h12zM10 20v-4h4v4M9 12h2M13 12h2',
+  library: 'M3 20h18M5 20V8h14v12M4 8l8-4 8 4M7 8v12M11 8v12M15 8v12M19 8v12',
+  cityHall: 'M3 20h18M5 20V10h14v10M4 10h16M12 3a4 4 0 0 1 4 4v3H8V7a4 4 0 0 1 4-4zM12 3v-1M8 20v-5h3v5M13 20v-5h3v5',
+  stadium: 'M3 12a9 5 0 0 0 18 0 9 5 0 0 0-18 0zM3 12v3a9 5 0 0 0 18 0v-3M7 12a5 2.5 0 0 0 10 0 5 2.5 0 0 0-10 0',
+  landmark: 'M12 2v3M9 20 11 5h2l2 15M6 20h12M7.5 14h9M8.5 10h7',
+  plaza: 'M3 21h18M6 21v-3h12v3M12 5v13M9 8l3-3 3 3M6 12h12',
+  lock: 'M6 11h12v9H6zM9 11V7a3 3 0 0 1 6 0v4M12 15v2',
+  flag: 'M5 21V4M5 4h11l-2 4 2 4H5',
+  chart: 'M4 20h16M4 16l4-5 4 3 4-6 4 2',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+  bin: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 11v6M14 11v6',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.5',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.5',
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  smile: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14c1 1.5 2.2 2 3.5 2s2.5-.5 3.5-2M9 9.5h.5M14.5 9.5h.5',
+  policy: 'M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6M9 8h2',
 };
 
 interface CityIconProps {

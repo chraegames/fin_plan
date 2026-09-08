@@ -1,13 +1,15 @@
 // Fire risk, monthly ignition, tick-by-tick spread and extinguishing.
 
 import { TUNING, plopDef } from '../constants';
-import { CHANGE, PLOP, T, ZONE, type CityState } from '../types';
+import { CHANGE, PLOP, POLICY, T, ZONE, type CityState } from '../types';
 import { demolish } from './growth';
 import { nbr } from './grid';
 import { removePlop } from './actions';
+import { hasPolicy } from './policies';
 import { markDirty, nextRandom } from './state';
 
-const flammable = (s: CityState, i: number): boolean => s.level[i] > 0 || (s.plop[i] !== PLOP.NONE && s.plop[i] !== PLOP.LINE);
+const flammable = (s: CityState, i: number): boolean => s.level[i] > 0 || (s.plop[i] !== PLOP.NONE && s.plop[i] !== PLOP.LINE && s.plop[i] !== PLOP.PIPE);
+const PLOP_RISK: Record<number, number> = { [PLOP.COAL]: 50, [PLOP.GAS]: 35, [PLOP.NUCLEAR]: 30, [PLOP.INCINERATOR]: 40, [PLOP.LANDFILL]: 25 };
 
 export function computeFireRisk(s: CityState): void {
   for (let i = 0; i < T; i++) {
@@ -21,8 +23,9 @@ export function computeFireRisk(s: CityState): void {
       const base = z === ZONE.R ? TUNING.fireBaseR : z === ZONE.C ? TUNING.fireBaseC : TUNING.fireBaseI[s.wealth[i]];
       risk = base * TUNING.fireDensity[s.density[i]] * (1 + s.age[i] / TUNING.fireAgeMonths) + (s.abandoned[i] ? TUNING.fireAbandoned : 0);
     } else {
-      risk = s.plop[i] === PLOP.COAL ? TUNING.fireCoal : 15;
+      risk = PLOP_RISK[s.plop[i]] ?? 15;
     }
+    if (hasPolicy(s, POLICY.SMOKE_DETECTORS)) risk *= 0.7;
     risk -= TUNING.fireCoverEffect * s.fireCover[i];
     s.fireRisk[i] = Math.max(0, Math.min(255, Math.round(risk)));
   }

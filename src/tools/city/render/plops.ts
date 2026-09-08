@@ -16,6 +16,19 @@ const BEIGE: RGB = [0.82, 0.76, 0.62];
 const GRASS: RGB = [0.36, 0.58, 0.28];
 const PANEL: RGB = [0.12, 0.18, 0.36];
 const TANK: RGB = [0.7, 0.72, 0.76];
+const PAVING: RGB = [0.74, 0.7, 0.64];
+const STONE: RGB = [0.86, 0.84, 0.78];
+const GOLD: RGB = [0.85, 0.7, 0.3];
+const GLASS: RGB = [0.55, 0.7, 0.85];
+const RUBBISH: RGB = [0.5, 0.46, 0.36];
+const GREEN: RGB = [0.3, 0.62, 0.36];
+const NAVY: RGB = [0.18, 0.26, 0.5];
+const YELLOW: RGB = [0.93, 0.78, 0.25];
+const BINS: RGB[] = [
+  [0.2, 0.5, 0.8],
+  [0.85, 0.75, 0.2],
+  [0.3, 0.6, 0.35],
+];
 
 /**
  * Emit the plop whose origin is tile (x, y). `base` is the top of the
@@ -28,7 +41,7 @@ export function emitPlop(b: GeometryBuilder, plop: number, x: number, y: number,
   const s = def.size;
   const c = (rgb: RGB): RGB => tint ?? rgb;
   // slab foundation
-  if (def.id !== PLOP.LINE) b.box(x + 0.02, low - 0.05, y + 0.02, x + s - 0.02, base + 0.02, y + s - 0.02, CONCRETE, c(CONCRETE));
+  if (def.id !== PLOP.LINE && def.id !== PLOP.PIPE) b.box(x + 0.02, low - 0.05, y + 0.02, x + s - 0.02, base + 0.02, y + s - 0.02, CONCRETE, c(CONCRETE));
   const y0 = base + 0.02;
   switch (def.id) {
     case PLOP.COAL:
@@ -117,6 +130,99 @@ export function emitPlop(b: GeometryBuilder, plop: number, x: number, y: number,
         const a = (k / 6) * Math.PI * 2;
         emitTree(b, x + 1 + Math.cos(a) * 0.65, y0 + 0.02, y + 1 + Math.sin(a) * 0.65, 0.3, variant + k);
       }
+      break;
+    case PLOP.PIPE: {
+      // a shallow blue channel with joints so the buried pipe reads on the ground
+      const px = x + 0.5;
+      const pz = y + 0.5;
+      const pipe: RGB = [0.3, 0.55, 0.8];
+      b.box(px - 0.1, base - 0.02, pz - 0.1, px + 0.1, base + 0.06, pz + 0.1, c(pipe), c(pipe));
+      if (linkE) b.box(px, base - 0.02, pz - 0.05, px + 1, base + 0.04, pz + 0.05, c(pipe), c(pipe));
+      if (linkS) b.box(px - 0.05, base - 0.02, pz, px + 0.05, base + 0.04, pz + 1, c(pipe), c(pipe));
+      break;
+    }
+    case PLOP.HYDRO:
+      b.box(x + 0.1, y0, y + 0.1, x + 1.9, y0 + 0.9, y + 0.7, c(CONCRETE), c(STEEL));
+      b.box(x + 0.1, y0, y + 0.7, x + 1.9, y0 + 0.45, y + 1.9, c([0.5, 0.52, 0.55]), c(STEEL));
+      for (let k = 0; k < 3; k++) b.box(x + 0.35 + k * 0.5, y0 + 0.45, y + 0.9, x + 0.65 + k * 0.5, y0 + 0.6, y + 1.7, c(GLASS), c(GLASS));
+      break;
+    case PLOP.NUCLEAR:
+      b.box(x + 0.15, y0, y + 1.6, x + 2.85, y0 + 0.7, y + 2.85, c(STEEL), c(STEEL), 3, 0, 0.35);
+      b.cylinder(x + 0.8, y0, y + 0.8, 0.55, y0 + 1.4, 12, c(WHITE), c([0.6, 0.62, 0.66]));
+      b.cylinder(x + 2.2, y0, y + 0.8, 0.55, y0 + 1.4, 12, c(WHITE), c([0.6, 0.62, 0.66]));
+      b.cylinder(x + 1.5, y0, y + 1.55, 0.3, y0 + 0.9, 10, c([0.75, 0.75, 0.78]));
+      break;
+    case PLOP.TREATMENT:
+      b.box(x + 0.1, y0, y + 0.1, x + 0.9, y0 + 0.5, y + 1.9, c(BLUE), c(STEEL), 3, 0, 0.3);
+      b.cylinder(x + 1.4, y0, y + 0.55, 0.4, y0 + 0.2, 12, c([0.35, 0.6, 0.8]), c([0.3, 0.55, 0.78]));
+      b.cylinder(x + 1.4, y0, y + 1.45, 0.4, y0 + 0.2, 12, c([0.35, 0.6, 0.8]), c([0.3, 0.55, 0.78]));
+      break;
+    case PLOP.LANDFILL:
+      b.box(x + 0.05, y0, y + 0.05, x + 2.95, y0 + 0.03, y + 2.95, c([0.55, 0.5, 0.4]), c([0.55, 0.5, 0.4]));
+      b.cone(x + 1.0, y0, y + 1.0, 0.8, y0 + 0.55, 7, c(RUBBISH));
+      b.cone(x + 2.1, y0, y + 1.9, 0.7, y0 + 0.45, 7, c([0.46, 0.44, 0.34]));
+      b.cone(x + 1.0, y0, y + 2.2, 0.5, y0 + 0.3, 6, c(RUBBISH));
+      b.box(x + 2.3, y0, y + 0.2, x + 2.8, y0 + 0.25, y + 0.6, c(YELLOW), c(DARK));
+      break;
+    case PLOP.INCINERATOR:
+      b.box(x + 0.15, y0, y + 0.15, x + 1.85, y0 + 0.8, y + 1.4, c([0.45, 0.42, 0.4]), c(DARK));
+      b.cylinder(x + 1.5, y0, y + 1.65, 0.14, y0 + 1.9, 8, c([0.55, 0.55, 0.58]));
+      b.box(x + 0.2, y0, y + 1.5, x + 1.0, y0 + 0.35, y + 1.85, c(GREEN), c(DARK));
+      break;
+    case PLOP.RECYCLING:
+      b.box(x + 0.15, y0, y + 0.15, x + 1.85, y0 + 0.55, y + 1.1, c(GREEN), c([0.2, 0.4, 0.25]), 3, 0, 0.3);
+      for (let k = 0; k < 3; k++) b.box(x + 0.25 + k * 0.55, y0, y + 1.3, x + 0.65 + k * 0.55, y0 + 0.3, y + 1.8, c(BINS[k]), c(DARK));
+      break;
+    case PLOP.BUS:
+      b.box(x + 0.1, y0, y + 0.1, x + 1.9, y0 + 0.5, y + 0.9, c(STEEL), c(DARK), 3, 0, 0.3);
+      b.box(x + 0.1, y0 - 0.001, y + 0.95, x + 1.9, y0 + 0.01, y + 1.9, c(PAVING), c(PAVING));
+      b.box(x + 0.2, y0 + 0.01, y + 1.05, x + 0.9, y0 + 0.28, y + 1.35, c(YELLOW), c(YELLOW));
+      b.box(x + 1.1, y0 + 0.01, y + 1.45, x + 1.8, y0 + 0.28, y + 1.75, c(YELLOW), c(YELLOW));
+      break;
+    case PLOP.FIRE_HQ:
+      b.box(x + 0.1, y0, y + 0.1, x + 1.9, y0 + 0.7, y + 1.3, c(RED), c(DARK), 3, 0, 0.3);
+      b.box(x + 0.1, y0, y + 1.3, x + 1.0, y0 + 0.45, y + 1.9, c(RED), c(DARK));
+      b.box(x + 1.5, y0 + 0.7, y + 0.9, x + 1.85, y0 + 1.5, y + 1.25, c(RED), c(DARK));
+      break;
+    case PLOP.POLICE_HQ:
+      b.box(x + 0.1, y0, y + 0.1, x + 1.9, y0 + 0.9, y + 1.1, c(NAVY), c(DARK), 3, 0, 0.3);
+      b.box(x + 0.3, y0, y + 1.1, x + 1.7, y0 + 0.5, y + 1.9, c(NAVY), c(DARK), 3, 0, 0.3);
+      b.box(x + 0.8, y0 + 0.9, y + 0.5, x + 1.2, y0 + 1.15, y + 0.75, c(WHITE), c(WHITE));
+      break;
+    case PLOP.LIBRARY:
+      b.box(x + 0.15, y0, y + 0.3, x + 1.85, y0 + 0.75, y + 1.7, c(STONE), c([0.5, 0.45, 0.4]), 3, 0, 0.35);
+      for (let k = 0; k < 4; k++) b.cylinder(x + 0.35 + k * 0.43, y0, y + 0.2, 0.05, y0 + 0.75, 6, c(WHITE));
+      b.gable(x + 0.1, y0 + 0.75, y + 0.1, x + 1.9, y0 + 1.0, y + 1.8, true, c([0.5, 0.45, 0.4]));
+      break;
+    case PLOP.CITY_HALL:
+      b.box(x + 0.15, y0, y + 0.3, x + 1.85, y0 + 0.8, y + 1.85, c(STONE), c([0.55, 0.5, 0.45]), 3, 0, 0.4);
+      for (let k = 0; k < 5; k++) b.cylinder(x + 0.3 + k * 0.35, y0, y + 0.2, 0.045, y0 + 0.8, 6, c(WHITE));
+      b.cylinder(x + 1.0, y0 + 0.8, y + 1.05, 0.4, y0 + 1.0, 12, c(STONE));
+      b.cone(x + 1.0, y0 + 1.0, y + 1.05, 0.42, y0 + 1.45, 12, c([0.35, 0.6, 0.55]));
+      b.cylinder(x + 1.0, y0 + 1.45, y + 1.05, 0.03, y0 + 1.75, 5, c(GOLD));
+      break;
+    case PLOP.STADIUM:
+      b.cylinder(x + 1.5, y0, y + 1.5, 1.42, y0 + 0.9, 20, c(CONCRETE), c([0.55, 0.55, 0.58]));
+      b.cylinder(x + 1.5, y0 + 0.02, y + 1.5, 1.0, y0 + 0.92, 20, c(GRASS), c(GRASS));
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+        b.cylinder(x + 1.5 + Math.cos(a) * 1.3, y0 + 0.9, y + 1.5 + Math.sin(a) * 1.3, 0.05, y0 + 1.9, 5, c(STEEL));
+        b.box(x + 1.5 + Math.cos(a) * 1.3 - 0.12, y0 + 1.8, y + 1.5 + Math.sin(a) * 1.3 - 0.12, x + 1.5 + Math.cos(a) * 1.3 + 0.12, y0 + 1.95, y + 1.5 + Math.sin(a) * 1.3 + 0.12, c(WHITE), c(WHITE));
+      }
+      break;
+    case PLOP.LANDMARK:
+      b.box(x + 0.2, y0, y + 0.2, x + 1.8, y0 + 0.5, y + 1.8, c(STONE), c(STONE));
+      b.box(x + 0.5, y0 + 0.5, y + 0.5, x + 1.5, y0 + 3.2, y + 1.5, c(GLASS), c(STEEL), 3, 0, 0.32);
+      b.box(x + 0.65, y0 + 3.2, y + 0.65, x + 1.35, y0 + 4.2, y + 1.35, c(GLASS), c(STEEL), 3, 0, 0.32);
+      b.cone(x + 1.0, y0 + 4.2, y + 1.0, 0.36, y0 + 5.2, 8, c(STEEL));
+      b.cylinder(x + 1.0, y0 + 5.2, y + 1.0, 0.03, y0 + 5.9, 5, c(GOLD));
+      break;
+    case PLOP.PLAZA:
+      b.box(x + 0.05, y0 - 0.005, y + 0.05, x + 0.95, y0 + 0.02, y + 0.95, c(PAVING), c(PAVING));
+      b.cylinder(x + 0.5, y0 + 0.02, y + 0.5, 0.2, y0 + 0.08, 10, c([0.5, 0.6, 0.75]));
+      b.cylinder(x + 0.5, y0 + 0.08, y + 0.5, 0.06, y0 + 0.35, 6, c(STONE));
+      emitTree(b, x + 0.18, y0 + 0.02, y + 0.18, 0.2, variant);
+      emitTree(b, x + 0.82, y0 + 0.02, y + 0.82, 0.2, variant + 2);
       break;
   }
 }

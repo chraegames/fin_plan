@@ -15,10 +15,16 @@ export function tileFree(L: SnapshotLayers, g: Ground, x: number, y: number): bo
   return g.water[i] === 0 && g.slope[i] <= SLOPE_MAX && !L.road[i] && !L.plop[i] && !L.level[i];
 }
 
+function touchesWater(g: Ground, at: XY, size: number): boolean {
+  for (let y = at.y - 1; y <= at.y + size; y++) for (let x = at.x - 1; x <= at.x + size; x++) if (x >= 0 && y >= 0 && x < N && y < N && g.water[y * N + x]) return true;
+  return false;
+}
+
 export function canPlopAt(L: SnapshotLayers, g: Ground, plop: number, at: XY): boolean {
   const def = plopDef(plop);
   if (!def) return false;
   for (let dy = 0; dy < def.size; dy++) for (let dx = 0; dx < def.size; dx++) if (!tileFree(L, g, at.x + dx, at.y + dy)) return false;
+  if (def.needsWater && !touchesWater(g, at, def.size)) return false;
   return true;
 }
 

@@ -1,4 +1,4 @@
-import type { AdvisorMsg } from '../types';
+import type { AdvisorMsg, OverlayKind } from '../types';
 import { CityIcon, type CityIconName } from './icons';
 
 const LOOK: Record<AdvisorMsg['level'], { icon: CityIconName; color: string }> = {
@@ -7,7 +7,7 @@ const LOOK: Record<AdvisorMsg['level'], { icon: CityIconName; color: string }> =
   bad: { icon: 'siren', color: 'var(--cp-danger)' },
 };
 
-export function Advisor({ messages }: { messages: AdvisorMsg[] }) {
+export function Advisor({ messages, onOverlay }: { messages: AdvisorMsg[]; onOverlay: (k: OverlayKind) => void }) {
   if (!messages.length) return null;
   return (
     <div className="city-advisor" aria-live="polite">
@@ -16,7 +16,12 @@ export function Advisor({ messages }: { messages: AdvisorMsg[] }) {
           <span className="city-tile" style={{ background: LOOK[m.level].color }}>
             <CityIcon name={LOOK[m.level].icon} size={16} />
           </span>
-          <span>{m.text}</span>
+          <span className="city-advice-text">{m.text}</span>
+          {m.overlay && (
+            <button type="button" className="city-btn city-btn-sm city-btn-icon city-advice-show" onClick={() => onOverlay(m.overlay!)} title="Show on the map" aria-label="Show on the map">
+              <CityIcon name="eye" size={13} />
+            </button>
+          )}
         </div>
       ))}
     </div>

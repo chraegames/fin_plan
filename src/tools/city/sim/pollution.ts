@@ -9,9 +9,11 @@ export function pollutionStep(s: CityState): void {
   const D = TUNING.airDiffusion;
   const p = s.scratchA;
   const emit = s.scratchB;
+  const garbageMatters = s.totals.population >= 150;
   for (let i = 0; i < T; i++) {
     p[i] = s.pollution[i];
     emit[i] = emissionOf(s, i) + TUNING.trafficEmission * (s.traffic[i] / 255) + (s.onFire[i] ? TUNING.fireEmission : 0);
+    if (garbageMatters && s.level[i] && !s.abandoned[i] && s.garbageCover[i] < 128) emit[i] += TUNING.garbageEmission;
   }
   // plants pollute over their footprint
   for (let i = 0; i < T; i++) {

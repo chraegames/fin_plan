@@ -1,9 +1,10 @@
 // RCI demand: nine bars (three zone types × three wealth tiers), −100..100,
 // recomputed monthly and consumed by every building that grows.
 
-import { TUNING } from '../constants';
-import { CHANGE, ZONE, type CityState } from '../types';
+import { TUNING, plopDef } from '../constants';
+import { CHANGE, POLICY, T, ZONE, type CityState } from '../types';
 import { demandIndex, tileCapacity } from './buildings';
+import { hasPolicy } from './policies';
 import { EXTERNAL_BASE_JOBS } from './traffic';
 
 const clamp = (v: number, lo = 0, hi = 1): number => Math.min(hi, Math.max(lo, v));
@@ -27,12 +28,21 @@ export function computeDemand(s: CityState): void {
   demC -= (s.taxes[1] - TUNING.taxNeutral) * TUNING.taxSlope;
   demI -= (s.taxes[2] - TUNING.taxNeutral) * TUNING.taxSlope;
 
+  // attractions and ordinances
+  demC += TUNING.tourismDemand * countAttractions(s);
+  if (hasPolicy(s, POLICY.TOURISM)) demC += 10;
+  if (hasPolicy(s, POLICY.TAX_HOLIDAY)) {
+    demC += 15;
+    demI += 15;
+  }
+
   // utility caps on the positive side
   const brownout = t.powerDemand > t.powerSupply && t.powerDemand > 0;
   const waterShort = t.waterDemand > t.waterSupply * 1.25 && t.waterDemand > 0;
   let cap = 1;
   if (brownout) cap *= TUNING.capBrownout;
   if (waterShort) cap *= TUNING.capWaterShort;
+  if (t.garbageUncollected > 0.3) cap *= TUNING.capGarbage;
   if (demR > 0) demR *= cap;
   if (demC > 0) demC *= cap;
   if (demI > 0) demI *= cap;
@@ -55,7 +65,19 @@ export function computeDemand(s: CityState): void {
       s.demand[demandIndex(z, wl)] = bar(b > 0 ? b * f : b) - (f <= 0 ? 30 : 0);
     }
   }
+  if (hasPolicy(s, POLICY.CLEAN_AIR)) s.demand[demandIndex(ZONE.I, 1)] = bar(s.demand[demandIndex(ZONE.I, 1)] - 20);
   s.changed |= CHANGE.HUD;
+}
+
+/** Stadiums and landmarks draw visitors. */
+function countAttractions(s: CityState): number {
+  let n = 0;
+  for (let i = 0; i < T; i++) {
+    if (!s.plop[i] || s.plopOrigin[i] !== i) continue;
+    const def = plopDef(s.plop[i]);
+    if (def && (def.key === 'stadium' || def.key === 'landmark')) n++;
+  }
+  return n;
 }
 
 /** Job capacity of one zone kind (non-abandoned buildings). */

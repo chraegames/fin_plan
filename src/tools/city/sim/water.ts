@@ -1,14 +1,16 @@
-// Water: pipes run under every road and from pumps and towers. Pipe tiles
-// form components; a component's supply covers tiles within a square radius
-// of its pipes, shrinking when demand exceeds supply.
+// Water: pipes run under every road, along pipe tiles and from pumps, towers
+// and treatment plants. Pipe tiles form components; a component's supply
+// covers tiles within a square radius of its pipes, shrinking when demand
+// exceeds supply.
 
 import { TUNING, plopDef } from '../constants';
-import { CHANGE, PLOP, SERVICE, T, type CityState } from '../types';
+import { CHANGE, PLOP, POLICY, SERVICE, T, type CityState } from '../types';
 import { waterDemandOf } from './buildings';
 import { effectiveFunding } from './budget';
 import { idx, inBounds, nbr, xOf, yOf } from './grid';
+import { hasPolicy } from './policies';
 
-const isPipe = (s: CityState, i: number): boolean => s.road[i] > 0 || s.plop[i] === PLOP.PUMP || s.plop[i] === PLOP.TOWER;
+const isPipe = (s: CityState, i: number): boolean => s.road[i] > 0 || s.plop[i] === PLOP.PIPE || plopDef(s.plop[i])?.kind === 'water';
 
 function find(parent: Int32Array, i: number): number {
   while (parent[i] !== i) {
@@ -18,10 +20,11 @@ function find(parent: Int32Array, i: number): number {
   return i;
 }
 
-function nearWater(s: CityState, i: number): boolean {
-  const x = xOf(i);
-  const y = yOf(i);
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inBounds(x + dx, y + dy) && s.water[idx(x + dx, y + dy)]) return true;
+/** True when any tile of the plop's footprint touches water (8-neighbourhood). */
+export function touchesWater(s: CityState, origin: number, size: number): boolean {
+  const ox = xOf(origin);
+  const oy = yOf(origin);
+  for (let y = oy - 1; y <= oy + size; y++) for (let x = ox - 1; x <= ox + size; x++) if (inBounds(x, y) && s.water[idx(x, y)]) return true;
   return false;
 }
 
@@ -29,7 +32,7 @@ export function pumpOutput(s: CityState, i: number): number {
   const def = plopDef(s.plop[i]);
   if (!def || def.kind !== 'water' || s.plopOrigin[i] !== i || s.onFire[i]) return 0;
   let out = def.capacity;
-  if (def.id === PLOP.PUMP) out *= (nearWater(s, i) ? 1 : TUNING.pumpFar) * (1 - s.waterPollution[i] / 255 / 2);
+  if (def.id === PLOP.PUMP) out *= (touchesWater(s, i, 1) ? 1 : TUNING.pumpFar) * (1 - s.waterPollution[i] / 255 / 2);
   return out * Math.min(1, effectiveFunding(s, SERVICE.WATER));
 }
 
@@ -93,6 +96,7 @@ export function coverWater(s: CityState): void {
   const supply = s.scratchC;
   supply.fill(0);
   const demand = new Map<number, number>();
+  const saving = hasPolicy(s, POLICY.WATER_SAVING) ? 0.8 : 1;
   let totalSupply = 0;
   let totalDemand = 0;
   for (let i = 0; i < T; i++) {
@@ -103,7 +107,7 @@ export function coverWater(s: CityState): void {
       supply[c] += out;
       totalSupply += out;
     }
-    const d = waterDemandOf(s, i);
+    const d = waterDemandOf(s, i) * saving;
     if (d) {
       demand.set(c, (demand.get(c) ?? 0) + d);
       totalDemand += d;

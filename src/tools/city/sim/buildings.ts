@@ -1,7 +1,8 @@
 // Building tables: what a tile of zone × density × wealth × level holds.
 
 import { CAPACITY, INDUSTRY_EMISSION, POWER_PER_CAPITA, WATER_PER_CAPITA, WEALTH_POP_MULT } from '../constants';
-import { ZONE, type CityState } from '../types';
+import { POLICY, ZONE, type CityState } from '../types';
+import { hasPolicy } from './policies';
 
 export function capacityOf(zone: number, density: number, level: number, wealth: number): number {
   const base = CAPACITY[zone]?.[density]?.[level] ?? 0;
@@ -29,7 +30,7 @@ export function waterDemandOf(s: CityState, i: number): number {
 export function emissionOf(s: CityState, i: number): number {
   if (!s.level[i] || s.abandoned[i]) return 0;
   const z = s.zone[i];
-  if (z === ZONE.I) return INDUSTRY_EMISSION[s.wealth[i]] * s.level[i];
+  if (z === ZONE.I) return INDUSTRY_EMISSION[s.wealth[i]] * s.level[i] * (hasPolicy(s, POLICY.CLEAN_AIR) ? 0.65 : 1);
   if (z === ZONE.C) return s.level[i];
   return 0;
 }

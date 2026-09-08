@@ -32,6 +32,8 @@ interface Origin {
   trips: number;
   block: number;
   commute: number;
+  /** Share of trips made by car (bus riders do not load the roads). */
+  cars: number;
 }
 
 // ─── binary heap over tiles ──────────────────────────────────────────
@@ -152,20 +154,24 @@ export function assignTraffic(s: CityState): void {
   for (let by = 0; by < blocksPerSide; by++) {
     for (let bx = 0; bx < blocksPerSide; bx++) {
       let trips = 0;
+      let transitW = 0;
       let node = -1;
       let bestPop = -1;
       for (let y = by * B; y < (by + 1) * B; y++) {
         for (let x = bx * B; x < (bx + 1) * B; x++) {
           const i = idx(x, y);
           if (!s.level[i] || s.abandoned[i] || s.zone[i] !== ZONE.R || attach[i] < 0) continue;
-          trips += s.pop[i] * TUNING.workforceRate;
+          const w = s.pop[i] * TUNING.workforceRate;
+          trips += w;
+          // commuters on a bus route leave the car at home (they still get a job below)
+          transitW += w * (s.transitCover[i] / 255);
           if (s.pop[i] > bestPop) {
             bestPop = s.pop[i];
             node = attach[i];
           }
         }
       }
-      if (trips > 0 && node >= 0) origins.push({ node, trips, block: by * blocksPerSide + bx, commute: 255 });
+      if (trips > 0 && node >= 0) origins.push({ node, trips, block: by * blocksPerSide + bx, commute: 255, cars: 1 - TUNING.transitTripCut * (transitW / trips) });
     }
   }
   origins.sort((a, b) => b.trips - a.trips || a.block - b.block);
@@ -205,7 +211,7 @@ export function assignTraffic(s: CityState): void {
           let cur = u;
           while (prev[cur] >= 0) {
             const [arr, li] = linkVol(volNew, prev[cur], cur);
-            arr[li] += take;
+            arr[li] += take * o.cars;
             cur = prev[cur];
           }
         }

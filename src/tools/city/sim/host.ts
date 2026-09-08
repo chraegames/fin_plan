@@ -121,6 +121,7 @@ export class SimHost {
       dirtyChunks: dirty,
       changed: s.changed,
       messages: s.messages.slice(),
+      notices: s.notices.splice(0),
       results: s.results.splice(0),
     };
     s.dirtyChunks.fill(0);

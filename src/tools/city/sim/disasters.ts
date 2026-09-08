@@ -20,9 +20,10 @@ function wreck(s: CityState, i: number, fireChance: number): void {
       const n = i + (nextRandom(s) < 0.5 ? 1 : -1);
       if (n >= 0 && n < T) startFire(s, n);
     }
-  } else if (s.plop[i] && s.plop[i] !== PLOP.LINE) {
+  } else if (s.plop[i] && s.plop[i] !== PLOP.LINE && s.plop[i] !== PLOP.PIPE) {
     removePlop(s, i);
-  } else if (s.plop[i] === PLOP.LINE) {
+  } else if (s.plop[i]) {
+    if (s.plop[i] === PLOP.PIPE) s.flags.waterDirty = true;
     s.plop[i] = PLOP.NONE;
     s.plopOrigin[i] = 0;
     s.flags.netDirty = true;

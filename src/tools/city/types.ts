@@ -34,19 +34,40 @@ export const PLOP = {
   UNI: 14,
   PARK_S: 15,
   PARK_L: 16,
+  // added in the progression update (ids are stable: they are saved)
+  PIPE: 17,
+  NUCLEAR: 18,
+  HYDRO: 19,
+  TREATMENT: 20,
+  LANDFILL: 21,
+  INCINERATOR: 22,
+  RECYCLING: 23,
+  BUS: 24,
+  FIRE_HQ: 25,
+  POLICE_HQ: 26,
+  LIBRARY: 27,
+  CITY_HALL: 28,
+  STADIUM: 29,
+  LANDMARK: 30,
+  PLAZA: 31,
 } as const;
 export type PlopId = (typeof PLOP)[keyof typeof PLOP];
+export const PLOP_MAX = 31;
 
 /** Funding slots (index into CityState.funding). */
-export const SERVICE = { POWER: 0, WATER: 1, ROADS: 2, FIRE: 3, POLICE: 4, HEALTH: 5, EDUCATION: 6 } as const;
+export const SERVICE = { POWER: 0, WATER: 1, ROADS: 2, FIRE: 3, POLICE: 4, HEALTH: 5, EDUCATION: 6, GARBAGE: 7, TRANSIT: 8, CIVIC: 9 } as const;
 export type ServiceId = (typeof SERVICE)[keyof typeof SERVICE];
-export const SERVICE_COUNT = 7;
+export const SERVICE_COUNT = 10;
+/** Funding slots older saves carried (they are padded to SERVICE_COUNT on load). */
+export const LEGACY_SERVICE_COUNT = 7;
 
 export const OVERLAYS = [
   'none',
   'power',
   'water',
+  'garbage',
   'traffic',
+  'transit',
   'pollution',
   'landValue',
   'crime',
@@ -58,6 +79,32 @@ export const OVERLAYS = [
   'desirability',
 ] as const;
 export type OverlayKind = (typeof OVERLAYS)[number];
+
+/** Bits of CityState.problems (one byte per building lot origin). */
+export const PROBLEM = {
+  NO_POWER: 1,
+  NO_WATER: 2,
+  NO_ROAD: 4,
+  NO_JOBS: 8, // residents cannot reach work
+  NO_WORKERS: 16, // C/I short of staff
+  NO_CUSTOMERS: 32, // commerce without shoppers nearby
+  GARBAGE: 64,
+  BLIGHT: 128, // crime or pollution heavy enough to drive people away
+} as const;
+export type ProblemBit = (typeof PROBLEM)[keyof typeof PROBLEM];
+
+/** City ordinances (bits of CityState.policies). */
+export const POLICY = {
+  RECYCLING: 1,
+  WATCH: 2,
+  CLEAN_AIR: 4,
+  SMOKE_DETECTORS: 8,
+  FREE_TRANSIT: 16,
+  TOURISM: 32,
+  WATER_SAVING: 64,
+  TAX_HOLIDAY: 128,
+} as const;
+export type PolicyBit = (typeof POLICY)[keyof typeof POLICY];
 
 export interface XY {
   x: number;
@@ -86,9 +133,17 @@ export interface Totals {
   powerDemand: number;
   waterSupply: number;
   waterDemand: number;
+  garbageSupply: number; // collection capacity per month
+  garbageDemand: number; // garbage produced per month
+  garbageUncollected: number; // share of buildings without collection, 0..1
   meanPollution: number;
   meanCrime: number;
   fires: number;
+  zonedR: number; // zoned tiles (built or not) with road access
+  zonedC: number;
+  zonedI: number;
+  happiness: number; // 0..100 pop-weighted residential satisfaction
+  problems: number; // lots with at least one problem
 }
 
 export interface Ledger {
@@ -98,6 +153,7 @@ export interface Ledger {
   incomeI: number;
   expenses: number[]; // SERVICE_COUNT entries
   loanCost: number;
+  policyCost: number;
   net: number;
 }
 
@@ -113,7 +169,30 @@ export interface AdvisorMsg {
   id: string;
   level: AdvisorLevel;
   text: string;
+  /** Optional data view the message is about (the UI offers to open it). */
+  overlay?: OverlayKind;
 }
+
+/** A one-off event for the HUD (milestone reached, disaster, …). */
+export interface Notice {
+  id: number;
+  kind: 'milestone' | 'event';
+  title: string;
+  text: string;
+  /** Plop ids unlocked by a milestone notice. */
+  unlocks?: number[];
+  reward?: number;
+}
+
+/** One monthly sample of the city's curves (HUD graphs). */
+export interface HistoryPoint {
+  month: number;
+  population: number;
+  funds: number;
+  jobs: number;
+  happiness: number;
+}
+export const HISTORY_MAX = 360; // 30 years
 
 export interface CityFlags {
   netDirty: boolean;
@@ -168,11 +247,15 @@ export interface CityState {
   policeCover: Uint8Array;
   healthCover: Uint8Array;
   eduCover: Uint8Array;
+  garbageCover: Uint8Array; // collection reach, 255 = fully served
+  transitCover: Uint8Array; // bus reach along roads
+  civicBoost: Uint8Array; // land value / desirability lift from civic buildings
   edu: Uint8Array;
   health: Uint8Array;
   traffic: Uint8Array; // 128 = at capacity
   commute: Uint8Array; // R tiles: trip cost, 255 = no job reachable
   desirability: Uint8Array;
+  problems: Uint8Array; // PROBLEM bits on lot origins
   parkDist: Uint8Array;
   waterDist: Uint8Array;
   burnTicks: Uint8Array; // ticks a tile has been at full blaze
@@ -192,11 +275,18 @@ export interface CityState {
   nextLoanId: number;
   monthsInRed: number;
   externalConnected: boolean;
+  /** Highest milestone reached (index into MILESTONES); never goes down. */
+  milestone: number;
+  peakPop: number;
+  policies: number; // POLICY bits
+  history: HistoryPoint[];
   flags: CityFlags;
   dirtyChunks: Uint8Array; // CHUNKS entries
   changed: number; // CHANGE_* bitmask since the last snapshot
   messages: AdvisorMsg[];
   results: ActionResult[]; // action results since the last snapshot
+  notices: Notice[]; // events since the last snapshot
+  nextNoticeId: number;
   tornado: Tornado | null; // transient, not saved
 }
 
@@ -211,8 +301,8 @@ export interface Tornado {
 /** Bits of CityState.changed. */
 export const CHANGE = {
   GEOMETRY: 1, // buildings / roads / plops changed (dirtyChunks says where)
-  UTILITY: 2, // powered / watered
-  SOCIAL: 4, // crime, fire risk, coverage, edu, health
+  UTILITY: 2, // powered / watered / garbage
+  SOCIAL: 4, // crime, fire risk, coverage, edu, health, problems
   ENV: 8, // pollution, land value, desirability
   TRAFFIC: 16,
   FIRE: 32,
@@ -230,6 +320,7 @@ export type Tool =
   | { kind: 'road' }
   | { kind: 'avenue' }
   | { kind: 'line' }
+  | { kind: 'pipe' }
   | { kind: 'bulldoze' }
   | { kind: 'plop'; plop: PlopId }
   | { kind: 'disaster'; disaster: DisasterKind };
@@ -242,15 +333,17 @@ export type Action =
   | { type: 'bulldoze'; rect: Rect }
   | { type: 'road'; from: XY; to: XY; avenue?: boolean }
   | { type: 'line'; from: XY; to: XY }
+  | { type: 'pipe'; from: XY; to: XY }
   | { type: 'plop'; plop: PlopId; at: XY }
   | { type: 'setTax'; zone: ZoneKind; rate: number }
   | { type: 'setFunding'; service: ServiceId; level: number }
+  | { type: 'setPolicy'; policy: number; on: boolean }
   | { type: 'loan'; amount: number }
   | { type: 'repay'; id: number }
   | { type: 'disaster'; kind: DisasterKind; at: XY }
   | { type: 'grant'; amount: number }; // debug panel only
 
-export type ActionFail = 'funds' | 'terrain' | 'occupied' | 'bounds' | 'noop';
+export type ActionFail = 'funds' | 'terrain' | 'occupied' | 'bounds' | 'noop' | 'locked' | 'water';
 
 export interface ActionResult {
   id: number;
@@ -274,6 +367,11 @@ export interface HudStats {
   externalConnected: boolean;
   brownout: boolean;
   waterShort: boolean;
+  garbageShort: boolean;
+  milestone: number;
+  peakPop: number;
+  policies: number;
+  history: HistoryPoint[];
   tornado: { x: number; y: number } | null;
 }
 

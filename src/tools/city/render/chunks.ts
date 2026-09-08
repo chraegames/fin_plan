@@ -11,7 +11,7 @@ import { ABANDONED, BURNING, buildingSpec, emitBuilding } from './buildings';
 import { GeometryBuilder, type Built } from './geometryBuilder';
 import type { HeightField } from './heightfield';
 import { emitPlop } from './plops';
-import { emitTree } from './props';
+import { emitConstruction, emitTree } from './props';
 import { emitRoad, MASK_E, MASK_N, MASK_S, MASK_W } from './roads';
 
 const SLOPE_TREE_LIMIT = 0.5;
@@ -70,6 +70,9 @@ export class ChunkManager {
       plop: copy(L.plop),
       plopOrigin: copy(L.plopOrigin),
       onFire: copy(L.onFire),
+      age: copy(L.age),
+      lotSize: copy(L.lotSize),
+      lotOrigin: copy(L.lotOrigin),
     };
   }
 
@@ -129,8 +132,15 @@ export class ChunkManager {
               low = Math.min(low, cc[0], cc[1], cc[2], cc[3]);
             }
           }
-          const linkE = x + 1 < N && (L.plop[i + 1] === PLOP.LINE || (L.plop[i + 1] !== 0 && plopDef(L.plop[i + 1])?.kind === 'power'));
-          const linkS = y + 1 < N && (L.plop[i + N] === PLOP.LINE || (L.plop[i + N] !== 0 && plopDef(L.plop[i + N])?.kind === 'power'));
+          const isPipe = L.plop[i] === PLOP.PIPE;
+          const links = (j: number): boolean => {
+            const p = L.plop[j];
+            if (!p) return false;
+            if (isPipe) return p === PLOP.PIPE || plopDef(p)?.kind === 'water';
+            return p === PLOP.LINE || plopDef(p)?.kind === 'power';
+          };
+          const linkE = x + 1 < N && links(i + 1);
+          const linkS = y + 1 < N && links(i + N);
           emitPlop(b, L.plop[i], x, y, base, low, hashSeed(this.seed, i) & 0xff, linkE, linkS, fire ? BURNING : null);
           continue;
         }
@@ -149,6 +159,10 @@ export class ChunkManager {
           let abandoned = !!L.abandoned[i];
           for (let dy = 0; dy < k && !burning; dy++) for (let dx = 0; dx < k; dx++) if (L.onFire[i + dy * N + dx]) burning = true;
           if (k > 1) for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++) if (L.abandoned[i + dy * N + dx]) abandoned = true;
+          if (L.age[i] === 0 && !burning && !abandoned) {
+            emitConstruction(b, x, y, k, corners, hashSeed(this.seed, i));
+            continue;
+          }
           const spec = buildingSpec(L.zone[i], L.density[i], L.wealth[i], L.level[i], hashSeed(this.seed, i) & 0xff, k);
           emitBuilding(b, x, y, spec, corners, burning ? BURNING : abandoned ? ABANDONED : null);
           continue;

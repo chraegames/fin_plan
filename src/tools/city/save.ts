@@ -4,7 +4,7 @@
 
 import { CITY_KEY, safeSetItem } from '../../utils/persistence';
 import { createCityState } from './sim/state';
-import { SERVICE_COUNT, T, type CityState, type Ledger, type Loan } from './types';
+import { HISTORY_MAX, LEGACY_SERVICE_COUNT, SERVICE_COUNT, T, type CityState, type HistoryPoint, type Ledger, type Loan } from './types';
 
 export const SAVE_VERSION = 1;
 /** Bump when terrain generation changes (old saves would sit on the wrong map). */
@@ -30,6 +30,11 @@ export interface SaveFile {
   nextLoanId: number;
   loans: Loan[];
   ledger: Ledger[];
+  /** Added with the progression update; older saves lack them. */
+  milestone?: number;
+  peakPop?: number;
+  policies?: number;
+  history?: HistoryPoint[];
   layers: Record<string, string>; // name → base64(RLE bytes)
 }
 
@@ -125,6 +130,10 @@ export function encodeSave(s: CityState): SaveFile {
     nextLoanId: s.nextLoanId,
     loans: s.loans.map(l => ({ ...l })),
     ledger: s.ledger.map(l => ({ ...l, expenses: l.expenses.slice() })),
+    milestone: s.milestone,
+    peakPop: s.peakPop,
+    policies: s.policies,
+    history: s.history.map(h => ({ ...h })),
     layers,
   };
 }
@@ -139,7 +148,16 @@ function isLoan(x: unknown): x is Loan {
 }
 function isLedger(x: unknown): x is Ledger {
   const o = x as Ledger;
-  return !!o && isInt(o.month) && isNum(o.incomeR) && isNum(o.incomeC) && isNum(o.incomeI) && numArray(o.expenses, SERVICE_COUNT) && isNum(o.loanCost) && isNum(o.net);
+  return !!o && isInt(o.month) && isNum(o.incomeR) && isNum(o.incomeC) && isNum(o.incomeI) && (numArray(o.expenses, SERVICE_COUNT) || numArray(o.expenses, LEGACY_SERVICE_COUNT)) && isNum(o.loanCost) && isNum(o.net);
+}
+function isHistory(x: unknown): x is HistoryPoint {
+  const o = x as HistoryPoint;
+  return !!o && isInt(o.month) && isNum(o.population) && isNum(o.funds) && isNum(o.jobs) && isNum(o.happiness);
+}
+
+/** Pad a funding / expense list from an older save to today's service count. */
+function padServices(a: number[], fill: number): number[] {
+  return a.length >= SERVICE_COUNT ? a.slice(0, SERVICE_COUNT) : [...a, ...new Array<number>(SERVICE_COUNT - a.length).fill(fill)];
 }
 
 /** Validate a raw JSON string; null when it is not a usable save. */
@@ -154,10 +172,14 @@ export function parseSaveFile(raw: string | null): SaveFile | null {
   if (!o || typeof o !== 'object') return null;
   if (o.v !== SAVE_VERSION || o.gen !== GEN_VERSION) return null;
   if (!isInt(o.seed) || !isInt(o.tick) || o.tick < 0 || !isInt(o.rngState) || !isNum(o.funds)) return null;
-  if (!numArray(o.taxes, 3) || !numArray(o.funding, SERVICE_COUNT) || !numArray(o.demand, 9)) return null;
+  if (!numArray(o.taxes, 3) || !(numArray(o.funding, SERVICE_COUNT) || numArray(o.funding, LEGACY_SERVICE_COUNT)) || !numArray(o.demand, 9)) return null;
   if (!isInt(o.monthsInRed) || !isInt(o.nextLoanId)) return null;
   if (!Array.isArray(o.loans) || !o.loans.every(isLoan)) return null;
   if (!Array.isArray(o.ledger) || !o.ledger.every(isLedger)) return null;
+  if (o.milestone !== undefined && !isInt(o.milestone)) return null;
+  if (o.peakPop !== undefined && !isNum(o.peakPop)) return null;
+  if (o.policies !== undefined && !isInt(o.policies)) return null;
+  if (o.history !== undefined && !(Array.isArray(o.history) && o.history.every(isHistory))) return null;
   if (!o.layers || typeof o.layers !== 'object') return null;
   for (const k of [...SAVED_U8, ...SAVED_U16]) if (typeof o.layers[k] !== 'string' && !OPTIONAL_LAYERS.has(k)) return null;
   return o;
@@ -191,13 +213,32 @@ export function decodeSave(file: SaveFile): CityState | null {
   s.rngState = file.rngState >>> 0;
   s.funds = file.funds;
   s.taxes.set(file.taxes);
-  s.funding.set(file.funding);
+  s.funding.set(padServices(file.funding, 1));
   s.demand.set(file.demand);
   s.monthsInRed = file.monthsInRed;
   s.nextLoanId = file.nextLoanId;
   s.loans = file.loans.map(l => ({ ...l }));
-  s.ledger = file.ledger.map(l => ({ ...l, expenses: l.expenses.slice() }));
+  s.ledger = file.ledger.map(l => ({ ...l, policyCost: l.policyCost ?? 0, expenses: padServices(l.expenses, 0) }));
+  s.peakPop = file.peakPop ?? 0;
+  s.policies = file.policies ?? 0;
+  s.history = (file.history ?? []).slice(-HISTORY_MAX).map(h => ({ ...h }));
+  if (file.milestone !== undefined) s.milestone = Math.max(0, file.milestone);
+  else {
+    // a save from before milestones: grant every tier the city has already earned
+    let pop = 0;
+    for (let i = 0; i < T; i++) if (s.level[i] && !s.abandoned[i]) pop += s.pop[i];
+    s.peakPop = Math.max(s.peakPop, pop);
+    s.milestone = legacyTier(s.peakPop);
+  }
   return s;
+}
+
+/** Milestone tier a population has earned (kept local to avoid a sim import in the save module). */
+function legacyTier(pop: number): number {
+  const steps = [0, 400, 1200, 3000, 7000, 15000, 30000, 60000, 100000];
+  let m = 0;
+  for (let k = 1; k < steps.length; k++) if (pop >= steps[k]) m = k;
+  return m;
 }
 
 export function loadSave(): SaveFile | null {

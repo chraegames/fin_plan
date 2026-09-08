@@ -40,10 +40,14 @@ function union(parent: Int32Array, a: number, b: number): void {
   if (ra !== rb) parent[ra < rb ? rb : ra] = ra < rb ? ra : rb;
 }
 
-/** Plant output on tile i (origin tiles only). */
+/** Plant output on tile i (origin tiles only). Incinerators contribute their by-product. */
 export function plantOutput(s: CityState, i: number): number {
   const def = plopDef(s.plop[i]);
-  if (!def || def.kind !== 'power' || s.plopOrigin[i] !== i || s.onFire[i]) return 0;
+  if (!def || s.plopOrigin[i] !== i || s.onFire[i]) return 0;
+  if (def.kind !== 'power') {
+    if (!def.power) return 0;
+    return def.power * Math.min(1, effectiveFunding(s, def.service < 0 ? SERVICE.POWER : def.service));
+  }
   let out = def.capacity;
   if (def.key === 'wind') out *= 0.6 + Math.max(0, s.height[i] - s.sea) * 2;
   return out * Math.min(1, effectiveFunding(s, SERVICE.POWER));

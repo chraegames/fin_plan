@@ -10,10 +10,12 @@ import { HeightField } from './heightfield';
 import { buildOverlayRGBA } from './overlay';
 import { DARK_PALETTE, LIGHT_PALETTE, type ScenePalette } from './palette';
 import { groundPoint, pickTile, type Ray } from './picking';
-import { createRoadAtlas, createWindowTexture } from './roadAtlas';
+import { createRoadAtlas, createWindowGlowTexture, createWindowTexture } from './roadAtlas';
 import { buildTerrainChunks, createRoadMaterial, createTerrainMaterial, type TerrainUniforms } from './terrain';
 import { VehicleField } from './vehicles';
-import { createSkyDome, FireSparks, recolorSkyDome, TornadoFunnel, WindBlades } from './effects';
+import { createSkyDome, dayLook, FireSparks, recolorSkyDome, TornadoFunnel, WindBlades, type DayLook } from './effects';
+import { createMarkerAtlas, ProblemMarkers } from './markers';
+import { hashSeed } from '../rng';
 
 export interface TerrainData {
   seed: number;
@@ -27,7 +29,9 @@ const OVERLAY_DEPS: Record<OverlayKind, number> = {
   none: CHANGE.GEOMETRY,
   power: CHANGE.GEOMETRY | CHANGE.UTILITY,
   water: CHANGE.GEOMETRY | CHANGE.UTILITY,
+  garbage: CHANGE.GEOMETRY | CHANGE.UTILITY,
   traffic: CHANGE.GEOMETRY | CHANGE.TRAFFIC,
+  transit: CHANGE.GEOMETRY | CHANGE.SOCIAL,
   pollution: CHANGE.GEOMETRY | CHANGE.ENV,
   landValue: CHANGE.GEOMETRY | CHANGE.ENV,
   crime: CHANGE.GEOMETRY | CHANGE.SOCIAL,
@@ -63,16 +67,25 @@ export class CityRenderer {
   private readonly sparks: FireSparks;
   private readonly blades: WindBlades;
   private readonly funnel: TornadoFunnel;
+  private readonly markers: ProblemMarkers;
+  private readonly markerAtlas: THREE.Texture;
+  private readonly glowTex: THREE.CanvasTexture;
   private readonly sky: THREE.Mesh;
   private shake = 0;
   private time = 0;
   /** Sim speed, used to pace the cosmetic traffic. */
   speed = 1;
+  /** Time of day 0..1 (0 = midnight); advances in real time while the cycle is on. */
+  private clock = 0.42;
+  private dayCycle = true;
+  private readonly look: DayLook = { daylight: 1, skyTop: new THREE.Color(), skyHorizon: new THREE.Color(), sun: new THREE.Color(), sunDir: new THREE.Vector3(0, 1, 0), glow: 0 };
+  private lookDirty = true;
   private readonly buildMat: THREE.MeshLambertMaterial;
   private readonly roadMat: THREE.ShaderMaterial;
   private readonly windowTex: THREE.CanvasTexture;
   private readonly roadTex: THREE.CanvasTexture;
   private readonly water: Uint8Array;
+  private readonly seed: number;
   /** The renderer's own copy of the latest snapshot layers (safe to read any time). */
   readonly layers: SnapshotLayers = allocLayers();
   hasSnapshot = false;
@@ -104,10 +117,12 @@ export class CityRenderer {
     this.terrainMeshes = buildTerrainChunks(this.hf, terrain.seed, this.terrainMat);
     for (const m of this.terrainMeshes) this.scene.add(m);
     this.water = terrain.water;
+    this.seed = terrain.seed;
 
     this.windowTex = createWindowTexture();
+    this.glowTex = createWindowGlowTexture();
     this.roadTex = createRoadAtlas();
-    this.buildMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: this.windowTex });
+    this.buildMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: this.windowTex, emissiveMap: this.glowTex, emissive: new THREE.Color(0x000000) });
     this.roadMat = createRoadMaterial(this.roadTex, this.overlayTex);
     this.chunks = new ChunkManager(this.hf, terrain.seed, terrain.water, terrain.slope, this.buildMat, this.roadMat);
     this.scene.add(this.chunks.group);
@@ -119,6 +134,9 @@ export class CityRenderer {
     this.scene.add(this.blades.mesh);
     this.funnel = new TornadoFunnel(this.hf);
     this.scene.add(this.funnel.points);
+    this.markerAtlas = createMarkerAtlas();
+    this.markers = new ProblemMarkers(this.hf, this.markerAtlas);
+    this.scene.add(this.markers.points);
     this.sky = createSkyDome(LIGHT_PALETTE.skyTop, LIGHT_PALETTE.skyHorizon);
     this.scene.add(this.sky);
 
@@ -161,7 +179,50 @@ export class CityRenderer {
     this.sun.intensity = p.sunIntensity;
     this.waterMat.color.set(p.water);
     this.waterMat.opacity = p.waterOpacity;
+    this.lookDirty = true;
     this.needsRender = true;
+  }
+
+  /** Turn the day/night cycle on or off (off = the theme's fixed daylight look). */
+  setDayCycle(on: boolean): void {
+    if (this.dayCycle === on) return;
+    this.dayCycle = on;
+    if (!on) this.clock = 0.42;
+    this.lookDirty = true;
+    this.needsRender = true;
+  }
+
+  /** Debug: jump the day/night clock to `t` in [0, 1). */
+  setClock(t: number): void {
+    this.clock = ((t % 1) + 1) % 1;
+    this.lookDirty = true;
+    this.needsRender = true;
+  }
+
+  setMarkers(on: boolean): void {
+    this.markers.setEnabled(on);
+    this.needsRender = true;
+  }
+
+  /** Apply the current time of day to sky, lights, fog, ground tint and window glow. */
+  private applyLook(): void {
+    const p = this.palette;
+    const L = dayLook(this.dayCycle ? this.clock : 0.42, p.skyTop, p.skyHorizon, p.sun, this.look);
+    recolorSkyDome(this.sky, L.skyTop, L.skyHorizon);
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.copy(L.skyHorizon);
+    (this.scene.background as THREE.Color).copy(L.skyHorizon);
+    const d = L.daylight;
+    this.sun.color.copy(L.sun);
+    this.sun.intensity = p.sunIntensity * (0.06 + 0.94 * d);
+    this.sun.position.copy(L.sunDir).multiplyScalar(100);
+    this.hemi.intensity = p.hemiIntensity * (0.3 + 0.7 * d);
+    this.hemi.color.set(p.hemiSky).lerp(L.skyTop, 1 - d);
+    const tint = p.groundTint * (0.34 + 0.66 * d);
+    this.uniforms.tint.value = tint;
+    (this.roadMat.uniforms.tint as THREE.IUniform).value = tint;
+    this.buildMat.emissive.setRGB(0.95 * L.glow, 0.8 * L.glow, 0.45 * L.glow);
+    this.lookDirty = false;
   }
 
   resize(width: number, height: number): void {
@@ -201,6 +262,7 @@ export class CityRenderer {
     if (snap.changed & (CHANGE.TRAFFIC | CHANGE.GEOMETRY)) this.vehicles.resample(this.layers);
     if (snap.changed & (CHANGE.FIRE | CHANGE.GEOMETRY)) this.sparks.resample(this.layers);
     if (snap.changed & CHANGE.GEOMETRY) this.blades.resample(this.layers);
+    if (snap.changed & (CHANGE.SOCIAL | CHANGE.GEOMETRY)) this.markers.resample(this.layers, i => hashSeed(this.seed, i));
     if (snap.changed & CHANGE.QUAKE) this.shake = 1.2;
     this.funnel.set(snap.hud.tornado);
     this.needsRender = true;
@@ -252,7 +314,17 @@ export class CityRenderer {
     if (moving) this.needsRender = true;
     if (this.chunks.update(4) > 0) this.needsRender = true;
     this.time += dt * (this.speed === 0 ? 0.25 : 1);
+    if (this.dayCycle) {
+      // one full day every four minutes at normal speed; a little faster when the sim runs fast
+      this.clock = (this.clock + (dt / 240) * (this.speed === 0 ? 0.2 : 0.75 + 0.25 * this.speed)) % 1;
+      this.lookDirty = true;
+    }
+    if (this.lookDirty) {
+      this.applyLook();
+      this.needsRender = true;
+    }
     if (this.vehicles.update(dt, this.speed)) this.needsRender = true;
+    if (this.markers.update(this.time)) this.needsRender = true;
     if (this.sparks.update(this.time)) this.needsRender = true;
     if (this.blades.update(this.time)) this.needsRender = true;
     if (this.funnel.update(this.time, dt)) this.needsRender = true;
@@ -292,6 +364,9 @@ export class CityRenderer {
     this.sparks.dispose();
     this.blades.dispose();
     this.funnel.dispose();
+    this.markers.dispose();
+    this.markerAtlas.dispose();
+    this.glowTex.dispose();
     this.sky.geometry.dispose();
     (this.sky.material as THREE.Material).dispose();
     this.buildMat.dispose();

@@ -8,6 +8,9 @@ import { markDirty } from './state';
 import { buildable } from './terrain';
 import { earthquake, startTornado } from './disasters';
 import { demolish } from './growth';
+import { AVENUE_TIER, densityUnlocked, isUnlocked, LOAN_TIER, POLICY_TIER } from './milestones';
+import { POLICIES } from './policies';
+import { touchesWater } from './water';
 
 const lineBuf: number[] = [];
 
@@ -50,7 +53,7 @@ export function removePlop(s: CityState, i: number): void {
 
 function flagPlop(s: CityState, kind: string): void {
   s.flags.netDirty = true;
-  if (kind === 'water') s.flags.waterDirty = true;
+  if (kind === 'water' || kind === 'pipe') s.flags.waterDirty = true;
   if (kind === 'park' || kind === 'water') s.flags.distDirty = true;
   s.flags.serviceDirty = true;
 }
@@ -67,6 +70,7 @@ function charge(s: CityState, id: number, cost: number): ActionResult | null {
   return null;
 }
 
+/** Footprint is free (terrain and occupancy only — see plopFail for the rest). */
 export function canPlop(s: CityState, plop: number, at: XY): boolean {
   const def = plopDef(plop);
   if (!def) return false;
@@ -79,6 +83,16 @@ export function canPlop(s: CityState, plop: number, at: XY): boolean {
   return true;
 }
 
+/** Why a plop cannot go at `at`, or null when it can. */
+export function plopFail(s: CityState, plop: number, at: XY): ActionFail | null {
+  const def = plopDef(plop);
+  if (!def || def.id === PLOP.LINE || def.id === PLOP.PIPE) return 'noop';
+  if (!isUnlocked(s, plop)) return 'locked';
+  if (!canPlop(s, plop, at)) return 'occupied';
+  if (def.needsWater && !touchesWater(s, idx(at.x, at.y), def.size)) return 'water';
+  return null;
+}
+
 /** Preview cost of an action without applying it (for the HUD). */
 export function previewCost(s: CityState, a: Action): number {
   switch (a.type) {
@@ -89,13 +103,14 @@ export function previewCost(s: CityState, a: Action): number {
       return n * COST.zone;
     }
     case 'road':
-    case 'line': {
+    case 'line':
+    case 'pipe': {
       lineTiles(a.from, a.to, lineBuf);
       let n = 0;
       for (const i of lineBuf) {
         if (a.type === 'road') {
           if (roadable(s, i, !!a.avenue)) n += roadCost(s, i, !!a.avenue);
-        } else if (lineable(s, i)) n += plopDef(PLOP.LINE)?.cost ?? 5;
+        } else if (lineable(s, i)) n += plopDef(a.type === 'line' ? PLOP.LINE : PLOP.PIPE)?.cost ?? 5;
       }
       return n;
     }
@@ -137,6 +152,7 @@ function hasSomething(s: CityState, i: number): boolean {
 export function applyAction(s: CityState, a: Action, id: number): ActionResult {
   switch (a.type) {
     case 'zone': {
+      if (!densityUnlocked(s, a.density)) return fail(id, 'locked');
       const r = clampRect(a.rect);
       const tiles: number[] = [];
       for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) if (zoneable(s, idx(x, y), a.zone, a.density)) tiles.push(idx(x, y));
@@ -198,14 +214,17 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
       return { id, ok: true, cost };
     }
     case 'road':
-    case 'line': {
+    case 'line':
+    case 'pipe': {
       lineTiles(a.from, a.to, lineBuf);
       const isRoad = a.type === 'road';
       const avenue = isRoad && !!a.avenue;
+      if (avenue && s.milestone < AVENUE_TIER) return fail(id, 'locked');
+      const linePlop = a.type === 'line' ? PLOP.LINE : PLOP.PIPE;
       const tiles = lineBuf.filter(i => (isRoad ? roadable(s, i, avenue) : lineable(s, i)));
-      if (!tiles.length) return fail(id, lineBuf.every(i => (isRoad ? s.road[i] : s.plop[i] === PLOP.LINE)) ? 'noop' : 'terrain');
+      if (!tiles.length) return fail(id, lineBuf.every(i => (isRoad ? s.road[i] : s.plop[i] === linePlop)) ? 'noop' : 'terrain');
       let cost = 0;
-      for (const i of tiles) cost += isRoad ? roadCost(s, i, avenue) : (plopDef(PLOP.LINE)?.cost ?? 5);
+      for (const i of tiles) cost += isRoad ? roadCost(s, i, avenue) : (plopDef(linePlop)?.cost ?? 5);
       const err = charge(s, id, cost);
       if (err) return err;
       for (const i of tiles) {
@@ -213,13 +232,13 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
         s.density[i] = 0;
         if (isRoad) s.road[i] = avenue ? 2 : 1;
         else {
-          s.plop[i] = PLOP.LINE;
+          s.plop[i] = linePlop;
           s.plopOrigin[i] = i;
         }
         markDirty(s, i);
       }
       s.flags.netDirty = true;
-      if (isRoad) {
+      if (isRoad || linePlop === PLOP.PIPE) {
         s.flags.waterDirty = true;
         s.flags.serviceDirty = true;
       }
@@ -227,8 +246,8 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
     }
     case 'plop': {
       const def = plopDef(a.plop);
-      if (!def || def.id === PLOP.LINE) return fail(id, 'noop');
-      if (!canPlop(s, a.plop, a.at)) return fail(id, 'occupied');
+      const why = plopFail(s, a.plop, a.at);
+      if (!def || why) return fail(id, why ?? 'noop');
       const err = charge(s, id, def.cost);
       if (err) return err;
       const origin = idx(a.at.x, a.at.y);
@@ -259,7 +278,19 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
       s.changed |= CHANGE.HUD;
       return { id, ok: true, cost: 0 };
     }
+    case 'setPolicy': {
+      if (s.milestone < POLICY_TIER) return fail(id, 'locked');
+      if (!POLICIES.some(p => p.bit === a.policy)) return fail(id, 'noop');
+      const next = a.on ? s.policies | a.policy : s.policies & ~a.policy;
+      if (next === s.policies) return fail(id, 'noop');
+      s.policies = next;
+      s.flags.serviceDirty = true;
+      s.flags.waterDirty = true;
+      s.changed |= CHANGE.HUD;
+      return { id, ok: true, cost: 0 };
+    }
     case 'loan': {
+      if (s.milestone < LOAN_TIER) return fail(id, 'locked');
       if (!(TUNING.loanSizes as readonly number[]).includes(a.amount) || s.loans.length >= 3) return fail(id, 'noop');
       s.loans.push({ id: s.nextLoanId++, principal: a.amount, balance: a.amount, monthsLeft: TUNING.loanMonths });
       s.funds += a.amount;
@@ -285,7 +316,7 @@ export function applyAction(s: CityState, a: Action, id: number): ActionResult {
       if (!inBounds(a.at.x, a.at.y)) return fail(id, 'bounds');
       const i = idx(a.at.x, a.at.y);
       if (a.kind === 'fire') {
-        if (!(s.level[i] || (s.plop[i] && s.plop[i] !== PLOP.LINE))) return fail(id, 'noop');
+        if (!(s.level[i] || (s.plop[i] && s.plop[i] !== PLOP.LINE && s.plop[i] !== PLOP.PIPE))) return fail(id, 'noop');
         s.onFire[i] = 120;
         s.flags.anyFire = true;
         s.changed |= CHANGE.FIRE;

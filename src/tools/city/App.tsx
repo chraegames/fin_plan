@@ -15,15 +15,23 @@ import { Advisor } from './ui/Advisor';
 import { BudgetPanel } from './ui/BudgetPanel';
 import { DebugPanel } from './ui/DebugPanel';
 import { Inspector } from './ui/Inspector';
+import { Legend } from './ui/Legend';
+import { MilestonePanel } from './ui/MilestonePanel';
 import { NewCityDialog } from './ui/NewCityDialog';
+import { NoticeBanner } from './ui/NoticeBanner';
+import { Onboarding } from './ui/Onboarding';
+import { onboardingSteps } from './ui/onboardingSteps';
+import { loadPrefs, savePrefs, type CityPrefs } from './ui/prefs';
+import { StatsPanel } from './ui/StatsPanel';
 import { CITY_STYLES } from './ui/styles';
 import { CityIcon } from './ui/icons';
 import { Toolbar } from './ui/Toolbar';
-import { TopBar } from './ui/TopBar';
+import { TopBar, type ViewPrefs } from './ui/TopBar';
 import { canPlopAt, plopRect } from './ui/validity';
 import { isLocalHost } from '../../utils/env';
 import { densifyActions, findSite, serviceActions, townActions } from './sim/scenario';
-import { type Action, type ActionFail, type AdvisorMsg, type Density, type HudStats, type OverlayKind, type Rect, type Speed, type Tool, type XY } from './types';
+import { MILESTONES } from './sim/milestones';
+import { type Action, type ActionFail, type AdvisorMsg, type Density, type HudStats, type Notice, type OverlayKind, type Rect, type Speed, type Tool, type XY } from './types';
 
 const entry = byPath('/city/')!;
 const HUD_INTERVAL = 250;
@@ -35,7 +43,11 @@ const FAIL_TEXT: Record<ActionFail, string> = {
   occupied: 'That spot is not free.',
   bounds: 'Out of bounds.',
   noop: 'Nothing to do there.',
+  locked: 'Not unlocked yet — grow the city to the next milestone.',
+  water: 'This must be built on the shore, touching water.',
 };
+
+type Sheet = 'budget' | 'stats' | 'milestones' | null;
 
 function modeFor(tool: Tool): 'pan' | 'point' | 'rect' | 'line' {
   switch (tool.kind) {
@@ -44,6 +56,7 @@ function modeFor(tool: Tool): 'pan' | 'point' | 'rect' | 'line' {
     case 'road':
     case 'avenue':
     case 'line':
+    case 'pipe':
       return 'line';
     case 'plop':
     case 'disaster':
@@ -65,7 +78,9 @@ export default function App() {
   const [speed, setSpeed] = useState<Speed>(1);
   const [paint, setPaint] = useState(false);
   const [selected, setSelected] = useState<XY | null>(null);
-  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [prefs, setPrefs] = useState<CityPrefs>(() => loadPrefs());
   const [debugOpen, setDebugOpen] = useState(false);
   const debugAllowed = isLocalHost() || (typeof window !== 'undefined' && /[?&]debug=1/.test(window.location.search));
   const [confirmNew, setConfirmNew] = useState(false);
@@ -100,6 +115,27 @@ export default function App() {
   useEffect(() => {
     rendererRef.current?.setOverlay(overlay);
   }, [overlay]);
+  useEffect(() => {
+    const r = rendererRef.current;
+    if (r) {
+      r.setDayCycle(prefs.dayCycle);
+      r.setMarkers(prefs.markers);
+    }
+  }, [prefs, terrain]);
+  const updatePrefs = useCallback((p: CityPrefs) => {
+    setPrefs(p);
+    savePrefs(p);
+  }, []);
+  const onViewPrefs = useCallback((v: ViewPrefs) => updatePrefs({ ...prefs, ...v }), [prefs, updatePrefs]);
+
+  // milestone banners, one at a time: the head of the queue shows for nine seconds
+  const notice = notices[0] ?? null;
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotices(q => q.slice(1)), 9000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+  const dismissNotice = useCallback(() => setNotices(q => q.slice(1)), []);
   useEffect(() => {
     clientRef.current?.setSpeed(speed);
     if (rendererRef.current) rendererRef.current.speed = speed;
@@ -145,6 +181,10 @@ export default function App() {
         lastHudAt.current = now;
         setHud(snap.hud);
         setMessages(snap.messages);
+      }
+      if (snap.notices.length) {
+        setNotices(q => [...q, ...snap.notices]);
+        for (const n of snap.notices) if (n.kind === 'milestone') track('city_milestone', { tier: MILESTONES[snap.hud.milestone]?.name ?? '' });
       }
       if (month && snap.tick !== lastSavedTick.current && snap.tick > 0) {
         lastSavedTick.current = snap.tick;
@@ -193,7 +233,7 @@ export default function App() {
       const ok = !!(r && g && r.hasSnapshot && canPlopAt(r.layers, g, t.plop, a));
       return { rect: plopRect(t.plop, a), ok };
     }
-    if (t.kind === 'road' || t.kind === 'avenue' || t.kind === 'line') return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
+    if (t.kind === 'road' || t.kind === 'avenue' || t.kind === 'line' || t.kind === 'pipe') return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
     return { rect: { x0: a.x, y0: a.y, x1: b.x, y1: b.y }, ok: true };
   }, []);
 
@@ -243,6 +283,9 @@ export default function App() {
           case 'line':
             dispatch({ type: 'line', from: t, to: t });
             break;
+          case 'pipe':
+            dispatch({ type: 'pipe', from: t, to: t });
+            break;
           case 'zone':
             dispatch({ type: 'zone', zone: tool.zone, density: tool.density, rect: { x0: t.x, y0: t.y, x1: t.x, y1: t.y } });
             break;
@@ -258,7 +301,7 @@ export default function App() {
         const r = rendererRef.current;
         if (!r) return;
         const tool = toolRef.current;
-        if (tool.kind === 'road' || tool.kind === 'avenue' || tool.kind === 'line') r.setCursorLine(a, b);
+        if (tool.kind === 'road' || tool.kind === 'avenue' || tool.kind === 'line' || tool.kind === 'pipe') r.setCursorLine(a, b);
         else {
           const c = cursorFor(tool, a, b);
           r.setCursor(c.rect, c.ok);
@@ -286,6 +329,9 @@ export default function App() {
           case 'line':
             dispatch({ type: 'line', from: a, to: b });
             break;
+          case 'pipe':
+            dispatch({ type: 'pipe', from: a, to: b });
+            break;
           default:
             break;
         }
@@ -309,6 +355,12 @@ export default function App() {
       scenario: { findSite, townActions, serviceActions, densifyActions },
       setSpeed: (s: Speed) => setSpeed(s),
       openDebug: () => setDebugOpen(true),
+      openSheet: (k: Sheet) => setSheet(k),
+      setOverlay: (k: OverlayKind) => setOverlay(k),
+      setTool: (t: Tool) => setTool(t),
+      select: (t: XY | null) => setSelected(t),
+      setPrefs: (p: Partial<CityPrefs>) => setPrefs(cur => ({ ...cur, ...p })),
+      setClock: (t: number) => rendererRef.current?.setClock(t),
     };
     return () => {
       delete w.__city;
@@ -325,8 +377,23 @@ export default function App() {
         case 'Escape':
           setTool({ kind: 'inspect' });
           setSelected(null);
-          setBudgetOpen(false);
+          setSheet(null);
           setDebugOpen(false);
+          break;
+        case 'l':
+          setTool({ kind: 'line' });
+          break;
+        case 'w':
+          setTool({ kind: 'pipe' });
+          break;
+        case 'm':
+          setSheet(k => (k === 'milestones' ? null : 'milestones'));
+          break;
+        case 'g':
+          setSheet(k => (k === 'stats' ? null : 'stats'));
+          break;
+        case 'f':
+          setSheet(k => (k === 'budget' ? null : 'budget'));
           break;
         case '`':
           if (debugAllowed) setDebugOpen(o => !o);
@@ -385,6 +452,7 @@ export default function App() {
       setHud(null);
       setSelected(null);
       setTerrain(null);
+      setSheet(null);
       client.init(seed);
       client.setSpeed(speed);
       track('city_started', { seed });
@@ -392,35 +460,58 @@ export default function App() {
     [speed],
   );
 
+  const seed = terrain?.seed ?? -1;
+  const onboardingVisible = !!hud && !isMobile && prefs.onboardingDoneSeed !== seed && hud.milestone === 0 && !onboardingSteps(hud).every(st => st.done);
+  const toggleSheet = (k: Sheet) => setSheet(cur => (cur === k ? null : k));
+
   return (
     <ToolShell entry={entry} layout="full">
       <div className="city-root">
         <div className="city-hud">
-          <TopBar hud={hud} speed={speed} overlay={overlay} onSpeed={setSpeed} onOverlay={setOverlay} onBudget={() => setBudgetOpen(o => !o)} onNewCity={() => setConfirmNew(true)} compact={isMobile} />
+          <TopBar
+            hud={hud}
+            speed={speed}
+            overlay={overlay}
+            prefs={prefs}
+            onSpeed={setSpeed}
+            onOverlay={setOverlay}
+            onPrefs={onViewPrefs}
+            onBudget={() => toggleSheet('budget')}
+            onStats={() => toggleSheet('stats')}
+            onMilestones={() => toggleSheet('milestones')}
+            onNewCity={() => setConfirmNew(true)}
+            compact={isMobile}
+          />
           {isMobile && (
             <button type="button" className={`city-btn city-paint${paint ? ' city-on' : ''}`} aria-pressed={paint} onClick={() => setPaint(p => !p)} title="One-finger drag applies the tool">
               <CityIcon name="paint" size={16} /> Paint
             </button>
           )}
         </div>
-        <Toolbar tool={tool} density={density} onTool={onTool} onDensity={onDensity} compact={isMobile} />
+        <Toolbar tool={tool} density={density} milestone={hud?.milestone ?? 0} onTool={onTool} onDensity={onDensity} compact={isMobile} />
         <Viewport terrain={terrain} rendererRef={rendererRef} handlersRef={handlersRef} panCursor={tool.kind === 'inspect'} />
-        <Advisor messages={messages} />
-        {selected && <Inspector tile={selected} layers={layers} version={hud?.tick ?? 0} onClose={() => setSelected(null)} />}
+        {onboardingVisible && hud && <Onboarding hud={hud} onClose={() => updatePrefs({ ...prefs, onboardingDoneSeed: seed })} />}
+        <Advisor messages={messages} onOverlay={setOverlay} />
+        {notice && <NoticeBanner notice={notice} onClose={dismissNotice} onMilestones={() => { dismissNotice(); setSheet('milestones'); }} />}
+        {selected && <Inspector tile={selected} layers={layers} version={hud?.tick ?? 0} onClose={() => setSelected(null)} onOverlay={setOverlay} />}
+        {!selected && <Legend overlay={overlay} onClose={() => setOverlay('none')} />}
         {debugOpen && debugAllowed && (
           <DebugPanel hud={hud} layers={layers} version={hud?.tick ?? 0} onFastForward={ticks => clientRef.current?.fastForward(ticks)} onGrant={amount => dispatch({ type: 'grant', amount })} onTuning={o => clientRef.current?.setTuning(o)} onClose={() => setDebugOpen(false)} />
         )}
-        {budgetOpen && (
+        {sheet === 'budget' && (
           <BudgetPanel
             hud={hud}
             onTax={(zone, rate) => dispatch({ type: 'setTax', zone, rate })}
             onFunding={(service, level) => dispatch({ type: 'setFunding', service, level })}
+            onPolicy={(policy, on) => dispatch({ type: 'setPolicy', policy, on })}
             onLoan={amount => dispatch({ type: 'loan', amount })}
             onRepay={id => dispatch({ type: 'repay', id })}
-            onClose={() => setBudgetOpen(false)}
+            onClose={() => setSheet(null)}
           />
         )}
-        {!isMobile && <div className="city-hint">drag · pan &nbsp;|&nbsp; right-drag · orbit &nbsp;|&nbsp; wheel · zoom &nbsp;|&nbsp; R C I T B · tools &nbsp;|&nbsp; P · pause &nbsp;|&nbsp; Esc · inspect</div>}
+        {sheet === 'stats' && <StatsPanel hud={hud} onClose={() => setSheet(null)} />}
+        {sheet === 'milestones' && <MilestonePanel hud={hud} onClose={() => setSheet(null)} />}
+        {!isMobile && overlay === 'none' && !selected && <div className="city-hint">drag · pan &nbsp;|&nbsp; right-drag · orbit &nbsp;|&nbsp; wheel · zoom &nbsp;|&nbsp; R C I T B · tools &nbsp;|&nbsp; F G M · budget stats milestones &nbsp;|&nbsp; P · pause &nbsp;|&nbsp; Esc · inspect</div>}
         {toast && (
           <div className="city-panel city-toast" role="status">
             <span className="city-tile" style={{ background: 'var(--cp-danger)', width: 24, height: 24, borderRadius: 7 }}>
@@ -442,4 +533,3 @@ export default function App() {
     </ToolShell>
   );
 }
-

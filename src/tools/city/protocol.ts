@@ -1,7 +1,7 @@
 // Worker ↔ main-thread protocol. Snapshots are one ArrayBuffer with a fixed
 // layer layout, transferred (not copied) and recycled back to the worker.
 
-import type { ActionResult, AdvisorMsg, CityState, HudStats, Ledger, Loan } from './types';
+import type { ActionResult, AdvisorMsg, CityState, HudStats, Ledger, Loan, Notice } from './types';
 import { T, type Action, type Speed } from './types';
 import type { SaveFile } from './save';
 import type { TunableKey } from './constants';
@@ -11,6 +11,7 @@ export const SNAPSHOT_LAYERS = [
   ['lotOrigin', 2],
   ['pop', 2],
   ['jobs', 2],
+  ['age', 2],
   ['zone', 1],
   ['density', 1],
   ['road', 1],
@@ -36,6 +37,10 @@ export const SNAPSHOT_LAYERS = [
   ['health', 1],
   ['commute', 1],
   ['roadAccess', 1],
+  ['garbageCover', 1],
+  ['transitCover', 1],
+  ['civicBoost', 1],
+  ['problems', 1],
 ] as const;
 
 export type LayerName = (typeof SNAPSHOT_LAYERS)[number][0];
@@ -51,6 +56,7 @@ export interface Snapshot {
   changed: number;
   hud: HudStats;
   messages: AdvisorMsg[];
+  notices: Notice[];
   buf: ArrayBuffer;
 }
 
@@ -91,6 +97,11 @@ export function buildHud(s: CityState): HudStats {
     externalConnected: s.externalConnected,
     brownout: t.powerDemand > t.powerSupply && t.powerDemand > 0,
     waterShort: t.waterDemand > t.waterSupply * 1.25 && t.waterDemand > 0,
+    garbageShort: t.population >= 150 && t.garbageUncollected > 0.3,
+    milestone: s.milestone,
+    peakPop: s.peakPop,
+    policies: s.policies,
+    history: s.history,
     tornado: s.tornado ? { x: s.tornado.x, y: s.tornado.y } : null,
   };
 }
@@ -107,6 +118,6 @@ export type MainToWorker =
 
 export type WorkerToMain =
   | { type: 'terrain'; seed: number; height: Float32Array; sea: number; water: Uint8Array; slope: Uint8Array }
-  | { type: 'snapshot'; buf: ArrayBuffer; tick: number; hud: HudStats; dirtyChunks: Uint8Array; changed: number; messages: AdvisorMsg[]; results: ActionResult[] }
+  | { type: 'snapshot'; buf: ArrayBuffer; tick: number; hud: HudStats; dirtyChunks: Uint8Array; changed: number; messages: AdvisorMsg[]; notices: Notice[]; results: ActionResult[] }
   | { type: 'save'; id: number; file: SaveFile }
   | { type: 'error'; message: string };

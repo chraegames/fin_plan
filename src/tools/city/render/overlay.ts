@@ -70,6 +70,13 @@ export function buildOverlayRGBA(kind: OverlayKind, L: SnapshotLayers, water: Ui
           binary = true;
           v = L.zone[i] || L.level[i] || L.plop[i] ? (L.watered[i] ? 1 : 0) : -1;
           break;
+        case 'garbage':
+          binary = true;
+          v = L.level[i] && !L.abandoned[i] ? (L.garbageCover[i] >= 128 ? 1 : 0) : -1;
+          break;
+        case 'transit':
+          v = L.road[i] || L.level[i] ? L.transitCover[i] / 255 : -1;
+          break;
         case 'traffic':
           v = L.road[i] ? L.traffic[i] / 255 : -1;
           good = false;
@@ -134,5 +141,5 @@ export function buildOverlayRGBA(kind: OverlayKind, L: SnapshotLayers, water: Ui
   }
 }
 
-export const isBinaryOverlay = (k: OverlayKind): boolean => k === 'power' || k === 'water';
+export const isBinaryOverlay = (k: OverlayKind): boolean => k === 'power' || k === 'water' || k === 'garbage';
 export { ZONE };

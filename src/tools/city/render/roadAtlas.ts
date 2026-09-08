@@ -120,3 +120,36 @@ export function createWindowTexture(): THREE.CanvasTexture {
   tex.anisotropy = 4;
   return tex;
 }
+
+/**
+ * Night windows for the emissive map: four cells (2×2) so neighbouring windows
+ * differ — three lit in warm tones, one dark. Sampled with repeat 0.5 so each
+ * cell lines up with one cell of the day texture.
+ */
+export function createWindowGlowTexture(): THREE.CanvasTexture {
+  const S = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, S, S);
+  const cells: [number, number, string][] = [
+    [0, 0, '#ffd27a'],
+    [32, 0, '#ffe9b0'],
+    [0, 32, '#000000'],
+    [32, 32, '#ffc860'],
+  ];
+  for (const [ox, oy, col] of cells) {
+    ctx.fillStyle = col;
+    ctx.fillRect(ox + 9, oy + 9, 14, 16);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(0.5, 0.5);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  return tex;
+}

@@ -1,11 +1,12 @@
 // Helpers shared by the sim tests: a state on a flat, fully buildable map.
 
 import { SERVICE_COUNT, T, type Action, type CityState } from '../types';
+import { MILESTONES } from './milestones';
 import { createCityState } from './state';
 import { applyActions, primeDerived, tick } from './tick';
 
-/** A state whose terrain is flattened: all land, no slope, so layouts are predictable. */
-export function flatState(seed = 1, funds = 1_000_000): CityState {
+/** A state whose terrain is flattened: all land, no slope, so layouts are predictable. Everything is unlocked unless `locked`. */
+export function flatState(seed = 1, funds = 1_000_000, locked = false): CityState {
   const s = createCityState(seed);
   s.height.fill(0.5);
   s.sea = 0.2;
@@ -13,6 +14,7 @@ export function flatState(seed = 1, funds = 1_000_000): CityState {
   s.slope.fill(0);
   s.funds = funds;
   s.funding.fill(1);
+  if (!locked) s.milestone = MILESTONES.length - 1;
   void SERVICE_COUNT;
   return s;
 }

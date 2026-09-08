@@ -30,12 +30,15 @@ export function createSkyDome(top: number, horizon: number): THREE.Mesh {
   return mesh;
 }
 
-export function recolorSkyDome(mesh: THREE.Mesh, top: number, horizon: number): void {
+const skyA = new THREE.Color();
+const skyB = new THREE.Color();
+
+export function recolorSkyDome(mesh: THREE.Mesh, top: number | THREE.Color, horizon: number | THREE.Color): void {
   const geo = mesh.geometry;
   const pos = geo.getAttribute('position');
   const col = geo.getAttribute('color') as THREE.BufferAttribute;
-  const a = new THREE.Color(top);
-  const b = new THREE.Color(horizon);
+  const a = skyA.set(top);
+  const b = skyB.set(horizon);
   const c = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i) / 600;
@@ -231,4 +234,71 @@ export class TornadoFunnel {
     this.points.geometry.dispose();
     (this.points.material as THREE.Material).dispose();
   }
+}
+
+// ─── day / night ─────────────────────────────────────────────────────
+
+export interface DayLook {
+  /** 0 at night, 1 at full day. */
+  daylight: number;
+  skyTop: THREE.Color;
+  skyHorizon: THREE.Color;
+  /** Sun colour and direction (unit vector, y up). */
+  sun: THREE.Color;
+  sunDir: THREE.Vector3;
+  /** Window glow strength 0..1. */
+  glow: number;
+}
+
+interface SkyKey {
+  t: number;
+  top: number;
+  horizon: number;
+}
+
+const NIGHT_TOP = 0x0a1026;
+const NIGHT_HORIZON = 0x2a3352;
+const DAWN_TOP = 0x5f86bd;
+const DAWN_HORIZON = 0xf3a873;
+const DUSK_TOP = 0x4a5a95;
+const DUSK_HORIZON = 0xf08a5a;
+
+const c1 = new THREE.Color();
+const c2 = new THREE.Color();
+
+/**
+ * Compute the look for a time of day `t` in [0, 1) (0 = midnight, 0.5 = noon),
+ * blending toward the theme's own day sky. Writes into `out`.
+ */
+export function dayLook(t: number, dayTop: number, dayHorizon: number, daySun: number, out: DayLook): DayLook {
+  const keys: SkyKey[] = [
+    { t: 0, top: NIGHT_TOP, horizon: NIGHT_HORIZON },
+    { t: 0.2, top: NIGHT_TOP, horizon: NIGHT_HORIZON },
+    { t: 0.27, top: DAWN_TOP, horizon: DAWN_HORIZON },
+    { t: 0.36, top: dayTop, horizon: dayHorizon },
+    { t: 0.66, top: dayTop, horizon: dayHorizon },
+    { t: 0.75, top: DUSK_TOP, horizon: DUSK_HORIZON },
+    { t: 0.82, top: NIGHT_TOP, horizon: NIGHT_HORIZON },
+    { t: 1, top: NIGHT_TOP, horizon: NIGHT_HORIZON },
+  ];
+  let k = 0;
+  while (k < keys.length - 2 && keys[k + 1].t <= t) k++;
+  const a = keys[k];
+  const b = keys[k + 1];
+  const f = smooth((t - a.t) / Math.max(1e-4, b.t - a.t));
+  out.skyTop.copy(c1.set(a.top)).lerp(c2.set(b.top), f);
+  out.skyHorizon.copy(c1.set(a.horizon)).lerp(c2.set(b.horizon), f);
+  const daylight = smooth((t - 0.22) / 0.14) * (1 - smooth((t - 0.72) / 0.14));
+  out.daylight = daylight;
+  const ang = (t - 0.25) * Math.PI * 2; // sunrise at 0.25
+  out.sunDir.set(-Math.cos(ang) * 0.7, Math.max(0.08, Math.sin(ang)), 0.45 + 0.2 * Math.cos(ang)).normalize();
+  const warm = 1 - smooth((Math.sin(ang) - 0.05) / 0.35);
+  out.sun.set(daySun).lerp(c1.set(0xff9a4a), warm * daylight);
+  out.glow = 1 - smooth((t - 0.24) / 0.1) * (1 - smooth((t - 0.7) / 0.1));
+  return out;
+}
+
+function smooth(x: number): number {
+  const v = Math.min(1, Math.max(0, x));
+  return v * v * (3 - 2 * v);
 }

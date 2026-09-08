@@ -97,7 +97,7 @@ export function growthPass(s: CityState, slice: number): void {
     }
     // upgrade in level
     const lv = level[i];
-    if (lv < 3 && desir > TUNING.upgradeDesir[lv] && d > 15 && s.age[i] > TUNING.upgradeMinAgeMonths && nextRandom(s) < TUNING.upgradeRate) {
+    if (lv < 3 && desir > TUNING.upgradeDesir[lv] && d > TUNING.upgradeMinDemand && s.age[i] > TUNING.upgradeMinAgeMonths && nextRandom(s) < TUNING.upgradeRate) {
       for (const j of lot) {
         level[j] = lv + 1;
         markDirty(s, j);
@@ -133,6 +133,7 @@ function abandon(s: CityState, i: number): void {
     s.abandoned[j] = 1;
     s.pop[j] = 0;
     s.jobs[j] = 0;
+    s.problems[j] = 0;
     markDirty(s, j);
   }
   s.changed |= CHANGE.HUD;
@@ -151,6 +152,7 @@ export function demolish(s: CityState, i: number): void {
     s.burnTicks[j] = 0;
     s.lotOrigin[j] = 0;
     s.lotSize[j] = 0;
+    s.problems[j] = 0;
     markDirty(s, j);
   }
   s.flags.netDirty = true;
@@ -159,5 +161,9 @@ export function demolish(s: CityState, i: number): void {
 
 /** Monthly: buildings age. */
 export function ageBuildings(s: CityState): void {
-  for (let i = 0; i < T; i++) if (s.level[i] && s.age[i] < 65535) s.age[i]++;
+  for (let i = 0; i < T; i++) {
+    if (!s.level[i] || s.age[i] >= 65535) continue;
+    s.age[i]++;
+    if (s.age[i] === 1) markDirty(s, i); // the construction site becomes a building
+  }
 }

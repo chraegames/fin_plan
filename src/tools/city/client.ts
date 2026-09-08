@@ -96,6 +96,7 @@ class ClientBase implements SimClient {
           changed: msg.changed,
           hud: msg.hud,
           messages: msg.messages,
+          notices: msg.notices,
           buf: msg.buf,
         };
         this.snapshotCb?.(snap);

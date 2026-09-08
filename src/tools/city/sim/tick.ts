@@ -10,11 +10,14 @@ import { computeCrime } from './crime';
 import { computeDesirability } from './desirability';
 import { stepTornado } from './disasters';
 import { computeFireRisk, igniteMonthly, spreadFire } from './fire';
+import { computeGarbage } from './garbage';
 import { ageBuildings, growthPass } from './growth';
 import { computeLandValue } from './landvalue';
+import { checkMilestones } from './milestones';
 import { updatePeople } from './people';
 import { pollutionStep } from './pollution';
 import { balancePower, rebuildPowerNetwork } from './power';
+import { computeProblems } from './problems';
 import { analyseRoads } from './roads';
 import { computeCoverage } from './services';
 import { recomputeTotals } from './stats';
@@ -35,10 +38,12 @@ export function primeDerived(s: CityState): void {
   rebuildWaterNetwork(s);
   recomputeTotals(s);
   computeCoverage(s);
+  computeGarbage(s);
   computeLandValue(s);
   computeCrime(s);
   computeFireRisk(s);
   computeDesirability(s);
+  computeProblems(s);
   computeDemand(s);
   advise(s);
 }
@@ -73,8 +78,14 @@ export function tick(s: CityState): void {
     case 4:
       computeDesirability(s);
       break;
+    case 5:
+      computeProblems(s);
+      break;
   }
-  if (k % 12 === 5 && (s.flags.serviceDirty || k % TICKS_PER_MONTH === 5)) computeCoverage(s);
+  if (k % 12 === 5 && (s.flags.serviceDirty || k % TICKS_PER_MONTH === 5)) {
+    computeCoverage(s);
+    computeGarbage(s);
+  }
   if (k % TICKS_PER_MONTH === 11) assignTraffic(s);
   if (k % TICKS_PER_MONTH === 0 && k > 0) {
     ageBuildings(s);
@@ -82,6 +93,7 @@ export function tick(s: CityState): void {
     updatePeople(s);
     computeDemand(s);
     monthlyBudget(s);
+    checkMilestones(s);
     igniteMonthly(s);
     advise(s);
   }
