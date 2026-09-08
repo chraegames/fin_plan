@@ -177,6 +177,17 @@ export const CITY_STYLES = `
 .city-problems small { display: block; font-size: 11px; margin-top: 2px; }
 .city-problems span:nth-child(2) { flex: 1; }
 
+.city-next { margin: 0 0 8px; padding: 7px 9px; border-radius: 8px; border: 2px dashed var(--cp-purple); font: 500 11.5px/1.3 var(--font-sans); color: var(--cp-ink-2); }
+.city-next b { display: block; font: 700 12px/1.2 var(--font-display); color: var(--cp-ink); margin-bottom: 4px; }
+.city-next ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.city-next li { display: flex; align-items: flex-start; gap: 6px; }
+.city-next li.city-done { color: var(--cp-muted); }
+.city-next .city-check { width: 15px; height: 15px; border-radius: 5px; }
+.city-next li > span:last-child { flex: 1; }
+.city-meter-sm { display: block; width: 100%; height: 5px; margin: 3px 0 0; }
+.city-spend { position: absolute; left: 132px; bottom: 60px; z-index: 6; font: 700 15px/1 var(--font-display); color: var(--cp-danger); text-shadow: 0 1px 0 #fff, 0 0 6px #fff; pointer-events: none; animation: city-float 1.1s ease-out forwards; }
+@keyframes city-float { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-34px); opacity: 0; } }
+
 /* sheets (budget, milestones, stats) */
 .city-sheet { position: absolute; left: 50%; top: 76px; transform: translateX(-50%); z-index: 7; width: min(720px, calc(100% - 20px)); max-height: calc(100% - 90px); overflow: auto; padding: 12px 16px; }
 .city-sheet-intro { margin: 0 0 10px; font: 500 12.5px/1.4 var(--font-sans); color: var(--cp-ink-2); }

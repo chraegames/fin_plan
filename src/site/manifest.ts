@@ -580,31 +580,35 @@ export const PAGES: SiteEntry[] = [
     status: 'live',
     category: 'games',
     name: 'City',
-    tagline: 'A 3D city simulation. Zone, build, tax and watch a statistical model of a city respond.',
+    tagline: 'A 3D city simulation with a progression ladder. Zone, build, tax and watch a statistical model of a city respond.',
     title: 'City — free 3D city-building simulation in your browser',
     description:
-      'Build a city in 3D in your browser: zone residential, commercial and industrial land, lay roads, run power and water, fund fire, police, schools and hospitals, and watch demand, land value, traffic, pollution, crime and your budget respond every month. Everything is generated and simulated on your device.',
-    updated: '2026-09-05',
+      'Build a city in 3D in your browser: zone residential, commercial and industrial land, lay roads, run power, water and garbage, fund fire, police, schools and hospitals, climb nine population milestones that unlock new buildings, and watch demand, land value, traffic, pollution, crime and your budget respond every month. Everything is generated and simulated on your device.',
+    updated: '2026-09-08',
     about: {
       applicationCategory: 'GameApplication',
       intro:
-        'A city builder in the SimCity tradition, rendered in 3D from nothing but code. The map, every building and every vehicle are generated on the fly, and underneath runs a detailed statistical simulation: residential, commercial and industrial demand, desirability per tile, land value, air and water pollution, crime, fire risk, traffic assignment over your road network, utility networks, service coverage and a monthly budget. Nothing is uploaded; the whole city lives in this browser tab.',
+        'A city builder in the SimCity tradition, rendered in 3D from nothing but code. The map, every building and every vehicle are generated on the fly, and underneath runs a detailed statistical simulation: residential, commercial and industrial demand by wealth tier, desirability per tile, land value, air and water pollution, crime, fire risk, traffic assignment over your road network, power, water and rubbish collection, service coverage, city ordinances and a monthly budget. Nine population milestones unlock buildings and pay a grant, every troubled building shows what it is missing, and the city lives in this browser tab only.',
       features: [
-        'Zoning with three densities and three wealth tiers per zone type. Buildings grow, upgrade, change wealth and get abandoned based on demand and how desirable the tile is.',
-        'Power and water as real networks: plants and pumps feed connected tiles, a shortfall causes brownouts and shrinking water coverage, and unpowered blocks stop growing.',
-        'Fire, police, health and education with road-distance coverage and capacity. Funding sliders change range and effectiveness; education and health feed the wealth mix of who moves in.',
-        'Traffic assigned every month over the road graph with congestion feedback, so long commutes and jammed links push residents away and pollution follows the busiest streets.',
-        'Air pollution diffuses, land value follows water, parks and services, crime rises with density and falls with police coverage, and fires spread from tile to tile until a station reaches them.',
-        'A monthly ledger with tax rates per zone, service funding, loans and an advisor that points at the problem holding the city back. Twelve data views paint every layer onto the terrain.',
+        'Zoning with three densities and three wealth tiers per zone type. Buildings grow, upgrade, change wealth and get abandoned based on demand and how desirable the tile is, and the inspector lists exactly what a lot needs for its next level.',
+        'A milestone ladder from Outpost to Megalopolis: each population tier unlocks buildings, denser zoning, avenues, loans or policies and pays a cash grant, so a first city teaches itself.',
+        'Thirty-one facilities: wind, coal, gas, solar, hydro and nuclear power, pumps, towers and a treatment plant, landfill, incinerator and recycling centre, fire and police stations and headquarters, clinics and a hospital, schools, a library and a university, parks, a plaza, a bus depot, city hall, a stadium and a landmark tower.',
+        'Power, water and garbage as real networks: plants, pumps and collection facilities feed connected tiles, a shortfall causes brownouts, dry lots or rubbish piling up, and floating icons over buildings say which of eight problems each lot has.',
+        'Traffic assigned every month over the road graph with congestion feedback; buses take cars off the streets, avenues carry more, and eight ordinances trade a monthly cost for less crime, cleaner air, fewer fires or more shoppers.',
+        'A monthly ledger with tax rates per zone, service funding, loans and policies, an advisor that points at the problem holding the city back, fourteen data views with legends, city statistics with 30-year graphs, and a day/night cycle with lit windows.',
       ],
       faq: [
         {
           q: 'How does the simulation work?',
-          a: 'The city is a 128 × 128 grid of tiles. Every tick the simulation updates a set of per-tile layers: desirability, land value, pollution, crime, fire risk, utility and service coverage, traffic and commute time. Buildings grow or decay from those layers and from city-wide demand for each zone type and wealth tier, and once a month taxes are collected, services are paid for and demand is recomputed. It is a statistical model in the style of the classic SimCity games, not one that tracks individual citizens.',
+          a: 'The city is a 128 × 128 grid of tiles. Every tick the simulation updates a set of per-tile layers: desirability, land value, pollution, crime, fire risk, utility and service coverage, traffic and commute time. Buildings grow or decay from those layers and from city-wide demand for each zone type and wealth tier, and once a month taxes are collected, services are paid for, demand is recomputed and milestones are checked. It is a statistical model in the style of the classic SimCity games, not one that tracks individual citizens.',
         },
         {
           q: 'Why does nothing grow?',
-          a: 'Zones need a road within three tiles, power, and (for medium and high density) water. Industry also needs a road that reaches the edge of the map so goods can leave. Check the power and water data views for red tiles, look at the demand bars at the top, and read the advisor: it lists the most likely reason in order.',
+          a: 'Zones need a road within three tiles, power, and (for medium and high density) water. Industry also needs a road that reaches the edge of the map so goods can leave. Turn on the problem icons or click a building with the inspect tool: it lists what is missing and how to fix it, and the advisor names the most likely city-wide cause.',
+        },
+        {
+          q: 'How do I unlock more buildings?',
+          a: 'Grow the population. Each milestone (400 residents for a hamlet, 1,200 for a village, 3,000 for a town and so on up to 100,000) unlocks a bundle of buildings and features and pays a grant. Locked tools show the tier they need, and the milestones panel lists the whole ladder. Nothing is ever locked again if the population later drops.',
         },
         {
           q: 'Is the 3D scene downloaded from somewhere?',

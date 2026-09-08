@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_MONTH } from './constants';
 import { decodeSave, encodeSave, GEN_VERSION, parseSaveFile, rleDecode, rleEncode, SAVED_U16, SAVED_U8 } from './save';
+import { MILESTONES } from './sim/milestones';
 import { findSite, townActions } from './sim/scenario';
 import { createCityState } from './sim/state';
 import { applyActions, primeDerived, tick } from './sim/tick';
-import { T } from './types';
+import { SERVICE_COUNT, T } from './types';
 
 describe('save', () => {
   it('rle round-trips and rejects bad lengths', () => {
@@ -47,6 +48,44 @@ describe('save', () => {
     }
     expect(t.level).toEqual(s.level);
     expect(t.funds).toBe(s.funds);
+  });
+
+  it('loads a save from before milestones and policies, padding the service lists and inferring the tier', () => {
+    const s = createCityState(9);
+    const site = findSite(s, 45, 31)!;
+    let id = 1;
+    applyActions(s, townActions(site).map(action => ({ id: id++, action })));
+    primeDerived(s);
+    for (let k = 0; k < TICKS_PER_MONTH * 6; k++) tick(s);
+    const file = encodeSave(s);
+    const legacy = {
+      ...file,
+      funding: file.funding.slice(0, 7),
+      ledger: file.ledger.map(l => {
+        const { policyCost, ...rest } = l;
+        void policyCost;
+        return { ...rest, expenses: l.expenses.slice(0, 7) };
+      }),
+    } as Record<string, unknown>;
+    delete legacy.milestone;
+    delete legacy.peakPop;
+    delete legacy.policies;
+    delete legacy.history;
+    const parsed = parseSaveFile(JSON.stringify(legacy));
+    expect(parsed).not.toBeNull();
+    const t = decodeSave(parsed!)!;
+    expect(t).not.toBeNull();
+    expect(t.funding.length).toBe(SERVICE_COUNT);
+    expect(t.funding[SERVICE_COUNT - 1]).toBe(1);
+    expect(t.ledger[0].expenses.length).toBe(SERVICE_COUNT);
+    expect(t.ledger[0].policyCost).toBe(0);
+    expect(t.policies).toBe(0);
+    expect(t.history).toEqual([]);
+    const pop = s.totals.population;
+    let tier = 0;
+    for (let k = 1; k < MILESTONES.length; k++) if (pop >= MILESTONES[k].pop) tier = k;
+    expect(t.milestone).toBe(tier);
+    expect(t.peakPop).toBeGreaterThan(0);
   });
 
   it('rejects malformed input', () => {

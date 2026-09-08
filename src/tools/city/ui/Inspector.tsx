@@ -10,8 +10,51 @@ interface InspectorProps {
   layers: SnapshotLayers | null;
   /** Changes whenever the layers were refreshed (they are mutated in place). */
   version: number;
+  /** The nine RCI demand bars (for the "next level" checklist). */
+  demand: number[];
   onClose: () => void;
   onOverlay: (k: OverlayKind) => void;
+}
+
+interface Need {
+  text: string;
+  done: boolean;
+  /** 0..1 progress toward the requirement (for a bar). */
+  progress: number;
+}
+
+/** What a built lot still needs to grow a level or attract the next wealth tier. */
+function nextNeeds(L: SnapshotLayers, i: number, demand: number[]): { title: string; needs: Need[] } | null {
+  const z = L.zone[i];
+  const lv = L.level[i];
+  const w = L.wealth[i];
+  const desir = L.desirability[i];
+  if (lv < 3) {
+    const needDesir = TUNING.upgradeDesir[lv];
+    const d = demand[(z - 1) * 3 + (w - 1)] ?? 0;
+    return {
+      title: `Next: level ${lv + 1}`,
+      needs: [
+        { text: `Desirability above ${Math.round((needDesir / 255) * 100)}%`, done: desir > needDesir, progress: Math.min(1, desir / needDesir) },
+        { text: `Demand for ${WEALTH_SYMBOL[w]} ${ZONE_NAMES[z].toLowerCase()} above +${TUNING.upgradeMinDemand}`, done: d > TUNING.upgradeMinDemand, progress: Math.min(1, Math.max(0, d / (TUNING.upgradeMinDemand + 1))) },
+        { text: `Settled for ${TUNING.upgradeMinAgeMonths + 1} months`, done: L.age[i] > TUNING.upgradeMinAgeMonths, progress: Math.min(1, L.age[i] / (TUNING.upgradeMinAgeMonths + 1)) },
+      ],
+    };
+  }
+  if (w < 3) {
+    const needDesir = TUNING.wealthMinDesir[w + 1];
+    const needLv = TUNING.wealthMinLandValue[w + 1];
+    const d = demand[(z - 1) * 3 + w] ?? 0;
+    return {
+      title: `Next: ${WEALTH_SYMBOL[w + 1]} tenants`,
+      needs: [
+        { text: `Desirability above ${Math.round((needDesir / 255) * 100)}%`, done: desir >= needDesir, progress: Math.min(1, desir / needDesir) },
+        { text: `Land value above ${Math.round((needLv / 255) * 100)}%`, done: L.landValue[i] >= needLv, progress: Math.min(1, L.landValue[i] / Math.max(1, needLv)) },
+        { text: `Demand for ${WEALTH_SYMBOL[w + 1]} ${ZONE_NAMES[z].toLowerCase()} (needs education and health)`, done: d > 0, progress: Math.min(1, Math.max(0, (d + 30) / 40)) },
+      ],
+    };
+  }
+  return null;
 }
 
 type Row = [string, React.ReactNode];
@@ -50,7 +93,7 @@ const PROBLEM_INFO: ProblemInfo[] = [
   { bit: PROBLEM.BLIGHT, icon: 'warning', color: 'var(--cp-danger)', title: 'Crime or pollution', fix: 'Police cover and parks help; keep industry away from homes.', overlay: 'crime' },
 ];
 
-export function Inspector({ tile, layers: L, version, onClose, onOverlay }: InspectorProps) {
+export function Inspector({ tile, layers: L, version, demand, onClose, onOverlay }: InspectorProps) {
   void version;
   const i = tile.y * N + tile.x;
   const rows: Row[] = [];
@@ -58,6 +101,7 @@ export function Inspector({ tile, layers: L, version, onClose, onOverlay }: Insp
   let icon: CityIconName = 'inspect';
   let color = 'var(--cp-purple)';
   let problems: ProblemInfo[] = [];
+  let next: { title: string; needs: Need[] } | null = null;
   let status: { text: string; tone: 'ok' | 'warn' | 'bad' } | null = null;
   if (L) {
     const z = L.zone[i];
@@ -105,6 +149,7 @@ export function Inspector({ tile, layers: L, version, onClose, onOverlay }: Insp
         else {
           const bits = L.problems[o];
           problems = PROBLEM_INFO.filter(p => bits & p.bit);
+          next = nextNeeds(L, o, demand);
           if (!problems.length) {
             const d = L.desirability[i];
             status = d > TUNING.upgradeDesir[L.level[i]] && L.level[i] < 3 ? { text: 'Thriving — likely to grow to the next level.', tone: 'ok' } : d < TUNING.abandonDesir + 20 ? { text: 'Struggling: desirability is low.', tone: 'warn' } : { text: 'Doing fine.', tone: 'ok' };
@@ -176,6 +221,26 @@ export function Inspector({ tile, layers: L, version, onClose, onOverlay }: Insp
             </li>
           ))}
         </ul>
+      )}
+      {next && (
+        <div className="city-next">
+          <b>{next.title}</b>
+          <ul>
+            {next.needs.map(n => (
+              <li key={n.text} className={n.done ? 'city-done' : ''}>
+                <span className="city-check">{n.done && <CityIcon name="check" size={10} />}</span>
+                <span>
+                  {n.text}
+                  {!n.done && (
+                    <span className="city-meter city-meter-sm">
+                      <i style={{ width: `${n.progress * 100}%`, background: 'var(--cp-purple)' }} />
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <table className="city-kv">
         <tbody>

@@ -4,7 +4,7 @@
 import { performance } from 'node:perf_hooks';
 import { TICKS_PER_MONTH } from '../src/tools/city/constants';
 import { createCityState } from '../src/tools/city/sim/state';
-import { densifyActions, findSite, serviceActions, townActions, type Layout } from '../src/tools/city/sim/scenario';
+import { findSite, serviceActions, townActions, type Layout } from '../src/tools/city/sim/scenario';
 import { densityUnlocked, isUnlocked, MILESTONES } from '../src/tools/city/sim/milestones';
 import { plopDef } from '../src/tools/city/constants';
 import { applyActions, primeDerived, tick } from '../src/tools/city/sim/tick';

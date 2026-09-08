@@ -21,6 +21,7 @@ import { NewCityDialog } from './ui/NewCityDialog';
 import { NoticeBanner } from './ui/NoticeBanner';
 import { Onboarding } from './ui/Onboarding';
 import { onboardingSteps } from './ui/onboardingSteps';
+import { formatMoney } from './ui/format';
 import { loadPrefs, savePrefs, type CityPrefs } from './ui/prefs';
 import { StatsPanel } from './ui/StatsPanel';
 import { CITY_STYLES } from './ui/styles';
@@ -80,6 +81,7 @@ export default function App() {
   const [selected, setSelected] = useState<XY | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [spend, setSpend] = useState<{ id: number; amount: number } | null>(null);
   const [prefs, setPrefs] = useState<CityPrefs>(() => loadPrefs());
   const [debugOpen, setDebugOpen] = useState(false);
   const debugAllowed = isLocalHost() || (typeof window !== 'undefined' && /[?&]debug=1/.test(window.location.search));
@@ -221,6 +223,7 @@ export default function App() {
       client.send(a).then(r => {
         if (!r.ok && r.reason) showToast(FAIL_TEXT[r.reason]);
         else if (r.ok && a.type === 'disaster') track('city_disaster', { kind: a.kind });
+        else if (r.ok && r.cost > 0) setSpend({ id: r.id, amount: r.cost });
       });
     },
     [showToast],
@@ -489,11 +492,16 @@ export default function App() {
           )}
         </div>
         <Toolbar tool={tool} density={density} milestone={hud?.milestone ?? 0} onTool={onTool} onDensity={onDensity} compact={isMobile} />
+        {spend && !isMobile && (
+          <div key={spend.id} className="city-spend" aria-hidden="true">
+            −{formatMoney(spend.amount)}
+          </div>
+        )}
         <Viewport terrain={terrain} rendererRef={rendererRef} handlersRef={handlersRef} panCursor={tool.kind === 'inspect'} />
         {onboardingVisible && hud && <Onboarding hud={hud} onClose={() => updatePrefs({ ...prefs, onboardingDoneSeed: seed })} />}
         <Advisor messages={messages} onOverlay={setOverlay} />
         {notice && <NoticeBanner notice={notice} onClose={dismissNotice} onMilestones={() => { dismissNotice(); setSheet('milestones'); }} />}
-        {selected && <Inspector tile={selected} layers={layers} version={hud?.tick ?? 0} onClose={() => setSelected(null)} onOverlay={setOverlay} />}
+        {selected && <Inspector tile={selected} layers={layers} version={hud?.tick ?? 0} demand={hud?.demand ?? []} onClose={() => setSelected(null)} onOverlay={setOverlay} />}
         {!selected && <Legend overlay={overlay} onClose={() => setOverlay('none')} />}
         {debugOpen && debugAllowed && (
           <DebugPanel hud={hud} layers={layers} version={hud?.tick ?? 0} onFastForward={ticks => clientRef.current?.fastForward(ticks)} onGrant={amount => dispatch({ type: 'grant', amount })} onTuning={o => clientRef.current?.setTuning(o)} onClose={() => setDebugOpen(false)} />
