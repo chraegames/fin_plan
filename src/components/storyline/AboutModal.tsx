@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { SITE_REPO } from '../../site/manifest';
 
 interface AboutModalProps {
   open: boolean;
@@ -177,7 +178,12 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
             color: 'var(--ink-3)',
           }}
         >
-          <span>FIRE Planner · open source</span>
+          <span>
+            FIRE Planner ·{' '}
+            <a href={SITE_REPO} target="_blank" rel="noreferrer" style={{ color: 'var(--ink-2)' }}>
+              open source on GitHub
+            </a>
+          </span>
           <Button variant="primary" size="md" onClick={onClose} leading={<Icon name="check" />}>
             Got it
           </Button>

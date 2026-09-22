@@ -138,6 +138,7 @@ a.tvg-chip:hover { filter: brightness(1.08); }
 .tvg-callout-cta { font-family: var(--font-mono); font-size: 12px; color: var(--accent-contrast); white-space: nowrap; padding: 11px 16px; border-radius: var(--radius-pill); background: var(--cat-finance); text-decoration: none; }
 .tvg-wrap a.tvg-callout-cta:hover { color: var(--accent-contrast); filter: brightness(1.08); }
 .tvg-foot { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.9; color: var(--ink-3); }
+.tvg-foot a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
 
 .tvg-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
 .tvg-legend li { display: grid; grid-template-columns: 14px 1fr; gap: 10px; align-items: start; padding: 6px 8px; border-radius: var(--radius-md); }

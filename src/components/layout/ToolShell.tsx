@@ -8,7 +8,7 @@ import { Icon } from '../primitives/Icon';
 import { useTheme } from '../../hooks/useTheme';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { isLocalHost } from '../../utils/env';
-import { SITE_NAME, type SiteEntry } from '../../site/manifest';
+import { SITE_NAME, SITE_REPO, type SiteEntry } from '../../site/manifest';
 import { ToolAbout } from '../../site/ToolAbout';
 import { accentFor } from '../../site/accent';
 
@@ -132,6 +132,9 @@ export function ToolShell({ entry, children, rightSlot, maxWidth = 760, layout =
       >
         <span>{SITE_NAME}</span>
         <span>Runs entirely in your browser.</span>
+        <a href={SITE_REPO} style={{ color: 'var(--ink-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          Source on GitHub
+        </a>
       </footer>
     </div>
   );

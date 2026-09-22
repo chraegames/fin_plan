@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderRootForPath, buildSitemap, normalizePath } from '../../scripts/prerender';
 import { CONTENT_ROUTES, FIRE_HOME_PATH, SITE_ORIGIN } from './routeMeta';
-import { CATEGORIES, HUB, PAGES, byPath, contentPages, livePages, liveTools } from '../site/manifest';
+import { CATEGORIES, HUB, PAGES, SITE_REPO, byPath, contentPages, livePages, liveTools } from '../site/manifest';
 import { ATTRIBUTES, BRANDS, GUIDE_REVIEWED, TECHNOLOGIES } from '../tools/tv-guide/data';
 import { GUIDE_PAGES } from '../tools/tv-guide/pages';
 
@@ -33,6 +33,12 @@ describe('renderRootForPath', () => {
     for (const g of contentPages()) expect(html).toContain(`href="${g.path}"`);
     expect(html).toContain('Guides');
     expect(html).toContain('collection of free online tools');
+  });
+
+  it('every prerendered page links to the public source repository', () => {
+    for (const p of livePages()) {
+      expect(renderRootForPath(`${p.path}index.html`), p.path).toContain(`href="${SITE_REPO}"`);
+    }
   });
 
   it('prerenders tool pages with About, FAQ text and links to sibling tools', () => {

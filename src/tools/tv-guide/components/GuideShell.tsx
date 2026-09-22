@@ -6,7 +6,7 @@
 // underline tab bar; content column below; About/related links + footer.
 
 import type { ReactNode } from 'react';
-import { HUB, SITE_NAME, breadcrumbs, relatedTools, type SiteEntry } from '../../../site/manifest';
+import { HUB, SITE_NAME, SITE_REPO, breadcrumbs, relatedTools, type SiteEntry } from '../../../site/manifest';
 import { ToolAbout } from '../../../site/ToolAbout';
 import { accentFor } from '../../../site/accent';
 import { GUIDE_ENTRY, GUIDE_PAGES, type GuidePageId } from '../pages';
@@ -108,6 +108,7 @@ export function GuideShell({ page, entry, children, themeToggle, local = false }
         <footer className="tvg-foot">
           <span>{SITE_NAME}</span>
           <span>Independent and not affiliated with any manufacturer. No models, specifications or prices — only how the technologies work.</span>
+          <a href={SITE_REPO}>Source on GitHub</a>
         </footer>
       </div>
     </div>

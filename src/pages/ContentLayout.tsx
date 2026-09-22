@@ -6,7 +6,7 @@
 
 import type { CSSProperties, ReactNode } from 'react';
 import { CONTENT_ROUTES, FIRE_HOME_PATH } from './routeMeta';
-import { SITE_NAME } from '../site/manifest';
+import { SITE_NAME, SITE_REPO } from '../site/manifest';
 
 export { H2, P, UL, LI, A } from '../site/Prose';
 import { linkStyle } from '../site/proseStyles';
@@ -154,7 +154,10 @@ export function ContentLayout({ slug, title, lede, children }: ContentLayoutProp
           margin: 0,
         }}
       >
-        Educational tool — not financial advice.
+        Educational tool — not financial advice.{' '}
+        <a href={SITE_REPO} style={{ color: 'var(--ink-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          Source on GitHub
+        </a>
       </p>
     </div>
   );

@@ -11,7 +11,7 @@
 // rendered to a string in the Vite build (Node) context. Keep it that way.
 
 import type { ReactNode } from 'react';
-import { HUB, SITE_NAME } from '../../site/manifest';
+import { HUB, SITE_NAME, SITE_REPO } from '../../site/manifest';
 import { INTRO_STYLES } from './introStyles';
 
 /** Decorative "projection" bar chart: accumulation in the accent, drawdown in coral. */
@@ -118,7 +118,11 @@ export function IntroSections() {
 }
 
 export function IntroDisclaimer() {
-  return <p className="fire-intro-disclaimer">Educational tool — not financial advice.</p>;
+  return (
+    <p className="fire-intro-disclaimer">
+      Educational tool — not financial advice. <a href={SITE_REPO}>Source on GitHub</a>
+    </p>
+  );
 }
 
 /** The static tree has no <AppBar>, so it carries its own breadcrumb row. */

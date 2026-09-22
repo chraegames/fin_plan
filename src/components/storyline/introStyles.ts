@@ -37,6 +37,7 @@ export const INTRO_STYLES = `
 .fire-intro-card h3{font-size:18px;font-weight:600;margin:0 0 10px;color:var(--accent)}
 .fire-intro-card p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-2)}
 .fire-intro-disclaimer{margin:26px 0 0;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-muted)}
+.fire-intro-disclaimer a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:1100px){
   .fire-intro-hero{grid-template-columns:1fr;gap:36px;padding:48px 0 40px;align-items:start}
 }

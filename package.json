@@ -1,7 +1,14 @@
 {
-  "name": "f_planning",
+  "name": "chrae-lab",
   "private": true,
   "version": "0.0.0",
+  "description": "Chrae Lab: free, private tools that run entirely in your browser.",
+  "homepage": "https://chraegames.cloud",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chraegames/chrae-lab.git"
+  },
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

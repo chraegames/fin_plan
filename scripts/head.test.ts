@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ANTI_FLASH_STYLE, THEME_BOOT_SCRIPT, buildHeadTags } from './head';
-import { HUB, SITE_ORIGIN, byPath } from '../src/site/manifest';
+import { HUB, SITE_ORIGIN, SITE_REPO, byPath } from '../src/site/manifest';
 import { THEME_KEY } from '../src/utils/persistence';
 
 function find(tags: ReturnType<typeof buildHeadTags>, pred: (t: (typeof tags)[number]) => boolean) {
@@ -23,6 +23,7 @@ describe('buildHeadTags', () => {
       JSON.parse(t.children!),
     );
     expect(hubLd.map(b => b['@type']).sort()).toEqual(['ItemList', 'Organization', 'WebSite']);
+    expect(hubLd.find(b => b['@type'] === 'Organization').sameAs).toEqual([SITE_REPO]);
     const list = hubLd.find(b => b['@type'] === 'ItemList');
     expect(list.itemListElement.map((i: { name: string }) => i.name)).toContain('Sudoku');
     expect(list.itemListElement[0].url).toBe(`${SITE_ORIGIN}/fire-planner/`);

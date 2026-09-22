@@ -2,7 +2,7 @@
 // createRoot().render() replaces it on mount (never hydrated). Gives crawlers
 // and no-JS visitors the tool's name + description instead of an empty div.
 
-import { SITE_NAME, type SiteEntry } from './manifest';
+import { SITE_NAME, SITE_REPO, type SiteEntry } from './manifest';
 import { ToolAbout } from './ToolAbout';
 import { accentFor } from './accent';
 
@@ -48,7 +48,11 @@ export function ToolStatic({ entry }: { entry: SiteEntry }) {
         </p>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, lineHeight: 1.75, color: 'var(--ink-muted)', margin: 0 }}>
           This tool needs JavaScript to run. Nothing is sent to a server — it works entirely in your
-          browser.
+          browser. The code is open source:{' '}
+          <a href={SITE_REPO} style={{ color: 'var(--ink-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            view it on GitHub
+          </a>
+          .
         </p>
       </div>
       <ToolAbout entry={entry} />

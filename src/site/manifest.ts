@@ -12,6 +12,8 @@
 
 export const SITE_ORIGIN = 'https://chraegames.cloud';
 export const SITE_NAME = 'Chrae Lab';
+/** Public source repository — linked from every footer and the Organization JSON-LD. */
+export const SITE_REPO = 'https://github.com/chraegames/chrae-lab';
 
 export type CategoryId = 'finance' | 'utilities' | 'productivity' | 'games';
 
@@ -128,6 +130,7 @@ export const PAGES: SiteEntry[] = [
         name: SITE_NAME,
         url: `${SITE_ORIGIN}/`,
         logo: `${SITE_ORIGIN}/icon-512.png`,
+        sameAs: [SITE_REPO],
       },
     ],
   },

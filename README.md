@@ -2,18 +2,21 @@
 
 A collection of small, free tools that run entirely in the browser —
 no accounts, no server, everything stored on your device. Live at
-[chraegames.cloud](https://chraegames.cloud).
+**[chraegames.cloud](https://chraegames.cloud)**.
 
-| Category     | Tool                                           | Path                |
-|--------------|------------------------------------------------|---------------------|
-| Finance      | **FIRE Planner** — retirement / FIRE projection | `/fire-planner/`    |
-| Utilities    | Unit converter (length, weight, volume, area, speed, temperature) | `/unit-converter/` |
-| Utilities    | Calculator (basic + scientific, history)       | `/calculator/`      |
-| Productivity | To-do list (multiple lists, due dates)         | `/todo/`            |
-| Games        | Sudoku (easy–expert, notes, hints, undo)       | `/sudoku/`          |
-| Games        | Bingo caller (75/90/30-ball, flashboard, history, auto-call, voice) | `/bingo/` |
-| Games        | Go — two-player online Go (quick match or room code, 9×9/13×13/19×19, peer-to-peer over WebRTC) | `/go/` |
-| Utilities    | TV buying guide (2026 panel technologies explained with animated diagrams, brand-name decoder, comparison, "help me choose") | `/tv-guide/` + `/technologies/`, `/brands/`, `/decoder/`, `/compare/` |
+| Category     | Tool | Live |
+|--------------|------|------|
+| Finance      | **FIRE Planner** — retirement / FIRE projection with US federal tax, three account types and a withdrawal optimizer | [chraegames.cloud/fire-planner/](https://chraegames.cloud/fire-planner/) |
+| Finance      | Guides: [Coast FIRE calculator](https://chraegames.cloud/fire-planner/coast-fire-calculator/) · [The 4% rule](https://chraegames.cloud/fire-planner/4-percent-rule/) · [Retirement withdrawal strategy](https://chraegames.cloud/fire-planner/retirement-withdrawal-strategy/) · [How the planner works](https://chraegames.cloud/fire-planner/how-it-works/) | |
+| Utilities    | Unit converter (length, weight, volume, area, speed, temperature) | [chraegames.cloud/unit-converter/](https://chraegames.cloud/unit-converter/) |
+| Utilities    | Calculator (basic + scientific, history) | [chraegames.cloud/calculator/](https://chraegames.cloud/calculator/) |
+| Utilities    | TV buying guide — 2026 panel technologies with animated diagrams, brand-name decoder, comparison, "help me choose" | [chraegames.cloud/tv-guide/](https://chraegames.cloud/tv-guide/) · [Technologies](https://chraegames.cloud/tv-guide/technologies/) · [Brands](https://chraegames.cloud/tv-guide/brands/) · [Decoder](https://chraegames.cloud/tv-guide/decoder/) · [Compare](https://chraegames.cloud/tv-guide/compare/) |
+| Productivity | To-do list (multiple lists, due dates) | [chraegames.cloud/todo/](https://chraegames.cloud/todo/) |
+| Games        | Sudoku (easy–expert, notes, hints, undo) | [chraegames.cloud/sudoku/](https://chraegames.cloud/sudoku/) |
+| Games        | Bingo caller (75/90/30-ball, flashboard, history, auto-call, voice) | [chraegames.cloud/bingo/](https://chraegames.cloud/bingo/) |
+| Games        | Go — two-player online Go (quick match or room code, 9×9/13×13/19×19, peer-to-peer over WebRTC) | [chraegames.cloud/go/](https://chraegames.cloud/go/) |
+| Games        | Magic Tower 魔塔 — seeded puzzle-RPG, ten loops × 99 generated floors | [chraegames.cloud/magic-tower/](https://chraegames.cloud/magic-tower/) |
+| Games        | City — 3D SimCity-style city builder with a per-tile statistical simulation | [chraegames.cloud/city/](https://chraegames.cloud/city/) |
 
 Every page is its own static HTML entry (Vite multi-page); the hub landing
 page and the FIRE content guides are prerendered at build time, and each
@@ -45,6 +48,14 @@ Filing statuses other than MFJ (Single, HoH, MFS), state / local tax, Social
 Security, pensions, RMDs, NIIT, Medicare IRMAA, the Roth 5-year rule, return
 variability, or sequence-of-returns risk. See the in-app **About** dialog
 for details.
+
+### City
+
+A 3D city-building simulation at `/city/` in the SimCity tradition. Zone residential, commercial and industrial land at three densities, lay roads, power lines and pipes, place any of thirty-one facilities (six kinds of power plant, pumps and a treatment plant, landfill, incinerator and recycling, fire and police stations and headquarters, clinics and a hospital, schools, a library and a university, parks, a bus depot, city hall, a stadium and a landmark), set taxes, funding and eight ordinances, and climb nine population milestones that unlock buildings and pay grants. Underneath runs a per-tile statistical model: demand by zone and wealth tier, desirability, land value, air and water pollution, crime, fire risk and spread, power, water and garbage networks, road-distance service coverage, monthly traffic assignment with congestion, and a ledger with loans. Every troubled building shows what it is missing, fourteen data views paint the layers onto the terrain, and a day/night cycle lights the windows. The map, every building and every car are generated from code; the simulation runs in a Web Worker and the city autosaves in your browser.
+
+### Magic Tower 魔塔
+
+A Tower of the Sorcerer / 魔塔 puzzle-RPG at `/magic-tower/`: ten playthroughs of 99 generated floors, deterministic combat with a live damage manual, keys, gems, potions, Breach Stones that punch through floors into sealed vaults, and a blessing after every boss. Every tower is generated from a seed and proven solvable before you play it; saves stay in your browser.
 
 ## Local development
 
@@ -87,12 +98,4 @@ request.
 
 ## License
 
-This is a personal project; treat it as such. Use at your own risk.
-
-### City
-
-A 3D city-building simulation at `/city/` in the SimCity tradition. Zone residential, commercial and industrial land at three densities, lay roads, power lines and pipes, place any of thirty-one facilities (six kinds of power plant, pumps and a treatment plant, landfill, incinerator and recycling, fire and police stations and headquarters, clinics and a hospital, schools, a library and a university, parks, a bus depot, city hall, a stadium and a landmark), set taxes, funding and eight ordinances, and climb nine population milestones that unlock buildings and pay grants. Underneath runs a per-tile statistical model: demand by zone and wealth tier, desirability, land value, air and water pollution, crime, fire risk and spread, power, water and garbage networks, road-distance service coverage, monthly traffic assignment with congestion, and a ledger with loans. Every troubled building shows what it is missing, fourteen data views paint the layers onto the terrain, and a day/night cycle lights the windows. The map, every building and every car are generated from code; the simulation runs in a Web Worker and the city autosaves in your browser.
-
-### Magic Tower 魔塔
-
-A Tower of the Sorcerer / 魔塔 puzzle-RPG at `/magic-tower/`: ten playthroughs of 99 generated floors, deterministic combat with a live damage manual, keys, gems, potions, Breach Stones that punch through floors into sealed vaults, and a blessing after every boss. Every tower is generated from a seed and proven solvable before you play it; saves stay in your browser.
+[MIT](LICENSE). The tools are educational — nothing here is financial, tax or legal advice.

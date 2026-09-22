@@ -9,7 +9,7 @@
 // every card, chip and row is a plain <a>.
 
 import type { CSSProperties } from 'react';
-import { CATEGORIES, HUB, SITE_NAME, contentPages, liveTools, toolsIn, type SiteEntry } from '../site/manifest';
+import { CATEGORIES, HUB, SITE_NAME, SITE_REPO, contentPages, liveTools, toolsIn, type SiteEntry } from '../site/manifest';
 import { categoryVar } from '../site/accent';
 
 const HUB_STYLES = `
@@ -59,6 +59,7 @@ const HUB_STYLES = `
 .hub-foot ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px 24px}
 .hub-foot li a{font-size:15px;color:var(--ink-2)}
 .hub-legal{margin:0;font-family:var(--font-mono);font-size:11.5px;line-height:1.9;color:var(--ink-3)}
+.hub-legal a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
 .hub-sun,.hub-moon{display:block}
 :root[data-theme=dark] .hub-sun{display:none}
 :root:not([data-theme=dark]) .hub-moon{display:none}
@@ -349,6 +350,8 @@ export function Landing() {
             Educational tools — not financial advice.
             <br />
             Analytics are cookie-less and self-hosted.
+            <br />
+            Open source: <a href={SITE_REPO}>view the code on GitHub</a>.
           </p>
         </div>
         <nav aria-label="All tools">
